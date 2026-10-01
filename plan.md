@@ -6,17 +6,12 @@ status: implemented
 
 A local, always-running service to browse and edit the markdown files under `~/code` in the browser. It replaces `mp` (nvim + markdown-preview) for reading what Claude writes.
 
-<br />
-
 ## Goals
 
 - Browse every `.md` file under `~/code` from the browser.
 - Read and edit in the same view, with WYSIWYG editing and no separate source pane.
 - Show a TOC sidebar for every document, without needing `[[toc]]` in the file.
 - Never show a stale document.
-
-<br />
-
 - Recently viewed and recently modified lists.
 
 ## Non-goals
