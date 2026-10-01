@@ -16,6 +16,7 @@ export class Sidebar {
   constructor(
     root: HTMLElement,
     private readonly open: (path: string) => void,
+    private readonly forget: (path: string) => void,
   ) {
     root.append(
       this.group('section:recent', h('h2', {}, 'Recent activity'), '', true, [this.recentEl], 'section'),
@@ -24,19 +25,15 @@ export class Sidebar {
   }
 
   renderRecent(activity: Activity[]) {
-    this.recentEl.replaceChildren(
-      this.list(
-        activity.map((a) =>
-          this.entry(
-            a.path,
-            [a.path],
-            display(a.path),
-            h('time', { datetime: a.at, class: a.kind, title: a.kind === 'viewed' ? 'viewed' : 'modified' }, timeAgo(a.at)),
-          ),
-        ),
-      ),
-    )
+    this.recentEl.replaceChildren(this.list(activity.map((a) => this.recentEntry(a))))
     this.highlight()
+  }
+
+  private recentEntry(a: Activity) {
+    const time = h('time', { datetime: a.at, class: a.kind, title: a.kind === 'viewed' ? 'viewed' : 'modified' }, timeAgo(a.at))
+    const remove = h('button', { type: 'button', class: 'forget', title: 'Remove from recent activity' }, '×')
+    remove.addEventListener('click', () => this.forget(a.path))
+    return h('div', { class: 'recent-entry' }, this.entry(a.path, [a.path], display(a.path), time), remove)
   }
 
   renderTree(files: LogicalFile[], now = Date.now()) {

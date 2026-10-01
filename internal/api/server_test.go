@@ -92,6 +92,29 @@ func TestTree(t *testing.T) {
 	}
 }
 
+func TestForgetRecent(t *testing.T) {
+	f := setup(t)
+	recentOf := func() []activity {
+		var got []activity
+		json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+		return got
+	}
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+
+	if res := do(t, "DELETE", f.url+"/api/recent?path=code/repo/plan.md", "", nil); res.StatusCode != 204 {
+		t.Fatalf("forget got %d", res.StatusCode)
+	}
+	if got := recentOf(); len(got) != 0 {
+		t.Fatalf("still listed: %+v", got)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+	if got := recentOf(); len(got) != 1 {
+		t.Fatalf("a new view does not show: %+v", got)
+	}
+}
+
 func TestTreeIncludesViews(t *testing.T) {
 	f := setup(t)
 	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)

@@ -1,5 +1,5 @@
-// Package recent remembers when files were last viewed in margin, across
-// restarts.
+// Package recent remembers when files were last viewed in margin, and which
+// files were dismissed from recent activity, across restarts.
 package recent
 
 import (
@@ -15,16 +15,21 @@ import (
 
 type Store struct {
 	path string
-	keep time.Duration // views older than this are forgotten
+	keep time.Duration // entries older than this are forgotten
 	now  func() time.Time
 
 	mu    sync.Mutex
-	views map[string]time.Time
+	state state
 }
 
-// Load reads the views from path; a missing file means no views.
+type state struct {
+	Views     map[string]time.Time `json:"views"`
+	Dismissed map[string]time.Time `json:"dismissed"` // activity up to this time is hidden
+}
+
+// Load reads the store from path; a missing file means no views.
 func Load(path string, keep time.Duration) (*Store, error) {
-	s := &Store{path: path, keep: keep, now: time.Now, views: map[string]time.Time{}}
+	s := &Store{path: path, keep: keep, now: time.Now, state: state{Views: map[string]time.Time{}, Dismissed: map[string]time.Time{}}}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return s, nil
@@ -32,26 +37,53 @@ func Load(path string, keep time.Duration) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(data, &s.views); err != nil {
-		var legacy []string // most recent first, without times
-		if json.Unmarshal(data, &legacy) != nil {
-			return nil, err
-		}
-		for i, p := range legacy {
-			s.views[p] = s.now().Add(-time.Duration(i) * time.Second)
-		}
+	if err := s.decode(data); err != nil {
+		return nil, err
 	}
 	return s, nil
 }
 
-// Add records a view of rel now and persists the views.
+// decode reads the current format, or the older ones: a map of views, or a
+// list of paths without times.
+func (s *Store) decode(data []byte) error {
+	var current state
+	if err := json.Unmarshal(data, &current); err == nil && current.Views != nil {
+		maps.Copy(s.state.Views, current.Views)
+		maps.Copy(s.state.Dismissed, current.Dismissed)
+		return nil
+	}
+	var views map[string]time.Time
+	if err := json.Unmarshal(data, &views); err == nil {
+		maps.Copy(s.state.Views, views)
+		return nil
+	}
+	var legacy []string // most recent first
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	for i, p := range legacy {
+		s.state.Views[p] = s.now().Add(-time.Duration(i) * time.Second)
+	}
+	return nil
+}
+
+// Add records a view of rel now and persists the store.
 func (s *Store) Add(rel string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	now := s.now()
-	s.views[rel] = now
-	maps.DeleteFunc(s.views, func(_ string, at time.Time) bool { return now.Sub(at) > s.keep })
+	s.state.Views[rel] = s.now()
+	return s.save()
+}
+
+// Forget removes the view of rel and hides its activity up to now from
+// recent activity. Later views or changes show again.
+func (s *Store) Forget(rel string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.state.Views, rel)
+	s.state.Dismissed[rel] = s.now()
 	return s.save()
 }
 
@@ -59,36 +91,56 @@ func (s *Store) Add(rel string) error {
 func (s *Store) Viewed(rel string) (time.Time, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	at, ok := s.views[rel]
+	at, ok := s.state.Views[rel]
 	return at, ok
 }
 
-// Rename moves views to new paths. rename returns a view's new path and
-// whether to move it; when two views end up on one path, the newer wins.
+// Dismissed reports when rel was last dismissed from recent activity.
+func (s *Store) Dismissed(rel string) (time.Time, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at, ok := s.state.Dismissed[rel]
+	return at, ok
+}
+
+// Rename moves entries to new paths. rename returns an entry's new path and
+// whether to move it; when two entries end up on one path, the newer wins.
 func (s *Store) Rename(rename func(string) (string, bool)) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	changed := false
-	for path, at := range maps.Clone(s.views) {
-		to, ok := rename(path)
-		if !ok || to == path {
-			continue
-		}
-		delete(s.views, path)
-		if existing, ok := s.views[to]; !ok || at.After(existing) {
-			s.views[to] = at
-		}
-		changed = true
-	}
-	if !changed {
+	views := renameIn(s.state.Views, rename)
+	dismissed := renameIn(s.state.Dismissed, rename)
+	if !views && !dismissed {
 		return nil
 	}
 	return s.save()
 }
 
+func renameIn(times map[string]time.Time, rename func(string) (string, bool)) bool {
+	changed := false
+	for path, at := range maps.Clone(times) {
+		to, ok := rename(path)
+		if !ok || to == path {
+			continue
+		}
+		delete(times, path)
+		if existing, ok := times[to]; !ok || at.After(existing) {
+			times[to] = at
+		}
+		changed = true
+	}
+	return changed
+}
+
+// save prunes old entries and writes the store atomically.
 func (s *Store) save() error {
-	data, err := json.Marshal(s.views)
+	now := s.now()
+	old := func(_ string, at time.Time) bool { return now.Sub(at) > s.keep }
+	maps.DeleteFunc(s.state.Views, old)
+	maps.DeleteFunc(s.state.Dismissed, old)
+
+	data, err := json.Marshal(s.state)
 	if err != nil {
 		return err
 	}

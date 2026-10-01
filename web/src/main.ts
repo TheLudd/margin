@@ -2,7 +2,7 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import './style.css'
 
-import { type Activity, fetchRecent, fetchSettings, fetchTree, markViewed, readFile, type Settings, writeFile } from './api'
+import { type Activity, fetchRecent, fetchSettings, fetchTree, forgetRecent, markViewed, readFile, type Settings, writeFile } from './api'
 import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
@@ -26,7 +26,15 @@ let editor: Editor | undefined
 let opening = 0
 
 const main = byId('main')
-const sidebar = new Sidebar(byId('sidebar'), (path) => open(path))
+const sidebar = new Sidebar(
+  byId('sidebar'),
+  (path) => open(path),
+  async (path) => {
+    await forgetRecent(path)
+    refreshRecent()
+    refreshTree() // the file may no longer be active
+  },
+)
 const view = new DocumentView(
   main,
   (value) => session?.editFrontmatter(value),

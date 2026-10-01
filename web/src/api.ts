@@ -53,6 +53,11 @@ export async function fetchRecent(): Promise<Activity[]> {
   return (await fetch('/api/recent', noStore)).json()
 }
 
+// Removes a file from recent activity until it is viewed or changed again.
+export async function forgetRecent(path: string): Promise<void> {
+  await fetch(`/api/recent?path=${encodeURIComponent(path)}`, { method: 'DELETE' })
+}
+
 export async function markViewed(path: string): Promise<void> {
   await fetch(`/api/recent?path=${encodeURIComponent(path)}`, { method: 'POST' })
 }

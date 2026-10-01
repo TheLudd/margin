@@ -182,6 +182,36 @@ body.setup #sidebar > :not(.brand-row) {
   text-overflow: ellipsis;
 }
 
+#sidebar .recent-entry {
+  display: flex;
+  align-items: center;
+}
+
+#sidebar .recent-entry > a {
+  flex: 1;
+  min-width: 0;
+}
+
+#sidebar .forget {
+  flex-shrink: 0;
+  width: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-muted);
+  font-size: 14px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+#sidebar .recent-entry:hover .forget {
+  visibility: visible;
+}
+
+#sidebar .forget:hover {
+  color: var(--cp-magenta);
+}
+
 #sidebar time {
   margin-left: auto;
   padding-left: 8px;

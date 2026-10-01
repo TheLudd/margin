@@ -105,3 +105,52 @@ func TestRename(t *testing.T) {
 		t.Fatal("unrelated view lost")
 	}
 }
+
+func TestForget(t *testing.T) {
+	s := load(t, filepath.Join(t.TempDir(), "recent.json"))
+	s.Add("a.md")
+
+	if err := s.Forget("a.md"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := s.Viewed("a.md"); ok {
+		t.Fatal("view kept")
+	}
+	if _, ok := s.Dismissed("a.md"); !ok {
+		t.Fatal("dismissal not recorded")
+	}
+}
+
+func TestPersistsDismissals(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recent.json")
+	s := load(t, path)
+	s.Add("a.md")
+	s.Forget("b.md")
+
+	reloaded, err := Load(path, 90*24*time.Hour)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := reloaded.Viewed("a.md"); !ok {
+		t.Fatal("view lost")
+	}
+	if _, ok := reloaded.Dismissed("b.md"); !ok {
+		t.Fatal("dismissal lost")
+	}
+}
+
+func TestLoadsViewMap(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recent.json")
+	os.WriteFile(path, []byte(`{"a.md":"2026-09-01T00:00:00Z"}`), 0o644)
+
+	s, err := Load(path, time.Hour)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := s.Viewed("a.md"); !ok {
+		t.Fatal("view from the older format lost")
+	}
+}

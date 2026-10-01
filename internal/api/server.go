@@ -44,6 +44,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/file", s.writeFile)
 	mux.HandleFunc("GET /api/recent", s.recent)
 	mux.HandleFunc("POST /api/recent", s.addRecent)
+	mux.HandleFunc("DELETE /api/recent", s.forgetRecent)
 	mux.HandleFunc("GET /api/events", s.events)
 	mux.HandleFunc("GET /api/settings", s.settings)
 	mux.HandleFunc("PUT /api/settings", s.saveSettings)
@@ -168,6 +169,9 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 			if at, ok := s.Recent.Viewed(latest.Path); ok && at.After(latest.At) {
 				latest.At, latest.Kind = at, "viewed"
 			}
+			if dismissed, ok := s.Recent.Dismissed(latest.Path); ok && !latest.At.After(dismissed) {
+				continue
+			}
 			if latest.Kind != "" {
 				all = append(all, latest)
 			}
@@ -194,6 +198,16 @@ func (s *Server) addRecent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.Recent.Add(path); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// forgetRecent removes a file from recent activity until it is viewed or
+// changed again.
+func (s *Server) forgetRecent(w http.ResponseWriter, r *http.Request) {
+	if err := s.Recent.Forget(r.URL.Query().Get("path")); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
