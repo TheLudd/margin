@@ -24,8 +24,17 @@ export function fuzzyScore(query: string, path: string): number | null {
 
 const isWordStart = (text: string, at: number) => at === 0 || '-_. '.includes(text[at - 1])
 
+// Where term occurs in segment, or -1. Terms shorter than three letters
+// match too much mid-word, so they only match at the start of a word.
+function substringAt(term: string, segment: string): number {
+  for (let at = segment.indexOf(term); at >= 0; at = segment.indexOf(term, at + 1)) {
+    if (term.length >= 3 || isWordStart(segment, at)) return at
+  }
+  return -1
+}
+
 function segmentScore(term: string, segment: string): number | null {
-  const at = segment.indexOf(term)
+  const at = substringAt(term, segment)
   if (at >= 0) return 20 + term.length * 2 + (isWordStart(segment, at) ? 5 : 0)
 
   // Letters in order, each continuing the previous one or starting a word,

@@ -1,12 +1,16 @@
 import { dirName, fileName, h } from './dom'
 import { fuzzyFilter } from './fuzzy'
 
-const limit = 30
-const olderLimit = 20
+const limit = 10
 
 interface Section {
   title: string
   items: FinderItem[]
+  total: number // matches before the limit
+}
+
+function section(title: string, matches: FinderItem[], max: number): Section {
+  return { title, items: matches.slice(0, max), total: matches.length }
 }
 
 export interface FinderItem {
@@ -15,8 +19,8 @@ export interface FinderItem {
 }
 
 // Ctrl+K / Ctrl+P: jump to any file by path. With an empty query it lists
-// recent activity. Matches among active files come first; matches among
-// older files follow in their own section.
+// recent activity. A query searches active files only; Tab also searches
+// older files, listed in their own section.
 export class Finder {
   private readonly dialog = h('dialog', { id: 'finder' })
   private readonly input = h('input', { type: 'text', placeholder: 'Open file…', spellcheck: 'false' })
@@ -24,6 +28,8 @@ export class Finder {
   private sections: Section[] = []
   private results: FinderItem[] = [] // all sections' items, in order
   private selected = 0
+  private includeOlder = false
+  private olderMatches = 0
 
   constructor(
     private readonly files: () => FinderItem[],
@@ -48,6 +54,7 @@ export class Finder {
 
   show() {
     this.input.value = ''
+    this.includeOlder = false
     this.search()
     this.dialog.showModal()
     this.input.focus()
@@ -56,12 +63,14 @@ export class Finder {
   private search() {
     const query = this.input.value
     if (query.trim() === '') {
-      this.sections = [{ title: 'Recent activity', items: this.recent() }]
+      const recent = this.recent()
+      this.sections = [section('Recent activity', recent, recent.length)]
+      this.olderMatches = 0
     } else {
-      this.sections = [
-        { title: 'Active', items: fuzzyFilter(query, this.files(), (f) => f.label, limit) },
-        { title: 'Older', items: fuzzyFilter(query, this.olderFiles(), (f) => f.label, olderLimit) },
-      ]
+      const older = fuzzyFilter(query, this.olderFiles(), (f) => f.label, Infinity)
+      this.olderMatches = older.length
+      this.sections = [section('Active', fuzzyFilter(query, this.files(), (f) => f.label, Infinity), limit)]
+      if (this.includeOlder) this.sections.push(section('Older', older, limit))
     }
     this.results = this.sections.flatMap((section) => section.items)
     this.selected = 0
@@ -73,11 +82,32 @@ export class Finder {
     const items = this.sections
       .filter((section) => section.items.length > 0)
       .flatMap((section) => [
-        h('li', { class: `tier ${section.title.toLowerCase()}` }, section.title),
+        h(
+          'li',
+          { class: `tier ${section.title.toLowerCase()}` },
+          section.total > section.items.length ? `${section.title} · ${section.items.length} of ${section.total}` : section.title,
+        ),
         ...section.items.map((result) => this.item(result, index++, section.title === 'Older')),
       ])
-    this.list.replaceChildren(...(items.length ? items : [h('li', { class: 'tier' }, 'No matches')]))
+    if (items.length === 0) items.push(h('li', { class: 'tier' }, 'No matches'))
+    if (this.olderMatches > 0) items.push(this.olderToggle())
+    this.list.replaceChildren(...items)
     this.list.querySelector('li.selected')?.scrollIntoView({ block: 'nearest' })
+  }
+
+  private olderToggle() {
+    const text = this.includeOlder ? 'Tab · hide older files' : `Tab · also search ${this.olderMatches} older ${this.olderMatches === 1 ? 'match' : 'matches'}`
+    const toggle = h('li', { class: 'toggle' }, text)
+    toggle.addEventListener('mousedown', (event) => {
+      event.preventDefault()
+      this.toggleOlder()
+    })
+    return toggle
+  }
+
+  private toggleOlder() {
+    this.includeOlder = !this.includeOlder
+    this.search()
   }
 
   private item(result: FinderItem, index: number, older: boolean) {
@@ -96,6 +126,9 @@ export class Finder {
       event.preventDefault()
       this.selected = Math.max(0, Math.min(this.results.length - 1, this.selected + move))
       this.render()
+    } else if (event.key === 'Tab' && this.olderMatches > 0) {
+      event.preventDefault()
+      this.toggleOlder()
     } else if (event.key === 'Enter' && this.results[this.selected]) {
       event.preventDefault()
       this.choose(this.results[this.selected].path)

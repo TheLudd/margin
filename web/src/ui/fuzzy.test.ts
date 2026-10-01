@@ -16,6 +16,10 @@ describe('fuzzyScore', () => {
 
   it('does not scatter a word within a segment', () => expect(fuzzyScore('plan', 'infra/applications/reviewer.md')).toBeNull())
 
+  it('matches a short word only at a word start', () => expect(fuzzyScore('x', 'mediatool/expansion-plan.md')).toBeNull())
+
+  it('matches a short word at a word start', () => expect(fuzzyScore('ex', 'mediatool/product-expansion.md')).not.toBeNull())
+
   it('requires every word to match', () => expect(fuzzyScore('margin readme', 'margin/plan.md')).toBeNull())
 })
 

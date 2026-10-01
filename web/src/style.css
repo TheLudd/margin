@@ -553,6 +553,20 @@ article {
   opacity: 1;
 }
 
+#finder li.toggle {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+  border-radius: 0;
+  padding-top: 10px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+#finder li.toggle:hover {
+  color: var(--cp-cyan);
+}
+
 #finder li.selected {
   background: var(--cp-raised);
   box-shadow: inset 2px 0 var(--cp-cyan);
