@@ -1,5 +1,6 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewOptionsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
+import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
 import { $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
 import { remarkImageTitle } from './remark-image-title'
@@ -20,6 +21,32 @@ export interface Editor {
 }
 
 export async function createEditor(root: HTMLElement, markdown: string, options: EditorOptions = {}): Promise<Editor> {
+  let replacing = false
+  const crepe = await createCrepe(root, markdown, {
+    renderPreview: options.renderPreview,
+    onChange: (updated) => {
+      if (!replacing) options.onChange?.(updated)
+    },
+  })
+
+  return {
+    markdown: () => crepe.getMarkdown(),
+    replace(next) {
+      replacing = true
+      try {
+        crepe.editor.action(replaceAll(next, true))
+      } finally {
+        replacing = false
+      }
+    },
+    async destroy() {
+      await crepe.destroy()
+    },
+  }
+}
+
+// The configured Crepe instance behind an Editor.
+export async function createCrepe(root: HTMLElement, markdown: string, options: EditorOptions = {}): Promise<Crepe> {
   const crepe = new Crepe({
     root,
     defaultValue: markdown,
@@ -45,27 +72,12 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
       ctx.update(editorViewOptionsCtx, (prev) => ({ ...prev, attributes: { spellcheck: 'false' } }))
     })
     .use($remark('imageTitle', () => remarkImageTitle))
+  // Otherwise an empty paragraph (an extra Enter) is saved as a `<br />` block.
+  await crepe.editor.remove(remarkPreserveEmptyLinePlugin)
 
-  let replacing = false
   crepe.on((listener) => {
-    listener.markdownUpdated((_, updated) => {
-      if (!replacing) options.onChange?.(updated)
-    })
+    listener.markdownUpdated((_, updated) => options.onChange?.(updated))
   })
   await crepe.create()
-
-  return {
-    markdown: () => crepe.getMarkdown(),
-    replace(next) {
-      replacing = true
-      try {
-        crepe.editor.action(replaceAll(next, true))
-      } finally {
-        replacing = false
-      }
-    },
-    async destroy() {
-      await crepe.destroy()
-    },
-  }
+  return crepe
 }
