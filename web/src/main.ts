@@ -18,7 +18,7 @@ import { Toc } from './ui/toc'
 
 const pollInterval = 15_000
 
-let settings: Settings = { file: '', roots: [], exclude: [] }
+let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14 }
 let files: LogicalFile[] = []
 let recent: Activity[] = []
 let session: DocumentSession | undefined
@@ -47,8 +47,8 @@ const settingsView = new SettingsView(main, (saved) => {
 })
 const finderItem = (f: LogicalFile) => ({ label: display(`${f.project}/${f.rel}`), path: f.preferred.path })
 new Finder(
-  () => files.filter((f) => isActive(f)).map(finderItem),
-  () => files.filter((f) => !isActive(f)).map(finderItem),
+  () => files.filter((f) => isActive(f, settings.activeDays)).map(finderItem),
+  () => files.filter((f) => !isActive(f, settings.activeDays)).map(finderItem),
   () => recent.map((a) => ({ label: display(a.path), path: a.path })),
   (path) => open(path),
 )
@@ -155,7 +155,7 @@ const refreshSettings = debounce(async () => applySettings(await fetchSettings()
 
 const refreshTree = debounce(async () => {
   files = groupCopies(await fetchTree())
-  sidebar.renderTree(files)
+  sidebar.renderTree(files, settings.activeDays)
   if (session) view.copies(copiesOf(session.path), session.path)
 }, 300)
 
@@ -189,8 +189,8 @@ setInterval(() => {
   if (document.visibilityState === 'visible') revalidate()
 }, pollInterval)
 
-// The 14-day window moves with time, not only with changes.
-setInterval(() => sidebar.renderTree(files), 10 * 60_000)
+// The active window moves with time, not only with changes.
+setInterval(() => sidebar.renderTree(files, settings.activeDays), 10 * 60_000)
 
 window.addEventListener('popstate', route)
 window.addEventListener('beforeunload', (event) => {

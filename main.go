@@ -50,7 +50,8 @@ func run(configFile string, port int, state string, hosts []string) error {
 	defer stop()
 
 	hub := events.NewHub[index.Event]()
-	viewed, err := recent.Load(filepath.Join(state, "recent.json"), 90*24*time.Hour)
+	// Views are kept as long as the longest active window allows.
+	viewed, err := recent.Load(filepath.Join(state, "recent.json"), config.MaxActiveDays*24*time.Hour)
 	if err != nil {
 		return err
 	}

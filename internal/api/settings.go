@@ -16,10 +16,11 @@ type rootSettings struct {
 }
 
 type settingsResponse struct {
-	File    string         `json:"file"`            // where the config is stored
-	Roots   []rootSettings `json:"roots"`           // the roots in use
-	Exclude []string       `json:"exclude"`         // file patterns left out
-	Error   string         `json:"error,omitempty"` // why the config file could not be used
+	File       string         `json:"file"`            // where the config is stored
+	Roots      []rootSettings `json:"roots"`           // the roots in use
+	Exclude    []string       `json:"exclude"`         // file patterns left out
+	ActiveDays int            `json:"activeDays"`      // how far back activity makes a file active
+	Error      string         `json:"error,omitempty"` // why the config file could not be used
 }
 
 func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +33,7 @@ func (s *Server) currentSettings() settingsResponse {
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		files[root.Name] = len(root.Index.Files())
 	}
-	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}, Exclude: c.Exclude}
+	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}, Exclude: c.Exclude, ActiveDays: c.Active()}
 	if res.Exclude == nil {
 		res.Exclude = []string{}
 	}

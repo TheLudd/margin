@@ -72,6 +72,7 @@ export interface Settings {
   file: string // where the config is stored
   roots: RootSettings[]
   exclude: string[] // file patterns left out
+  activeDays: number // how far back activity makes a file active
   error?: string // why the config file could not be used
 }
 
@@ -81,8 +82,8 @@ export async function fetchSettings(): Promise<Settings> {
 
 export type SaveResult = { kind: 'saved'; settings: Settings } | { kind: 'invalid'; message: string }
 
-export async function saveSettings(roots: RootSettings[], exclude: string[]): Promise<SaveResult> {
-  const body = JSON.stringify({ roots: roots.map(({ name, path }) => ({ name, path })), exclude })
+export async function saveSettings(roots: RootSettings[], exclude: string[], activeDays: number): Promise<SaveResult> {
+  const body = JSON.stringify({ roots: roots.map(({ name, path }) => ({ name, path })), exclude, activeDays })
   const res = await fetch('/api/settings', { ...noStore, method: 'PUT', body, headers: { 'Content-Type': 'application/json' } })
   if (res.status === 400) return { kind: 'invalid', message: (await res.text()).trim() }
   if (!res.ok) throw new Error(`save settings: ${res.status}`)

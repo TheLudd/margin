@@ -64,7 +64,7 @@ describe('groupCopies with separate repositories', () => {
 describe('isActive', () => {
   const now = Date.parse('2026-10-01T12:00:00Z')
   const daysAgo = (days: number) => new Date(now - days * 86_400_000).toISOString()
-  const active = (...copies: FileEntry[]) => isActive(groupCopies(copies)[0], now)
+  const active = (...copies: FileEntry[]) => isActive(groupCopies(copies)[0], 14, now)
 
   it('counts a recent modification in the main checkout', () => expect(active(entry('a4', 'x.md', { mtime: daysAgo(3) }))).toBe(true))
 
@@ -73,6 +73,8 @@ describe('isActive', () => {
   it('ignores activity older than 14 days', () => expect(active(entry('a4', 'x.md', { mtime: daysAgo(15), viewed: daysAgo(20) }))).toBe(false))
 
   it('ignores a worktree checkout time', () => expect(active(entry('gaius/master', 'x.md', { mtime: daysAgo(90) }), entry('gaius/claims', 'x.md', { mtime: daysAgo(1) }))).toBe(false))
+
+  it('uses the given window', () => expect(isActive(groupCopies([entry('a4', 'x.md', { mtime: daysAgo(20) })])[0], 30, now)).toBe(true))
 
   it('counts a change made in a worktree', () =>
     expect(active(entry('gaius/master', 'x.md', { mtime: daysAgo(90) }), entry('gaius/claims', 'x.md', { changed: daysAgo(2) }))).toBe(true))

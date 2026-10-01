@@ -127,9 +127,9 @@ The same file checked out in several git worktrees is shown once in the sidebar 
 
 ## Activity
 
-The sidebar lists only files viewed in margin or modified in the last 14 days, counted back from now. Projects are sorted by their latest activity. Everything else is folded under **Older**, which expands to the full project tree. Search covers active files only; Tab (or the line at the bottom of the results, which counts the older matches) adds an Older section. Each section shows its best 10 matches. Every query word must match within one path segment, as a substring or an abbreviation of its words; words shorter than three letters only match at a word start.
+The sidebar lists only files viewed in margin or modified within the active window, counted back from now: 14 days by default, set with `"activeDays"` in the config or on the settings screen (1–365). Projects are sorted by their latest activity. Everything else is folded under **Older**, which expands to the full project tree. Search covers active files only; Tab (or the line at the bottom of the results, which counts the older matches) adds an Older section. Each section shows its best 10 matches. Every query word must match within one path segment, as a substring or an abbreviation of its words; words shorter than three letters only match at a word start.
 
-- **Viewed** means opened in margin; other apps are not considered. Views are kept with their time for 90 days in `~/.local/state/margin/recent.json`.
+- **Viewed** means opened in margin; other apps are not considered. Views are kept with their time for 365 days (the longest window) in `~/.local/state/margin/recent.json`.
 - **Modified** is the modification time for main checkouts and plain repositories, and the git change time for a worktree's own copy, because checkouts reset modification times.
 - The window moves with time: the sidebar re-renders every 10 minutes even without changes.
 - **Recent activity** at the top of the sidebar merges views and modifications: the 8 most recent files, each marked by whichever happened last (✎ for modified).

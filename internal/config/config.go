@@ -21,8 +21,22 @@ type Root struct {
 }
 
 type Config struct {
-	Roots   []Root   `json:"roots"`
-	Exclude []string `json:"exclude,omitempty"` // file patterns to leave out, see Excluded
+	Roots      []Root   `json:"roots"`
+	Exclude    []string `json:"exclude,omitempty"`    // file patterns to leave out, see Excluded
+	ActiveDays int      `json:"activeDays,omitempty"` // how far back activity makes a file active; 0 means DefaultActiveDays
+}
+
+const (
+	DefaultActiveDays = 14
+	MaxActiveDays     = 365
+)
+
+// Active returns how many days back activity makes a file active.
+func (c Config) Active() int {
+	if c.ActiveDays == 0 {
+		return DefaultActiveDays
+	}
+	return c.ActiveDays
 }
 
 // File returns where the config lives: $XDG_CONFIG_HOME/margin/config.json,
@@ -51,7 +65,8 @@ func Load(path string) (Config, error) {
 	return c, nil
 }
 
-// Normalize trims the exclude patterns and drops blank ones.
+// Normalize trims the exclude patterns, drops blank ones, and leaves the
+// default active window implicit.
 func (c Config) Normalize() Config {
 	exclude := []string{}
 	for _, pattern := range c.Exclude {
@@ -62,6 +77,9 @@ func (c Config) Normalize() Config {
 	c.Exclude = exclude
 	if len(exclude) == 0 {
 		c.Exclude = nil
+	}
+	if c.ActiveDays == DefaultActiveDays {
+		c.ActiveDays = 0 // the default is not written out
 	}
 	return c
 }
@@ -88,9 +106,12 @@ func Save(path string, c Config) error {
 var validName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // Validate checks that every root has a usable, unique name and an existing
-// directory, that no root contains another, and that the exclude patterns
-// are valid.
+// directory, that no root contains another, that the exclude patterns are
+// valid and that the active window is in range.
 func (c Config) Validate() error {
+	if c.ActiveDays < 0 || c.ActiveDays > MaxActiveDays {
+		return fmt.Errorf("active days must be between 1 and %d", MaxActiveDays)
+	}
 	for _, pattern := range c.Exclude {
 		if _, err := path.Match(strings.ToLower(pattern), ""); err != nil {
 			return fmt.Errorf("pattern %q is not valid", pattern)
@@ -203,7 +224,7 @@ func (c Config) Excluded(rel string) bool {
 
 // Equal reports whether two configs are the same.
 func Equal(a, b Config) bool {
-	return slices.Equal(a.Roots, b.Roots) && slices.Equal(a.Exclude, b.Exclude)
+	return slices.Equal(a.Roots, b.Roots) && slices.Equal(a.Exclude, b.Exclude) && a.Active() == b.Active()
 }
 
 func within(dir, parent string) bool {

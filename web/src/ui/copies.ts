@@ -11,10 +11,10 @@ export interface LogicalFile {
   activeAt: number // last view or modification of any copy, in ms
 }
 
-export const activeWindow = 14 * 24 * 60 * 60 * 1000
+const day = 24 * 60 * 60 * 1000
 
-// Viewed or modified within the last 14 days.
-export const isActive = (f: LogicalFile, now = Date.now()) => f.activeAt >= now - activeWindow
+// Viewed or modified within the last `days` days.
+export const isActive = (f: LogicalFile, days: number, now = Date.now()) => f.activeAt >= now - days * day
 
 // When a copy was last viewed or modified. Checkouts reset modification
 // times, so a worktree's own copy counts as modified only when git says

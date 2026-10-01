@@ -138,3 +138,20 @@ func TestSaveNormalizes(t *testing.T) {
 		t.Fatalf("got %v", got.Exclude)
 	}
 }
+
+func TestActiveDays(t *testing.T) {
+	if got := (Config{}).Active(); got != DefaultActiveDays {
+		t.Errorf("default: %d", got)
+	}
+	if got := (Config{ActiveDays: 30}).Active(); got != 30 {
+		t.Errorf("set: %d", got)
+	}
+	for _, days := range []int{-1, MaxActiveDays + 1} {
+		if err := (Config{ActiveDays: days}).Validate(); err == nil {
+			t.Errorf("%d days accepted", days)
+		}
+	}
+	if !Equal(Config{}, Config{ActiveDays: DefaultActiveDays}) {
+		t.Error("the default should equal an unset window")
+	}
+}

@@ -4,7 +4,7 @@ import { display } from './display'
 import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 
 // The recent lists and every markdown file, grouped by project. Files
-// viewed or modified in the last 14 days are listed; the rest are folded
+// viewed or modified recently (see isActive) are listed; the rest are folded
 // under "Older". A file checked out in several worktrees is listed once and
 // opens the copy that was changed last.
 export class Sidebar {
@@ -36,15 +36,15 @@ export class Sidebar {
     return h('div', { class: 'recent-entry' }, this.entry(a.path, [a.path], display(a.path), time), remove)
   }
 
-  renderTree(files: LogicalFile[], now = Date.now()) {
-    const active = files.filter((f) => isActive(f, now))
-    const older = files.filter((f) => !isActive(f, now))
+  renderTree(files: LogicalFile[], activeDays: number, now = Date.now()) {
+    const active = files.filter((f) => isActive(f, activeDays, now))
+    const older = files.filter((f) => !isActive(f, activeDays, now))
     const latest = (group: LogicalFile[]) => Math.max(...group.map((f) => f.activeAt))
     const byRecency = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => latest(b[1]) - latest(a[1])
     const byName = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => a[0].localeCompare(b[0])
 
     this.treeEl.replaceChildren(
-      ...(active.length ? this.projects('active', active, byRecency, true) : [h('p', { class: 'empty' }, 'Nothing in the last 14 days')]),
+      ...(active.length ? this.projects('active', active, byRecency, true) : [h('p', { class: 'empty' }, `Nothing in the last ${activeDays} days`)]),
       this.group('older', h('span', {}, 'Older'), String(older.length), false, this.projects('older', older, byName, false)),
     )
     this.highlight()

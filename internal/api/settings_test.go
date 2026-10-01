@@ -20,7 +20,7 @@ func TestSettings(t *testing.T) {
 
 	got := settingsOf(t, do(t, "GET", f.url+"/api/settings", "", nil))
 
-	if len(got.Roots) != 1 || got.Roots[0].Name != "code" || got.Roots[0].Files != 1 || got.Error != "" {
+	if len(got.Roots) != 1 || got.Roots[0].Name != "code" || got.Roots[0].Files != 1 || got.ActiveDays != 14 || got.Error != "" {
 		t.Fatalf("got %+v", got)
 	}
 }
@@ -84,5 +84,19 @@ func TestSaveSettingsExcludes(t *testing.T) {
 
 	if got := settingsOf(t, res); res.StatusCode != 200 || len(got.Exclude) != 1 || got.Roots[0].Files != 1 {
 		t.Fatalf("got %d %+v", res.StatusCode, got)
+	}
+}
+
+func TestSaveSettingsActiveDays(t *testing.T) {
+	f := setup(t)
+	body := `{"roots":[{"name":"code","path":"` + f.root + `"}],"activeDays":30}`
+
+	res := do(t, "PUT", f.url+"/api/settings", body, nil)
+
+	if got := settingsOf(t, res); res.StatusCode != 200 || got.ActiveDays != 30 {
+		t.Fatalf("got %d %+v", res.StatusCode, got)
+	}
+	if bad := do(t, "PUT", f.url+"/api/settings", `{"roots":[],"activeDays":1000}`, nil); bad.StatusCode != 400 {
+		t.Fatalf("out of range got %d", bad.StatusCode)
 	}
 }

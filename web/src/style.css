@@ -592,6 +592,13 @@ article {
   color: var(--cp-cyan);
 }
 
+.settings input.days {
+  width: 5em;
+  margin: 0 4px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
 .settings textarea {
   width: 100%;
   padding: 8px 10px;
