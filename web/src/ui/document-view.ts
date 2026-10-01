@@ -1,0 +1,72 @@
+import type { State } from '../document/session'
+import { h } from './dom'
+
+const statusText: Record<State, string> = {
+  clean: 'saved',
+  dirty: 'editing',
+  saving: 'saving',
+  conflict: 'conflict',
+  missing: 'deleted',
+  error: 'save failed, retrying',
+}
+
+export interface ConflictActions {
+  keepMine(): void
+  takeTheirs(): void
+}
+
+// The chrome around the editor: path, save status, conflict banner and the
+// frontmatter panel.
+export class DocumentView {
+  private readonly pathEl = h('span', { class: 'path' })
+  private readonly statusEl = h('span', { class: 'status' })
+  private readonly bannerEl = h('div', { class: 'banner', hidden: true })
+  private readonly textarea = h('textarea', { spellcheck: 'false' })
+  private readonly frontmatterEl = h('details', { class: 'frontmatter', open: true, hidden: true }, h('summary', {}, 'frontmatter'), this.textarea)
+  readonly editorEl = h('div', { class: 'editor' })
+
+  constructor(root: HTMLElement, onFrontmatter: (value: string) => void) {
+    root.append(
+      h('header', { class: 'doc-header' }, this.pathEl, this.statusEl),
+      this.bannerEl,
+      h('article', {}, this.frontmatterEl, this.editorEl),
+    )
+    this.textarea.addEventListener('input', () => {
+      this.fit()
+      onFrontmatter(this.textarea.value)
+    })
+  }
+
+  show(path: string, frontmatter: string) {
+    this.pathEl.textContent = path
+    document.title = `${path.slice(path.lastIndexOf('/') + 1)} · margin`
+    this.state('clean')
+    this.frontmatter(frontmatter)
+  }
+
+  frontmatter(value: string) {
+    this.textarea.value = value
+    this.frontmatterEl.hidden = value === ''
+    this.fit()
+  }
+
+  state(state: State, actions?: ConflictActions) {
+    this.statusEl.textContent = statusText[state]
+    this.statusEl.dataset.state = state
+    this.bannerEl.hidden = state !== 'conflict' && state !== 'missing'
+    if (state === 'missing') {
+      this.bannerEl.replaceChildren('This file was deleted or moved. Edits are not saved.')
+    }
+    if (state === 'conflict' && actions) {
+      const keep = h('button', {}, 'Keep mine')
+      const take = h('button', {}, 'Take theirs')
+      keep.onclick = () => actions.keepMine()
+      take.onclick = () => actions.takeTheirs()
+      this.bannerEl.replaceChildren('This file changed on disk while you were editing.', keep, take)
+    }
+  }
+
+  private fit() {
+    this.textarea.rows = Math.max(2, this.textarea.value.split('\n').length - 1)
+  }
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>margin</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%230a0b17'/><rect x='3' y='2' width='2' height='12' fill='%23ff2bd6'/><rect x='7' y='4' width='6' height='1.5' fill='%2300e5ff'/><rect x='7' y='7.25' width='6' height='1.5' fill='%2300e5ff'/><rect x='7' y='10.5' width='4' height='1.5' fill='%2300e5ff'/></svg>" />
+  </head>
+  <body>
+    <aside id="sidebar">
+      <a class="brand" href="/">margin</a>
+      <button class="find" type="button" onclick="document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))">
+        Open file… <kbd>Ctrl K</kbd>
+      </button>
+    </aside>
+    <main id="main" data-view="home">
+      <section class="home">
+        <h1>margin</h1>
+        <p>Pick a file in the sidebar, or press <kbd>Ctrl K</kbd>.</p>
+      </section>
+      <section class="not-found"><h1>Not found</h1><p>This file doesn't exist under ~/code.</p></section>
+    </main>
+    <nav id="toc" hidden></nav>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "margin-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "roundtrip": "NODE_OPTIONS=--max-old-space-size=12000 vitest run --config vitest.roundtrip.config.ts"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "^7.22.2",
+    "@milkdown/kit": "^7.22.2",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "mermaid": "^12.0.0",
+    "micromark-extension-gfm": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^26.6.3",
+    "happy-dom": "^20.14.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}
