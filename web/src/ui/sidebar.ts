@@ -116,7 +116,8 @@ export class Sidebar {
 
   // A link opening path, highlighted while any of paths is open.
   private entry(path: string, paths: string[], label = path, extra?: HTMLElement) {
-    const link = fileLink(path, this.open, h('span', { class: 'dir' }, dirName(label)), h('span', { class: 'name' }, fileName(label)), extra)
+    const text = h('span', { class: 'label' }, h('span', { class: 'dir' }, dirName(label)), h('span', { class: 'name' }, fileName(label)))
+    const link = fileLink(path, this.open, text, extra)
     link.dataset.paths = paths.join('\n')
     return link
   }
