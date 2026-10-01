@@ -3,18 +3,23 @@ import { fuzzyFilter } from './fuzzy'
 
 const limit = 50
 
+export interface FinderItem {
+  label: string // what is shown and matched
+  path: string // what is opened
+}
+
 // Ctrl+K / Ctrl+P: jump to any file by fuzzy path. With an empty query the
 // recently viewed files come first.
 export class Finder {
   private readonly dialog = h('dialog', { id: 'finder' })
   private readonly input = h('input', { type: 'text', placeholder: 'Open file…', spellcheck: 'false' })
   private readonly list = h('ul')
-  private results: string[] = []
+  private results: FinderItem[] = []
   private selected = 0
 
   constructor(
-    private readonly files: () => string[],
-    private readonly recent: () => string[],
+    private readonly files: () => FinderItem[],
+    private readonly recent: () => FinderItem[],
     private readonly open: (path: string) => void,
   ) {
     this.dialog.append(this.input, this.list)
@@ -43,10 +48,11 @@ export class Finder {
     const query = this.input.value
     const files = this.files()
     if (query.trim() === '') {
-      const recent = this.recent().filter((p) => files.includes(p))
-      this.results = [...recent, ...files.filter((p) => !recent.includes(p))].slice(0, limit)
+      const recent = this.recent()
+      const seen = new Set(recent.map((r) => r.path))
+      this.results = [...recent, ...files.filter((f) => !seen.has(f.path))].slice(0, limit)
     } else {
-      this.results = fuzzyFilter(query, files, (p) => p, limit)
+      this.results = fuzzyFilter(query, files, (f) => f.label, limit)
     }
     this.selected = 0
     this.render()
@@ -54,16 +60,16 @@ export class Finder {
 
   private render() {
     this.list.replaceChildren(
-      ...this.results.map((path, i) => {
+      ...this.results.map((result, i) => {
         const item = h(
           'li',
           { class: i === this.selected ? 'selected' : undefined },
-          h('span', { class: 'name' }, fileName(path)),
-          h('span', { class: 'dir' }, dirName(path)),
+          h('span', { class: 'name' }, fileName(result.label)),
+          h('span', { class: 'dir' }, dirName(result.label)),
         )
         item.addEventListener('mousedown', (event) => {
           event.preventDefault()
-          this.choose(path)
+          this.choose(result.path)
         })
         return item
       }),
@@ -79,7 +85,7 @@ export class Finder {
       this.render()
     } else if (event.key === 'Enter' && this.results[this.selected]) {
       event.preventDefault()
-      this.choose(this.results[this.selected])
+      this.choose(this.results[this.selected].path)
     }
   }
 

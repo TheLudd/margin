@@ -2,11 +2,12 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import './style.css'
 
-import { type FileEntry, fetchRecent, fetchTree, markViewed, readFile, type Recent, writeFile } from './api'
+import { fetchRecent, fetchTree, markViewed, readFile, type Recent, writeFile } from './api'
 import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
 import { connect, debounce } from './sync'
+import { groupCopies, type LogicalFile } from './ui/copies'
 import { byId, fileUrl } from './ui/dom'
 import { DocumentView } from './ui/document-view'
 import { Finder } from './ui/finder'
@@ -15,7 +16,7 @@ import { Toc } from './ui/toc'
 
 const pollInterval = 15_000
 
-let files: FileEntry[] = []
+let files: LogicalFile[] = []
 let recent: Recent = { viewed: [], modified: [] }
 let session: DocumentSession | undefined
 let editor: Editor | undefined
@@ -23,13 +24,19 @@ let opening = 0
 
 const main = byId('main')
 const sidebar = new Sidebar(byId('sidebar'), (path) => open(path))
-const view = new DocumentView(main, (value) => session?.editFrontmatter(value))
-const toc = new Toc(byId('toc'), view.editorEl, main)
-new Finder(
-  () => files.map((f) => f.path),
-  () => recent.viewed,
+const view = new DocumentView(
+  main,
+  (value) => session?.editFrontmatter(value),
   (path) => open(path),
 )
+const toc = new Toc(byId('toc'), view.editorEl, main)
+new Finder(
+  () => files.map((f) => ({ label: f.project ? `${f.project}/${f.rel}` : f.rel, path: f.preferred.path })),
+  () => recent.viewed.map((path) => ({ label: path, path })),
+  (path) => open(path),
+)
+
+const copiesOf = (path: string) => files.find((f) => f.copies.some((c) => c.path === path))
 
 const remote = { read: readFile, write: writeFile }
 
@@ -60,6 +67,7 @@ async function open(path: string, push = true) {
     frontmatter: (value) => view.frontmatter(value),
   })
   view.show(path, current.initialFrontmatter)
+  view.copies(copiesOf(path), path)
   const created = await createEditor(view.editorEl, current.body, {
     onChange: () => current.edited(),
     renderPreview: renderMermaid,
@@ -99,8 +107,9 @@ function route() {
 }
 
 const refreshTree = debounce(async () => {
-  files = await fetchTree()
+  files = groupCopies(await fetchTree())
   sidebar.renderTree(files)
+  if (session) view.copies(copiesOf(session.path), session.path)
 }, 300)
 
 const refreshRecent = debounce(async () => {

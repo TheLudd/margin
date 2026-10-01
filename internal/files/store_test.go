@@ -51,12 +51,12 @@ func TestReadRejects(t *testing.T) {
 	write(t, filepath.Join(root, "repo", "notes.txt"), "txt")
 
 	cases := map[string]error{
-		"../outside.md":      ErrOutsideRoot,
-		"/etc/passwd.md":     ErrOutsideRoot,
-		"repo/../../x.md":    ErrOutsideRoot,
-		"repo/link.md":       ErrOutsideRoot,
-		"repo/notes.txt":     ErrNotMarkdown,
-		"repo/missing.md":    ErrNotFound,
+		"../outside.md":   ErrOutsideRoot,
+		"/etc/passwd.md":  ErrOutsideRoot,
+		"repo/../../x.md": ErrOutsideRoot,
+		"repo/link.md":    ErrOutsideRoot,
+		"repo/notes.txt":  ErrNotMarkdown,
+		"repo/missing.md": ErrNotFound,
 	}
 	for path, want := range cases {
 		if _, err := store.Read(path); !errors.Is(err, want) {

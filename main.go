@@ -22,6 +22,7 @@ import (
 	"margin/internal/files"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/worktree"
 	"margin/web"
 )
 
@@ -50,8 +51,12 @@ func run(root string, port int, state string) error {
 		return err
 	}
 	defer ix.Close()
-	log.Printf("indexed %d files under %s in %s", len(ix.Files()), root, time.Since(started).Round(time.Millisecond))
 	go ix.Run(ctx)
+
+	trees := worktree.New(root, ix.Files, func() { hub.Publish(index.Event{Kind: api.TreeChanged}) })
+	trees.Refresh()
+	log.Printf("indexed %d files under %s in %s", len(ix.Files()), root, time.Since(started).Round(time.Millisecond))
+	go trees.Run(ctx, hub.Subscribe)
 
 	store, err := files.New(root)
 	if err != nil {
@@ -69,12 +74,13 @@ func run(root string, port int, state string) error {
 	srv := &http.Server{
 		Addr: net.JoinHostPort("127.0.0.1", strconv.Itoa(port)),
 		Handler: (&api.Server{
-			Index:  ix,
-			Files:  store,
-			Recent: viewed,
-			Events: hub,
-			Web:    dist,
-			Port:   port,
+			Index:     ix,
+			Files:     store,
+			Recent:    viewed,
+			Events:    hub,
+			Worktrees: trees,
+			Web:       dist,
+			Port:      port,
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Requests share ctx so open event streams end on shutdown.

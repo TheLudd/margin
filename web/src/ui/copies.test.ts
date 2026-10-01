@@ -1,0 +1,62 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { FileEntry } from '../api'
+import { groupCopies, type LogicalFile } from './copies'
+
+const entry = (repo: string, rel: string, extra: Partial<FileEntry> = {}): FileEntry => ({
+  path: `${repo}/${rel}`,
+  repo,
+  mtime: '2026-09-01T00:00:00Z',
+  project: repo.startsWith('gaius/') ? 'gaius' : repo,
+  main: repo !== 'gaius/claims' && repo !== 'gaius/views',
+  ...extra,
+})
+
+let groups: LogicalFile[]
+const group = (rel: string) => groups.find((g) => g.rel === rel)!
+
+describe('groupCopies when no worktree changed a file', () => {
+  beforeEach(() => {
+    groups = groupCopies([entry('gaius/claims', 'CLAUDE.md'), entry('gaius/master', 'CLAUDE.md'), entry('gaius/views', 'CLAUDE.md')])
+  })
+
+  it('shows it once', () => expect(groups).toHaveLength(1))
+
+  it('keeps every copy, main first', () =>
+    expect(group('CLAUDE.md').copies.map((c) => c.repo)).toEqual(['gaius/master', 'gaius/claims', 'gaius/views']))
+
+  it('prefers the main checkout', () => expect(group('CLAUDE.md').preferred.repo).toBe('gaius/master'))
+
+  it('is not marked changed', () => expect(group('CLAUDE.md').changed).toBe(false))
+})
+
+describe('groupCopies when worktrees changed a file', () => {
+  beforeEach(() => {
+    groups = groupCopies([
+      entry('gaius/master', 'plan.md'),
+      entry('gaius/claims', 'plan.md', { changed: '2026-09-20T10:00:00Z' }),
+      entry('gaius/views', 'plan.md', { changed: '2026-09-28T10:00:00Z' }),
+    ])
+  })
+
+  it('prefers the most recently changed copy', () => expect(group('plan.md').preferred.repo).toBe('gaius/views'))
+
+  it('is marked changed', () => expect(group('plan.md').changed).toBe(true))
+})
+
+describe('groupCopies when only the main checkout has uncommitted changes', () => {
+  beforeEach(() => {
+    groups = groupCopies([entry('gaius/master', 'plan.md', { changed: '2026-09-28T10:00:00Z' }), entry('gaius/claims', 'plan.md')])
+  })
+
+  it('prefers the main checkout', () => expect(group('plan.md').preferred.repo).toBe('gaius/master'))
+
+  it('is not marked as differing between worktrees', () => expect(group('plan.md').changed).toBe(false))
+})
+
+describe('groupCopies with separate repositories', () => {
+  beforeEach(() => {
+    groups = groupCopies([entry('a4', 'README.md'), entry('amend', 'README.md')])
+  })
+
+  it('keeps them apart', () => expect(groups).toHaveLength(2))
+})

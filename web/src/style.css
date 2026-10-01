@@ -170,6 +170,22 @@ kbd {
   font-size: 11px;
 }
 
+#sidebar .copies {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 11px;
+}
+
+#sidebar .copies.changed {
+  color: var(--cp-cyan);
+}
+
+#sidebar .copies.changed::before {
+  content: '● ';
+}
+
 #sidebar .empty {
   margin: 4px 8px;
   color: var(--cp-muted);
@@ -264,6 +280,21 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.doc-header .worktree {
+  margin-left: auto;
+  padding: 1px 4px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-cyan);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .worktree[hidden] {
+  display: none;
 }
 
 .doc-header .status {

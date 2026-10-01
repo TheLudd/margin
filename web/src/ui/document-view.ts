@@ -1,5 +1,6 @@
 import type { State } from '../document/session'
-import { h } from './dom'
+import { type LogicalFile, worktreeName } from './copies'
+import { h, timeAgo } from './dom'
 
 const statusText: Record<State, string> = {
   clean: 'saved',
@@ -20,17 +21,23 @@ export interface ConflictActions {
 export class DocumentView {
   private readonly pathEl = h('span', { class: 'path' })
   private readonly statusEl = h('span', { class: 'status' })
+  private readonly worktreeEl = h('select', { class: 'worktree', title: 'Worktree', hidden: true })
   private readonly bannerEl = h('div', { class: 'banner', hidden: true })
   private readonly textarea = h('textarea', { spellcheck: 'false' })
   private readonly frontmatterEl = h('details', { class: 'frontmatter', open: true, hidden: true }, h('summary', {}, 'frontmatter'), this.textarea)
   readonly editorEl = h('div', { class: 'editor' })
 
-  constructor(root: HTMLElement, onFrontmatter: (value: string) => void) {
+  constructor(
+    root: HTMLElement,
+    onFrontmatter: (value: string) => void,
+    onWorktree: (path: string) => void,
+  ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.statusEl),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, this.statusEl),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )
+    this.worktreeEl.addEventListener('change', () => onWorktree(this.worktreeEl.value))
     this.textarea.addEventListener('input', () => {
       this.fit()
       onFrontmatter(this.textarea.value)
@@ -42,6 +49,19 @@ export class DocumentView {
     document.title = `${path.slice(path.lastIndexOf('/') + 1)} · margin`
     this.state('clean')
     this.frontmatter(frontmatter)
+  }
+
+  // Lets the user switch between the copies of the open file in other
+  // worktrees. Hidden when there is only one.
+  copies(file: LogicalFile | undefined, current: string) {
+    const copies = file?.copies ?? []
+    this.worktreeEl.hidden = copies.length < 2
+    this.worktreeEl.replaceChildren(
+      ...copies.map((copy) => {
+        const state = copy.changed ? `changed ${ago(copy.changed)}` : copy.main ? 'main' : 'unchanged'
+        return h('option', { value: copy.path, selected: copy.path === current }, `${worktreeName(copy)} · ${state}`)
+      }),
+    )
   }
 
   frontmatter(value: string) {
@@ -69,4 +89,9 @@ export class DocumentView {
   private fit() {
     this.textarea.rows = Math.max(2, this.textarea.value.split('\n').length - 1)
   }
+}
+
+function ago(iso: string) {
+  const since = timeAgo(iso)
+  return since === 'now' ? 'just now' : `${since} ago`
 }

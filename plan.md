@@ -105,6 +105,16 @@ The main risk. Milkdown serializes the whole document on save, which can normali
 - **Source-preserving save** (`preserveSource`): the original and the edited markdown are split into top-level blocks and matched by structure (LCS over the mdast with positions removed). Untouched blocks keep their original bytes, so a one-word edit gives a one-block diff.
 - **Round-trip report** (`make roundtrip`): loads every unique `.md` under `~/code` into the editor and lists the files an unchanged save would not reproduce exactly.
 
+## Worktrees
+
+The same file checked out in several git worktrees is shown once in the sidebar and the finder, grouped by project. A project is a main checkout plus its linked worktrees, found by following each worktree's `.git` file. When they are laid out as `<name>/<worktree>`, the project is called `<name>`.
+
+- **Default copy:** where the file was last changed. A worktree has changed a file when it differs from the merge base with the main checkout's HEAD, committed or not (`git diff <merge-base>` plus untracked files). Committed changes are dated by their last commit and uncommitted ones by modification time, because checkout resets modification times. If no worktree changed the file, the main checkout's copy opens.
+- **Switcher:** the document header lists every copy (main / unchanged / changed when), and choosing one opens it. Edits always go to exactly the file that is open.
+- **Explicit paths** (`mp`, links, the recent lists) open exactly that copy.
+- **Freshness:** the tracker recomputes a project about a second after any change in it, and pushes a `tree` event so clients refetch the tree.
+- **Separate clones** (such as `*-backup`) are separate projects.
+
 ## Security
 
 - Binds to `127.0.0.1` only.

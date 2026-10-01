@@ -24,13 +24,25 @@ const (
 	pingInterval = 20 * time.Second
 )
 
+// TreeChanged is published when file metadata other than content changes,
+// such as which worktree changed a file. Clients refetch the tree.
+const TreeChanged index.Kind = "tree"
+
+// Worktrees tells how repositories relate as git worktrees.
+type Worktrees interface {
+	Project(repo string) string
+	IsMain(repo string) bool
+	Changed(repo, rel string) (time.Time, bool)
+}
+
 type Server struct {
-	Index  *index.Index
-	Files  *files.Store
-	Recent *recent.Store
-	Events *events.Hub[index.Event]
-	Web    fs.FS // the built frontend: index.html and assets/
-	Port   int
+	Index     *index.Index
+	Files     *files.Store
+	Recent    *recent.Store
+	Events    *events.Hub[index.Event]
+	Worktrees Worktrees
+	Web       fs.FS // the built frontend: index.html and assets/
+	Port      int
 }
 
 func (s *Server) Handler() http.Handler {
@@ -46,8 +58,28 @@ func (s *Server) Handler() http.Handler {
 	return guard(s.Port, mux)
 }
 
+type treeEntry struct {
+	index.File
+	Project string     `json:"project"`
+	Main    bool       `json:"main"`              // the repo is its project's main checkout
+	Changed *time.Time `json:"changed,omitempty"` // when the repo changed the file relative to main
+}
+
 func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, s.Index.Files())
+	files := s.Index.Files()
+	entries := make([]treeEntry, len(files))
+	for i, f := range files {
+		entries[i] = treeEntry{File: f, Project: f.Repo, Main: true}
+		if s.Worktrees == nil {
+			continue
+		}
+		entries[i].Project = s.Worktrees.Project(f.Repo)
+		entries[i].Main = s.Worktrees.IsMain(f.Repo)
+		if at, ok := s.Worktrees.Changed(f.Repo, strings.TrimPrefix(f.Path, f.Repo+"/")); ok {
+			entries[i].Changed = &at
+		}
+	}
+	writeJSON(w, entries)
 }
 
 func (s *Server) readFile(w http.ResponseWriter, r *http.Request) {

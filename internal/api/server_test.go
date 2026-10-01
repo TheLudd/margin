@@ -43,12 +43,13 @@ func setup(t *testing.T) fixture {
 
 	srv := httptest.NewUnstartedServer(nil)
 	s := &Server{
-		Index:  ix,
-		Files:  store,
-		Recent: rec,
-		Events: hub,
-		Web:    fstest.MapFS{"index.html": {Data: []byte("<app>")}},
-		Port:   srv.Listener.Addr().(*net.TCPAddr).Port,
+		Index:     ix,
+		Files:     store,
+		Recent:    rec,
+		Events:    hub,
+		Worktrees: fakeWorktrees{},
+		Web:       fstest.MapFS{"index.html": {Data: []byte("<app>")}},
+		Port:      srv.Listener.Addr().(*net.TCPAddr).Port,
 	}
 	srv.Config.Handler = s.Handler()
 	srv.Start()
@@ -81,6 +82,25 @@ func do(t *testing.T, method, url string, body string, headers map[string]string
 func bodyOf(res *http.Response) string {
 	b, _ := io.ReadAll(res.Body)
 	return string(b)
+}
+
+type fakeWorktrees struct{}
+
+func (fakeWorktrees) Project(repo string) string { return "proj" }
+func (fakeWorktrees) IsMain(repo string) bool    { return false }
+func (fakeWorktrees) Changed(repo, rel string) (time.Time, bool) {
+	return time.Unix(100, 0), rel == "plan.md"
+}
+
+func TestTree(t *testing.T) {
+	f := setup(t)
+
+	var got []treeEntry
+	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
+
+	if len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Project != "proj" || got[0].Main || got[0].Changed == nil {
+		t.Fatalf("got %+v", got)
+	}
 }
 
 func TestReadFile(t *testing.T) {
