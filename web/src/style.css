@@ -29,7 +29,7 @@ body {
 
 body {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 240px;
+  grid-template-columns: 290px minmax(0, 1fr) 300px;
   background:
     radial-gradient(ellipse at top left, #ff2bd61a, transparent 50%),
     radial-gradient(ellipse at bottom right, #00e5ff14, transparent 50%),
@@ -387,15 +387,15 @@ article {
 /* TOC */
 #toc {
   overflow-y: auto;
-  padding: 58px 16px 40px 12px;
+  padding: 58px 18px 40px 14px;
   border-left: 1px solid var(--cp-line);
   font-family: var(--cp-mono);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 #toc h2 {
-  margin: 0 0 8px;
-  font-size: 11px;
+  margin: 0 0 10px;
+  font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -404,7 +404,7 @@ article {
 
 #toc a {
   display: block;
-  padding: 3px 0 3px 8px;
+  padding: 4px 0 4px 8px;
   border-left: 2px solid transparent;
   color: var(--cp-muted);
   line-height: 1.35;
@@ -416,11 +416,11 @@ article {
 }
 
 #toc a.level-3 {
-  padding-left: 18px;
+  padding-left: 20px;
 }
 
 #toc a.level-4 {
-  padding-left: 28px;
+  padding-left: 32px;
 }
 
 #toc a:hover {
