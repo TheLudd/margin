@@ -35,7 +35,8 @@ func (ix *Index) Run(ctx context.Context) {
 func (ix *Index) handle(ev fsnotify.Event) {
 	rel := ix.rel(ev.Name)
 	switch {
-	case ev.Has(fsnotify.Create) || ev.Has(fsnotify.Write):
+	// Chmod covers a modification time set directly, as touch does.
+	case ev.Has(fsnotify.Create) || ev.Has(fsnotify.Write) || ev.Has(fsnotify.Chmod):
 		ix.update(ev.Name, rel)
 	case ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename):
 		ix.emitAll(Removed, ix.removeTree(rel))

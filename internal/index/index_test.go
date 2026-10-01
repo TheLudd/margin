@@ -118,6 +118,13 @@ func TestWatchFileChanges(t *testing.T) {
 	os.Remove(filepath.Join(root, "repo", "new.md"))
 	expect(t, events, Event{Removed, "repo/new.md"})
 
+	old := time.Now().AddDate(0, 0, -20)
+	os.Chtimes(filepath.Join(root, "repo", "plan.md"), old, old)
+	expect(t, events, Event{Changed, "repo/plan.md"})
+	if got := ix.Files()[0].ModTime; !got.Equal(old) {
+		t.Fatalf("modification time %v not followed", got)
+	}
+
 	if got := paths(ix.Files()); !slices.Equal(got, []string{"repo/plan.md"}) {
 		t.Fatalf("got %v", got)
 	}

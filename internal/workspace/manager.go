@@ -89,7 +89,7 @@ func (m *Manager) Apply(c config.Config) error {
 	if err := config.Save(m.file, c); err != nil {
 		return err
 	}
-	return m.switchTo(c)
+	return m.use(c)
 }
 
 // Watch reloads the config whenever its file changes, until ctx is done.
@@ -143,12 +143,23 @@ func (m *Manager) reloadFromDisk() {
 		return
 	}
 	if err == nil {
-		err = m.switchTo(c)
+		err = m.use(c)
 	}
 	if err != nil {
 		log.Printf("config: %v", err)
 		m.config.Store(&loaded{config: current, err: err})
 	}
+}
+
+// use switches to c, re-indexing only when c indexes different files. Must
+// be called with m.mu held.
+func (m *Manager) use(c config.Config) error {
+	if config.SameIndex(c, m.config.Load().config) && m.config.Load().err == nil {
+		m.config.Store(&loaded{config: c})
+		m.publish(index.Event{Kind: TreeChanged})
+		return nil
+	}
+	return m.switchTo(c)
 }
 
 // switchTo opens the workspace for c and closes the previous one. Must be

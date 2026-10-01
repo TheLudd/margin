@@ -156,9 +156,11 @@ type activity struct {
 	Kind string    `json:"kind"` // "viewed" or "modified", whichever was last
 }
 
-// recent lists the files most recently viewed in margin or modified, most
-// recent first.
+// recent lists the files most recently viewed in margin or modified within
+// the active window, most recent first.
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
+	c, _ := s.Workspaces.Config()
+	since := time.Now().AddDate(0, 0, -c.Active())
 	all := []activity{}
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		for _, f := range root.Index.Files() {
@@ -172,7 +174,7 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 			if dismissed, ok := s.Recent.Dismissed(latest.Path); ok && !latest.At.After(dismissed) {
 				continue
 			}
-			if latest.Kind != "" {
+			if latest.Kind != "" && latest.At.After(since) {
 				all = append(all, latest)
 			}
 		}

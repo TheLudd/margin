@@ -92,6 +92,21 @@ func TestTree(t *testing.T) {
 	}
 }
 
+func TestRecentKeepsToActiveWindow(t *testing.T) {
+	f := setup(t)
+	old := time.Now().AddDate(0, 0, -20)
+	os.Chtimes(filepath.Join(f.root, "repo", "plan.md"), old, old)
+	write(t, filepath.Join(f.root, "repo", "new.md"), "")
+	time.Sleep(200 * time.Millisecond) // let the index see both
+
+	var got []activity
+	json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+
+	if len(got) != 1 || got[0].Path != "code/repo/new.md" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 func TestForgetRecent(t *testing.T) {
 	f := setup(t)
 	recentOf := func() []activity {

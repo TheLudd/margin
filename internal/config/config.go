@@ -222,9 +222,15 @@ func (c Config) Excluded(rel string) bool {
 	return false
 }
 
+// SameIndex reports whether two configs index the same files, so switching
+// between them needs no re-indexing.
+func SameIndex(a, b Config) bool {
+	return slices.Equal(a.Roots, b.Roots) && slices.Equal(a.Exclude, b.Exclude)
+}
+
 // Equal reports whether two configs are the same.
 func Equal(a, b Config) bool {
-	return slices.Equal(a.Roots, b.Roots) && slices.Equal(a.Exclude, b.Exclude) && a.Active() == b.Active()
+	return SameIndex(a, b) && a.Active() == b.Active()
 }
 
 func within(dir, parent string) bool {

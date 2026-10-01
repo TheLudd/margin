@@ -149,3 +149,25 @@ func TestWorkspaceExcludes(t *testing.T) {
 		t.Fatal("exclude not applied")
 	}
 }
+
+func TestManagerChangesActiveDaysWithoutReindexing(t *testing.T) {
+	code, _ := dirs(t)
+	file := filepath.Join(t.TempDir(), "config.json")
+	m := NewManager(file, func(index.Event) {}, nil)
+	defer m.Close()
+	c := config.Config{Roots: []config.Root{{Name: "code", Path: code}}}
+	m.Apply(c)
+	before := m.Workspace()
+
+	c.ActiveDays = 2
+	if err := m.Apply(c); err != nil {
+		t.Fatal(err)
+	}
+
+	if m.Workspace() != before {
+		t.Fatal("re-indexed for a change of the active window")
+	}
+	if got, _ := m.Config(); got.Active() != 2 {
+		t.Fatalf("active days %d", got.Active())
+	}
+}
