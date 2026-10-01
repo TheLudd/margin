@@ -9,6 +9,14 @@ describe('fuzzyScore', () => {
   it('matches everything with an empty query', () => expect(fuzzyScore('', 'margin/plan.md')).toBe(0))
 
   it('ignores case and spaces', () => expect(fuzzyScore('Mar Plan', 'margin/plan.md')).not.toBeNull())
+
+  it('does not scatter a word across segments', () => expect(fuzzyScore('plan', 'gaius-backup/modules/mq-spec/CHANGELOG.md')).toBeNull())
+
+  it('matches an abbreviation of the words in a segment', () => expect(fuzzyScore('gcp', 'gaius/guarded-commands-plan.md')).not.toBeNull())
+
+  it('does not scatter a word within a segment', () => expect(fuzzyScore('plan', 'infra/applications/reviewer.md')).toBeNull())
+
+  it('requires every word to match', () => expect(fuzzyScore('margin readme', 'margin/plan.md')).toBeNull())
 })
 
 describe('fuzzyFilter', () => {

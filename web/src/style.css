@@ -540,6 +540,19 @@ article {
   color: var(--cp-muted);
 }
 
+#finder li.tier.older {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+}
+
+#finder li.older:not(.tier) {
+  opacity: 0.6;
+}
+
+#finder li.older.selected {
+  opacity: 1;
+}
+
 #finder li.selected {
   background: var(--cp-raised);
   box-shadow: inset 2px 0 var(--cp-cyan);

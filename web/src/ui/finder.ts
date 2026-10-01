@@ -1,23 +1,28 @@
 import { dirName, fileName, h } from './dom'
 import { fuzzyFilter } from './fuzzy'
 
-const limit = 50
+const limit = 30
 const olderLimit = 20
+
+interface Section {
+  title: string
+  items: FinderItem[]
+}
 
 export interface FinderItem {
   label: string // what is shown and matched
   path: string // what is opened
 }
 
-// Ctrl+K / Ctrl+P: jump to any file by fuzzy path. With an empty query the
-// recently viewed files come first, then the active ones. Matches among
-// older files are listed after the active ones, in their own section.
+// Ctrl+K / Ctrl+P: jump to any file by path. With an empty query it lists
+// recent activity. Matches among active files come first; matches among
+// older files follow in their own section.
 export class Finder {
   private readonly dialog = h('dialog', { id: 'finder' })
   private readonly input = h('input', { type: 'text', placeholder: 'Open file…', spellcheck: 'false' })
   private readonly list = h('ul')
-  private results: FinderItem[] = []
-  private olderFrom = Infinity // index of the first older result
+  private sections: Section[] = []
+  private results: FinderItem[] = [] // all sections' items, in order
   private selected = 0
 
   constructor(
@@ -50,38 +55,39 @@ export class Finder {
 
   private search() {
     const query = this.input.value
-    const files = this.files()
     if (query.trim() === '') {
-      const recent = this.recent()
-      const seen = new Set(recent.map((r) => r.path))
-      this.results = [...recent, ...files.filter((f) => !seen.has(f.path))].slice(0, limit)
-      this.olderFrom = Infinity
+      this.sections = [{ title: 'Recent activity', items: this.recent() }]
     } else {
-      const active = fuzzyFilter(query, files, (f) => f.label, limit)
-      this.results = [...active, ...fuzzyFilter(query, this.olderFiles(), (f) => f.label, olderLimit)]
-      this.olderFrom = active.length
+      this.sections = [
+        { title: 'Active', items: fuzzyFilter(query, this.files(), (f) => f.label, limit) },
+        { title: 'Older', items: fuzzyFilter(query, this.olderFiles(), (f) => f.label, olderLimit) },
+      ]
     }
+    this.results = this.sections.flatMap((section) => section.items)
     this.selected = 0
     this.render()
   }
 
   private render() {
-    this.list.replaceChildren(
-      ...this.results.flatMap((result, i) => {
-        const item = h(
-          'li',
-          { class: i === this.selected ? 'selected' : undefined },
-          h('span', { class: 'name' }, fileName(result.label)),
-          h('span', { class: 'dir' }, dirName(result.label)),
-        )
-        item.addEventListener('mousedown', (event) => {
-          event.preventDefault()
-          this.choose(result.path)
-        })
-        return i === this.olderFrom ? [h('li', { class: 'tier' }, 'Older'), item] : [item]
-      }),
-    )
+    let index = 0
+    const items = this.sections
+      .filter((section) => section.items.length > 0)
+      .flatMap((section) => [
+        h('li', { class: `tier ${section.title.toLowerCase()}` }, section.title),
+        ...section.items.map((result) => this.item(result, index++, section.title === 'Older')),
+      ])
+    this.list.replaceChildren(...(items.length ? items : [h('li', { class: 'tier' }, 'No matches')]))
     this.list.querySelector('li.selected')?.scrollIntoView({ block: 'nearest' })
+  }
+
+  private item(result: FinderItem, index: number, older: boolean) {
+    const classes = [index === this.selected && 'selected', older && 'older'].filter(Boolean).join(' ')
+    const item = h('li', { class: classes || undefined }, h('span', { class: 'name' }, fileName(result.label)), h('span', { class: 'dir' }, dirName(result.label)))
+    item.addEventListener('mousedown', (event) => {
+      event.preventDefault()
+      this.choose(result.path)
+    })
+    return item
   }
 
   private key(event: KeyboardEvent) {

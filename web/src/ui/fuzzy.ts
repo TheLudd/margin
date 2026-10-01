@@ -1,25 +1,52 @@
-// Subsequence matching for the file finder. Higher scores are better;
-// null means no match. Matches in the file name, at word starts and in
-// runs score higher.
+// Matching for the file finder. Every word of the query must match within a
+// single path segment, either as a substring or as an abbreviation of its
+// words, so a query never matches by scattering its letters across a path.
+// Higher scores are better; null means no match.
 export function fuzzyScore(query: string, path: string): number | null {
-  const q = query.toLowerCase().replace(/\s+/g, '')
-  if (q === '') return 0
+  const terms = query.toLowerCase().split(/[\s/]+/).filter(Boolean)
+  if (terms.length === 0) return 0
   const text = path.toLowerCase()
-  const nameStart = text.lastIndexOf('/') + 1
+  const segments = text.split('/')
+  const last = segments.length - 1
 
-  let score = 0
-  let previous = -2
-  let from = 0
-  for (const char of q) {
-    const at = text.indexOf(char, from)
-    if (at === -1) return null
-    if (at === previous + 1) score += 5
-    if (at === 0 || '/-_. '.includes(text[at - 1])) score += 3
-    if (at >= nameStart) score += 2
-    previous = at
-    from = at + 1
+  let total = 0
+  for (const term of terms) {
+    let best: number | null = null
+    segments.forEach((segment, i) => {
+      const score = segmentScore(term, segment)
+      if (score !== null) best = Math.max(best ?? -Infinity, score + (i === last ? 10 : 0))
+    })
+    if (best === null) return null
+    total += best
   }
-  return score - text.length * 0.01
+  return total - text.length * 0.01
+}
+
+const isWordStart = (text: string, at: number) => at === 0 || '-_. '.includes(text[at - 1])
+
+function segmentScore(term: string, segment: string): number | null {
+  const at = segment.indexOf(term)
+  if (at >= 0) return 20 + term.length * 2 + (isWordStart(segment, at) ? 5 : 0)
+
+  // Letters in order, each continuing the previous one or starting a word,
+  // like `gcp` for guarded-commands-plan.
+  let score = 0
+  let pos = -1
+  for (const char of term) {
+    if (pos >= 0 && segment[pos + 1] === char) {
+      pos++
+      score += 3
+      continue
+    }
+    let found = -1
+    for (let i = pos + 1; i < segment.length && found === -1; i++) {
+      if (segment[i] === char && isWordStart(segment, i)) found = i
+    }
+    if (found === -1) return null
+    pos = found
+    score += 2
+  }
+  return score
 }
 
 export function fuzzyFilter<T>(query: string, items: T[], text: (item: T) => string, limit: number): T[] {
