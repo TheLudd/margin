@@ -24,7 +24,7 @@ export class DocumentView {
   private readonly worktreeEl = h('select', { class: 'worktree', title: 'Worktree', hidden: true })
   private readonly bannerEl = h('div', { class: 'banner', hidden: true })
   private readonly textarea = h('textarea', { spellcheck: 'false' })
-  private readonly frontmatterEl = h('details', { class: 'frontmatter', open: true, hidden: true }, h('summary', {}, 'frontmatter'), this.textarea)
+  private readonly frontmatterEl = h('details', { class: 'frontmatter', hidden: true }, h('summary', {}, 'frontmatter'), this.textarea)
   readonly editorEl = h('div', { class: 'editor' })
 
   constructor(
