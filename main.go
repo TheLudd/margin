@@ -62,7 +62,7 @@ func run(root string, port int, state string) error {
 	if err != nil {
 		return err
 	}
-	viewed, err := recent.Load(filepath.Join(state, "recent.json"), 5)
+	viewed, err := recent.Load(filepath.Join(state, "recent.json"), 90*24*time.Hour)
 	if err != nil {
 		return err
 	}

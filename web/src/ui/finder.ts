@@ -2,6 +2,7 @@ import { dirName, fileName, h } from './dom'
 import { fuzzyFilter } from './fuzzy'
 
 const limit = 50
+const olderLimit = 20
 
 export interface FinderItem {
   label: string // what is shown and matched
@@ -9,16 +10,19 @@ export interface FinderItem {
 }
 
 // Ctrl+K / Ctrl+P: jump to any file by fuzzy path. With an empty query the
-// recently viewed files come first.
+// recently viewed files come first, then the active ones. Matches among
+// older files are listed after the active ones, in their own section.
 export class Finder {
   private readonly dialog = h('dialog', { id: 'finder' })
   private readonly input = h('input', { type: 'text', placeholder: 'Open file…', spellcheck: 'false' })
   private readonly list = h('ul')
   private results: FinderItem[] = []
+  private olderFrom = Infinity // index of the first older result
   private selected = 0
 
   constructor(
     private readonly files: () => FinderItem[],
+    private readonly olderFiles: () => FinderItem[],
     private readonly recent: () => FinderItem[],
     private readonly open: (path: string) => void,
   ) {
@@ -51,8 +55,11 @@ export class Finder {
       const recent = this.recent()
       const seen = new Set(recent.map((r) => r.path))
       this.results = [...recent, ...files.filter((f) => !seen.has(f.path))].slice(0, limit)
+      this.olderFrom = Infinity
     } else {
-      this.results = fuzzyFilter(query, files, (f) => f.label, limit)
+      const active = fuzzyFilter(query, files, (f) => f.label, limit)
+      this.results = [...active, ...fuzzyFilter(query, this.olderFiles(), (f) => f.label, olderLimit)]
+      this.olderFrom = active.length
     }
     this.selected = 0
     this.render()
@@ -60,7 +67,7 @@ export class Finder {
 
   private render() {
     this.list.replaceChildren(
-      ...this.results.map((result, i) => {
+      ...this.results.flatMap((result, i) => {
         const item = h(
           'li',
           { class: i === this.selected ? 'selected' : undefined },
@@ -71,10 +78,10 @@ export class Finder {
           event.preventDefault()
           this.choose(result.path)
         })
-        return item
+        return i === this.olderFrom ? [h('li', { class: 'tier' }, 'Older'), item] : [item]
       }),
     )
-    this.list.children[this.selected]?.scrollIntoView({ block: 'nearest' })
+    this.list.querySelector('li.selected')?.scrollIntoView({ block: 'nearest' })
   }
 
   private key(event: KeyboardEvent) {

@@ -1,26 +1,31 @@
-// Package recent remembers the most recently viewed files across restarts.
+// Package recent remembers when files were last viewed in margin, across
+// restarts.
 package recent
 
 import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"sync"
+	"time"
 )
 
 type Store struct {
-	path  string
-	limit int
+	path string
+	keep time.Duration // views older than this are forgotten
+	now  func() time.Time
+
 	mu    sync.Mutex
-	paths []string // most recent first
+	views map[string]time.Time
 }
 
-// Load reads the list from path; a missing file is an empty list.
-func Load(path string, limit int) (*Store, error) {
-	s := &Store{path: path, limit: limit}
+// Load reads the views from path; a missing file means no views.
+func Load(path string, keep time.Duration) (*Store, error) {
+	s := &Store{path: path, keep: keep, now: time.Now, views: map[string]time.Time{}}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return s, nil
@@ -28,33 +33,48 @@ func Load(path string, limit int) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(data, &s.paths); err != nil {
-		return nil, err
+	if err := json.Unmarshal(data, &s.views); err != nil {
+		var legacy []string // most recent first, without times
+		if json.Unmarshal(data, &legacy) != nil {
+			return nil, err
+		}
+		for i, p := range legacy {
+			s.views[p] = s.now().Add(-time.Duration(i) * time.Second)
+		}
 	}
 	return s, nil
 }
 
-// Add moves rel to the front of the list and persists it.
+// Add records a view of rel now and persists the views.
 func (s *Store) Add(rel string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	paths := slices.DeleteFunc(slices.Clone(s.paths), func(p string) bool { return p == rel })
-	paths = append([]string{rel}, paths...)
-	s.paths = paths[:min(len(paths), s.limit*2)]
+	now := s.now()
+	s.views[rel] = now
+	maps.DeleteFunc(s.views, func(_ string, at time.Time) bool { return now.Sub(at) > s.keep })
 	return s.save()
 }
 
-// List returns up to limit paths, most recent first, keeping only those
-// accepted by exists. Extra entries are stored so deleted files don't
-// shrink the list.
-func (s *Store) List(exists func(string) bool) []string {
+// Viewed reports when rel was last viewed.
+func (s *Store) Viewed(rel string) (time.Time, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	at, ok := s.views[rel]
+	return at, ok
+}
+
+// Latest returns up to n of the most recently viewed paths accepted by exists,
+// most recent first.
+func (s *Store) Latest(n int, exists func(string) bool) []string {
+	s.mu.Lock()
+	paths := slices.Collect(maps.Keys(s.views))
+	slices.SortFunc(paths, func(a, b string) int { return s.views[b].Compare(s.views[a]) })
+	s.mu.Unlock()
 
 	out := []string{}
-	for _, p := range s.paths {
-		if len(out) == s.limit {
+	for _, p := range paths {
+		if len(out) == n {
 			break
 		}
 		if exists(p) {
@@ -65,7 +85,7 @@ func (s *Store) List(exists func(string) bool) []string {
 }
 
 func (s *Store) save() error {
-	data, err := json.Marshal(s.paths)
+	data, err := json.Marshal(s.views)
 	if err != nil {
 		return err
 	}

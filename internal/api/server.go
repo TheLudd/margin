@@ -63,6 +63,7 @@ type treeEntry struct {
 	Project string     `json:"project"`
 	Main    bool       `json:"main"`              // the repo is its project's main checkout
 	Changed *time.Time `json:"changed,omitempty"` // when the repo changed the file relative to main
+	Viewed  *time.Time `json:"viewed,omitempty"`  // when the file was last viewed in margin
 }
 
 func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +71,9 @@ func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
 	entries := make([]treeEntry, len(files))
 	for i, f := range files {
 		entries[i] = treeEntry{File: f, Project: f.Repo, Main: true}
+		if at, ok := s.Recent.Viewed(f.Path); ok {
+			entries[i].Viewed = &at
+		}
 		if s.Worktrees == nil {
 			continue
 		}
@@ -126,7 +130,7 @@ type recentResponse struct {
 
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, recentResponse{
-		Viewed:   s.Recent.List(s.Index.Has),
+		Viewed:   s.Recent.Latest(recentLimit, s.Index.Has),
 		Modified: s.Index.RecentlyModified(recentLimit),
 	})
 }

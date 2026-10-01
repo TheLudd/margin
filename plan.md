@@ -110,6 +110,14 @@ The same file checked out in several git worktrees is shown once in the sidebar 
 - **Freshness:** the tracker recomputes a project about a second after any change in it, and pushes a `tree` event so clients refetch the tree.
 - **Separate clones** (such as `*-backup`) are separate projects.
 
+## Activity
+
+The sidebar lists only files viewed in margin or modified in the last 14 days, counted back from now. Projects are sorted by their latest activity. Everything else is folded under **Older**, which expands to the full project tree. Search lists active matches first and older matches in a second section (at most 20).
+
+- **Viewed** means opened in margin; other apps are not considered. Views are kept with their time for 90 days in `~/.local/state/margin/recent.json`.
+- **Modified** is the modification time for main checkouts and plain repositories, and the git change time for a worktree's own copy, because checkouts reset modification times.
+- The window moves with time: the sidebar re-renders every 10 minutes even without changes.
+
 ## Security
 
 - Binds to `127.0.0.1` only.

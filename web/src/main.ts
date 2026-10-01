@@ -7,7 +7,7 @@ import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
 import { connect, debounce } from './sync'
-import { groupCopies, type LogicalFile } from './ui/copies'
+import { groupCopies, isActive, type LogicalFile } from './ui/copies'
 import { byId, fileUrl } from './ui/dom'
 import { DocumentView } from './ui/document-view'
 import { Finder } from './ui/finder'
@@ -30,8 +30,10 @@ const view = new DocumentView(
   (path) => open(path),
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
+const finderItem = (f: LogicalFile) => ({ label: f.project ? `${f.project}/${f.rel}` : f.rel, path: f.preferred.path })
 new Finder(
-  () => files.map((f) => ({ label: f.project ? `${f.project}/${f.rel}` : f.rel, path: f.preferred.path })),
+  () => files.filter((f) => isActive(f)).map(finderItem),
+  () => files.filter((f) => !isActive(f)).map(finderItem),
   () => recent.viewed.map((path) => ({ label: path, path })),
   (path) => open(path),
 )
@@ -84,6 +86,7 @@ async function open(path: string, push = true) {
 
   await markViewed(path)
   refreshRecent()
+  refreshTree() // the file is now active
 }
 
 function showHome() {
@@ -140,6 +143,9 @@ window.addEventListener('focus', () => revalidate())
 setInterval(() => {
   if (document.visibilityState === 'visible') revalidate()
 }, pollInterval)
+
+// The 14-day window moves with time, not only with changes.
+setInterval(() => sidebar.renderTree(files), 10 * 60_000)
 
 window.addEventListener('popstate', route)
 window.addEventListener('beforeunload', (event) => {

@@ -39,7 +39,7 @@ func setup(t *testing.T) fixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	go ix.Run(ctx)
 	store, _ := files.New(root)
-	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), recentLimit)
+	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), time.Hour)
 
 	srv := httptest.NewUnstartedServer(nil)
 	s := &Server{
@@ -98,8 +98,20 @@ func TestTree(t *testing.T) {
 	var got []treeEntry
 	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
 
-	if len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Project != "proj" || got[0].Main || got[0].Changed == nil {
+	if len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Project != "proj" || got[0].Main || got[0].Changed == nil || got[0].Viewed != nil {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestTreeIncludesViews(t *testing.T) {
+	f := setup(t)
+	do(t, "POST", f.url+"/api/recent?path=repo/plan.md", "", nil)
+
+	var got []treeEntry
+	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
+
+	if got[0].Viewed == nil {
+		t.Fatal("view not reported")
 	}
 }
 

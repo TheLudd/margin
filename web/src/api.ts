@@ -16,6 +16,7 @@ export interface FileEntry {
   project: string // the repo, or the worktree family it belongs to
   main: boolean // the repo is its project's main checkout
   changed?: string // when the repo changed the file relative to main
+  viewed?: string // when the file was last viewed in margin
 }
 
 export interface Recent {

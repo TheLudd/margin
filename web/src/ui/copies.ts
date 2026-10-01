@@ -8,6 +8,20 @@ export interface LogicalFile {
   copies: FileEntry[] // the main checkout first, then by worktree
   preferred: FileEntry // the copy to open by default
   changed: boolean // some copy differs from the main checkout
+  activeAt: number // last view or modification of any copy, in ms
+}
+
+export const activeWindow = 14 * 24 * 60 * 60 * 1000
+
+// Viewed or modified within the last 14 days.
+export const isActive = (f: LogicalFile, now = Date.now()) => f.activeAt >= now - activeWindow
+
+// When a copy was last viewed or modified. Checkouts reset modification
+// times, so a worktree's own copy counts as modified only when git says
+// the worktree changed it.
+function activityOf(copy: FileEntry): number {
+  const modified = copy.main ? copy.mtime : copy.changed
+  return Math.max(copy.viewed ? Date.parse(copy.viewed) : 0, modified ? Date.parse(modified) : 0)
 }
 
 export function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
@@ -40,6 +54,7 @@ export function groupCopies(files: FileEntry[]): LogicalFile[] {
       copies,
       preferred: changed[0] ?? copies[0],
       changed: changed.some((c) => !c.main),
+      activeAt: Math.max(...copies.map(activityOf)),
     }
   })
 }

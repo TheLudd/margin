@@ -1,13 +1,15 @@
 import type { Recent } from '../api'
-import { groupBy, type LogicalFile } from './copies'
+import { groupBy, isActive, type LogicalFile } from './copies'
 import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 
-// The recent lists and every markdown file, grouped by project. A file
-// checked out in several worktrees is listed once and opens the copy that
-// was changed last.
+// The recent lists and every markdown file, grouped by project. Files
+// viewed or modified in the last 14 days are listed; the rest are folded
+// under "Older". A file checked out in several worktrees is listed once and
+// opens the copy that was changed last.
 export class Sidebar {
   private readonly recentEl = h('div', { class: 'recent' })
   private readonly treeEl = h('div', { class: 'tree' })
+  private readonly open_ = new Map<string, boolean>() // fold state by group key
   private current?: string
 
   constructor(
@@ -27,30 +29,51 @@ export class Sidebar {
     this.highlight()
   }
 
-  renderTree(files: LogicalFile[]) {
-    const byProject = groupBy(files, (f) => f.project)
-    const projects = [...byProject.keys()].sort((a, b) => a.localeCompare(b))
+  renderTree(files: LogicalFile[], now = Date.now()) {
+    const active = files.filter((f) => isActive(f, now))
+    const older = files.filter((f) => !isActive(f, now))
+    const latest = (group: LogicalFile[]) => Math.max(...group.map((f) => f.activeAt))
+    const byRecency = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => latest(b[1]) - latest(a[1])
+    const byName = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => a[0].localeCompare(b[0])
+
     this.treeEl.replaceChildren(
-      ...projects.map((project) => {
-        const entries = byProject.get(project)!.sort((a, b) => a.rel.localeCompare(b.rel))
-        return h(
-          'details',
-          { 'data-project': project },
-          h('summary', {}, h('span', {}, project || '~/code'), h('span', { class: 'count' }, String(entries.length))),
-          this.list(
-            entries.map((f) =>
-              this.entry(
-                f.preferred.path,
-                f.copies.map((c) => c.path),
-                f.rel,
-                f.copies.length > 1 ? h('span', { class: f.changed ? 'copies changed' : 'copies', title: copiesTitle(f) }, `×${f.copies.length}`) : undefined,
-              ),
-            ),
-          ),
-        )
-      }),
+      ...(active.length ? this.projects('active', active, byRecency, true) : [h('p', { class: 'empty' }, 'Nothing in the last 14 days')]),
+      this.group('older', h('span', {}, 'Older'), String(older.length), false, this.projects('older', older, byName, false)),
     )
     this.highlight()
+  }
+
+  private projects(
+    section: string,
+    files: LogicalFile[],
+    order: (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => number,
+    openByDefault: boolean,
+  ): HTMLElement[] {
+    return [...groupBy(files, (f) => f.project)].sort(order).map(([project, entries]) =>
+      this.group(
+        `${section}:${project}`,
+        h('span', {}, project || '~/code'),
+        String(entries.length),
+        openByDefault,
+        [this.list(entries.sort((a, b) => a.rel.localeCompare(b.rel)).map((f) => this.fileEntry(f)))],
+      ),
+    )
+  }
+
+  // A foldable group that keeps its fold state across re-renders.
+  private group(key: string, label: HTMLElement, count: string, openByDefault: boolean, children: HTMLElement[]) {
+    const details = h('details', { 'data-key': key, open: this.open_.get(key) ?? openByDefault }, h('summary', {}, label, h('span', { class: 'count' }, count)), ...children)
+    details.addEventListener('toggle', () => this.open_.set(key, details.open))
+    return details
+  }
+
+  private fileEntry(f: LogicalFile) {
+    return this.entry(
+      f.preferred.path,
+      f.copies.map((c) => c.path),
+      f.rel,
+      f.copies.length > 1 ? h('span', { class: f.changed ? 'copies changed' : 'copies', title: copiesTitle(f) }, `×${f.copies.length}`) : undefined,
+    )
   }
 
   setCurrent(path: string | undefined) {
@@ -63,9 +86,11 @@ export class Sidebar {
       const paths = link.dataset.paths!.split('\n')
       link.classList.toggle('current', this.current !== undefined && paths.includes(this.current))
     }
-    const link = this.treeEl.querySelector<HTMLElement>('a.current')
-    const group = link?.closest('details')
-    if (group && !group.open) group.open = true
+    // Unfold the groups around the open file, without overriding a fold the
+    // user chose for other files.
+    for (let group = this.treeEl.querySelector('a.current')?.closest('details'); group; group = group.parentElement?.closest('details')) {
+      group.open = true
+    }
   }
 
   private list(items: HTMLElement[]) {
