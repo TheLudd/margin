@@ -33,14 +33,19 @@ func main() {
 	configFile := flag.String("config", config.File(), "config file listing the folders to serve")
 	port := flag.Int("port", defaultPort, "port to listen on (127.0.0.1 only)")
 	state := flag.String("state", stateDir(home), "directory for margin's own state")
+	var hosts []string
+	flag.Func("host", "another name margin is reached by, such as margin.local behind a reverse proxy (repeatable)", func(host string) error {
+		hosts = append(hosts, host)
+		return nil
+	})
 	flag.Parse()
 
-	if err := run(*configFile, *port, *state); err != nil {
+	if err := run(*configFile, *port, *state, hosts); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(configFile string, port int, state string) error {
+func run(configFile string, port int, state string, hosts []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -66,6 +71,7 @@ func run(configFile string, port int, state string) error {
 			Events:     hub,
 			Web:        dist,
 			Port:       port,
+			Hosts:      hosts,
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		// Requests share ctx so open event streams end on shutdown.

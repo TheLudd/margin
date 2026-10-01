@@ -34,6 +34,7 @@ type Server struct {
 	Events     *events.Hub[index.Event]
 	Web        fs.FS // the built frontend: index.html and assets/
 	Port       int
+	Hosts      []string // other names margin is reached by, such as margin.local
 }
 
 func (s *Server) Handler() http.Handler {
@@ -49,7 +50,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/dirs", s.dirs)
 	mux.Handle("GET /assets/", http.FileServerFS(s.Web))
 	mux.HandleFunc("GET /", s.app)
-	return guard(s.Port, mux)
+	return guard(s.Port, s.Hosts, mux)
 }
 
 type treeEntry struct {

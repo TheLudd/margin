@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 type fixture struct {
 	root string // the folder served as the root named code
 	url  string
+	port int
 }
 
 func setup(t *testing.T) fixture {
@@ -44,11 +46,12 @@ func setup(t *testing.T) fixture {
 		Events:     hub,
 		Web:        fstest.MapFS{"index.html": {Data: []byte("<app>")}},
 		Port:       srv.Listener.Addr().(*net.TCPAddr).Port,
+		Hosts:      []string{"margin.local"},
 	}
 	srv.Config.Handler = s.Handler()
 	srv.Start()
 	t.Cleanup(func() { srv.Close(); workspaces.Close() })
-	return fixture{root: root, url: srv.URL}
+	return fixture{root: root, url: srv.URL, port: s.Port}
 }
 
 func write(t *testing.T, path, content string) {
@@ -162,6 +165,9 @@ func TestGuard(t *testing.T) {
 		{"own origin", map[string]string{"Origin": f.url}, 200},
 		{"foreign origin", map[string]string{"Origin": "http://evil.example"}, 403},
 		{"foreign host", map[string]string{"Host": "evil.example:80"}, 403},
+		{"configured host behind a proxy", map[string]string{"Host": "margin.local", "Origin": "http://margin.local"}, 200},
+		{"configured host with port", map[string]string{"Host": fmt.Sprintf("margin.local:%d", f.port)}, 200},
+		{"similar host", map[string]string{"Host": "margin.local.evil.example"}, 403},
 		{"cross-site fetch", map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "cors"}, 403},
 		{"cross-site link", map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"}, 200},
 	}
