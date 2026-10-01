@@ -47,7 +47,7 @@ Browser
 
 ### Backend packages
 
-Each package does one job and can be tested without the HTTP layer.
+Each package does gsone job and can be tested without the HTTP layer.
 
 - **`index`** — walks a root and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
 - **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
@@ -136,6 +136,10 @@ The sidebar lists only files viewed in margin or modified within the active wind
 - Changing only the active window applies at once; changing folders or hidden files re-indexes.
 - **Removing from recent activity:** the × on an entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals are kept with the views.
 - Both sidebar sections fold, and fold state is kept per browser across reloads.
+
+## Editing state
+
+While editing, the page shows it: an EDITING label in the header, an accent along the document, the block holding the cursor highlighted, and a high-contrast cursor. Esc stops editing, unless it closes a menu first.
 
 ## Security
 

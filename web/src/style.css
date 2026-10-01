@@ -389,6 +389,8 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 .doc-header .path {
+  flex: 1;
+  min-width: 0;
   color: var(--cp-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -396,7 +398,6 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 .doc-header .worktree {
-  margin-left: auto;
   padding: 1px 4px;
   border: 1px solid var(--cp-line);
   border-radius: 3px;
@@ -804,6 +805,41 @@ article {
 
 .milkdown .ProseMirror {
   padding: 8px 48px 60px 64px;
+  caret-color: var(--cp-magenta);
+}
+
+/* Editing: while the cursor is in the document, the page says so */
+article {
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+article:has(.ProseMirror:focus) {
+  border-left-color: var(--cp-magenta);
+  background: #ff2bd608;
+  box-shadow: -6px 0 18px -10px var(--cp-magenta);
+}
+
+.doc-header .mode {
+  display: none;
+  padding: 0 8px;
+  border: 1px solid var(--cp-magenta);
+  border-radius: 3px;
+  color: var(--cp-magenta);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.milkdown .ProseMirror:focus .cursor-block {
+  border-radius: 3px;
+  background: #ff2bd610;
+  box-shadow: -10px 0 0 #ff2bd610, 10px 0 0 #ff2bd610;
+}
+
+#main:has(.ProseMirror:focus) .doc-header .mode {
+  display: inline-block;
 }
 
 .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {

@@ -3,9 +3,11 @@ import { type LogicalFile, worktreeName } from './copies'
 import { display } from './display'
 import { h, timeAgo } from './dom'
 
+const openMenus = ".milkdown-slash-menu[data-show='true'], .milkdown-link-edit[data-show='true']"
+
 const statusText: Record<State, string> = {
   clean: 'saved',
-  dirty: 'editing',
+  dirty: 'unsaved',
   saving: 'saving',
   conflict: 'conflict',
   missing: 'deleted',
@@ -34,11 +36,23 @@ export class DocumentView {
     onWorktree: (path: string) => void,
   ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, this.statusEl),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, h('span', { class: 'mode' }, 'editing'), this.statusEl),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )
     this.worktreeEl.addEventListener('change', () => onWorktree(this.worktreeEl.value))
+    // Esc leaves the editor, back to reading (and to Vimium's keys), unless it
+    // closes a menu first. It is caught before ProseMirror, which takes it.
+    this.editorEl.addEventListener(
+      'keydown',
+      (event) => {
+        if (event.key !== 'Escape' || this.editorEl.querySelector(openMenus)) return
+        event.preventDefault()
+        event.stopPropagation()
+        ;(document.activeElement as HTMLElement | null)?.blur()
+      },
+      true,
+    )
     this.textarea.addEventListener('input', () => {
       this.fit()
       onFrontmatter(this.textarea.value)

@@ -1,9 +1,27 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewOptionsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
-import { $remark, replaceAll } from '@milkdown/kit/utils'
+import { Plugin } from '@milkdown/kit/prose/state'
+import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
+import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
 import { remarkImageTitle } from './remark-image-title'
+
+// Marks the top-level block holding the cursor, so it is easy to find.
+const cursorBlock = $prose(
+  () =>
+    new Plugin({
+      props: {
+        decorations(state) {
+          const { $head } = state.selection
+          if ($head.depth < 1) return null
+          const start = $head.before(1)
+          const end = start + state.doc.child($head.index(0)).nodeSize
+          return DecorationSet.create(state.doc, [Decoration.node(start, end, { class: 'cursor-block' })])
+        },
+      },
+    }),
+)
 
 export type RenderPreview = NonNullable<CodeMirrorFeatureConfig['renderPreview']>
 
@@ -72,6 +90,7 @@ export async function createCrepe(root: HTMLElement, markdown: string, options: 
       ctx.update(editorViewOptionsCtx, (prev) => ({ ...prev, attributes: { spellcheck: 'false' } }))
     })
     .use($remark('imageTitle', () => remarkImageTitle))
+    .use(cursorBlock)
   // Otherwise an empty paragraph (an extra Enter) is saved as a `<br />` block.
   await crepe.editor.remove(remarkPreserveEmptyLinePlugin)
 
