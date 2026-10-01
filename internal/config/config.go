@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -20,7 +21,8 @@ type Root struct {
 }
 
 type Config struct {
-	Roots []Root `json:"roots"`
+	Roots   []Root   `json:"roots"`
+	Exclude []string `json:"exclude,omitempty"` // file patterns to leave out, see Excluded
 }
 
 // File returns where the config lives: $XDG_CONFIG_HOME/margin/config.json,
@@ -49,12 +51,27 @@ func Load(path string) (Config, error) {
 	return c, nil
 }
 
+// Normalize trims the exclude patterns and drops blank ones.
+func (c Config) Normalize() Config {
+	exclude := []string{}
+	for _, pattern := range c.Exclude {
+		if pattern = strings.TrimSpace(pattern); pattern != "" {
+			exclude = append(exclude, pattern)
+		}
+	}
+	c.Exclude = exclude
+	if len(exclude) == 0 {
+		c.Exclude = nil
+	}
+	return c
+}
+
 // Save writes c to path atomically.
 func Save(path string, c Config) error {
 	if c.Roots == nil {
 		c.Roots = []Root{}
 	}
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.MarshalIndent(c.Normalize(), "", "  ")
 	if err != nil {
 		return err
 	}
@@ -71,8 +88,14 @@ func Save(path string, c Config) error {
 var validName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // Validate checks that every root has a usable, unique name and an existing
-// directory, and that no root contains another.
+// directory, that no root contains another, and that the exclude patterns
+// are valid.
 func (c Config) Validate() error {
+	for _, pattern := range c.Exclude {
+		if _, err := path.Match(strings.ToLower(pattern), ""); err != nil {
+			return fmt.Errorf("pattern %q is not valid", pattern)
+		}
+	}
 	names := map[string]bool{}
 	var dirs []string
 	for _, r := range c.Roots {
@@ -155,9 +178,32 @@ func DefaultName(path string) string {
 	return filepath.Base(Expand(path))
 }
 
-// Equal reports whether two configs list the same roots in the same order.
+// Excluded reports whether the file at rel (relative to its root, with
+// slashes) is left out. A pattern without a slash matches the file name, as
+// in CHANGELOG.md or *.draft.md; one with a slash matches the end of the
+// path, as in generated/*.md. Case is ignored.
+func (c Config) Excluded(rel string) bool {
+	segments := strings.Split(strings.ToLower(rel), "/")
+	for _, pattern := range c.Exclude {
+		pattern = strings.ToLower(strings.Trim(strings.TrimSpace(pattern), "/"))
+		if pattern == "" {
+			continue
+		}
+		depth := strings.Count(pattern, "/") + 1
+		if depth > len(segments) {
+			continue
+		}
+		tail := strings.Join(segments[len(segments)-depth:], "/")
+		if ok, _ := path.Match(pattern, tail); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// Equal reports whether two configs are the same.
 func Equal(a, b Config) bool {
-	return slices.Equal(a.Roots, b.Roots)
+	return slices.Equal(a.Roots, b.Roots) && slices.Equal(a.Exclude, b.Exclude)
 }
 
 func within(dir, parent string) bool {

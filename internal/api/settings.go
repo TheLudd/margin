@@ -16,9 +16,10 @@ type rootSettings struct {
 }
 
 type settingsResponse struct {
-	File  string         `json:"file"`            // where the config is stored
-	Roots []rootSettings `json:"roots"`           // the roots in use
-	Error string         `json:"error,omitempty"` // why the config file could not be used
+	File    string         `json:"file"`            // where the config is stored
+	Roots   []rootSettings `json:"roots"`           // the roots in use
+	Exclude []string       `json:"exclude"`         // file patterns left out
+	Error   string         `json:"error,omitempty"` // why the config file could not be used
 }
 
 func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +32,10 @@ func (s *Server) currentSettings() settingsResponse {
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		files[root.Name] = len(root.Index.Files())
 	}
-	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}}
+	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}, Exclude: c.Exclude}
+	if res.Exclude == nil {
+		res.Exclude = []string{}
+	}
 	for _, root := range c.Roots {
 		res.Roots = append(res.Roots, rootSettings{Name: root.Name, Path: root.Path, Files: files[root.Name]})
 	}

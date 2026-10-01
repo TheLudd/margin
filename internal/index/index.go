@@ -38,6 +38,7 @@ type File struct {
 
 type Index struct {
 	root    string
+	exclude func(rel string) bool // files to leave out, by root-relative path
 	emit    func(Event)
 	watcher *fsnotify.Watcher
 
@@ -50,8 +51,9 @@ type Index struct {
 	dirs   map[string]bool
 }
 
-// New scans root and starts watching it. Call Run to process changes.
-func New(root string, emit func(Event)) (*Index, error) {
+// New scans root and starts watching it, leaving out the files exclude
+// accepts (nil leaves out none). Call Run to process changes.
+func New(root string, exclude func(rel string) bool, emit func(Event)) (*Index, error) {
 	resolved, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, err
@@ -62,6 +64,7 @@ func New(root string, emit func(Event)) (*Index, error) {
 	}
 	ix := &Index{
 		root:    resolved,
+		exclude: exclude,
 		emit:    emit,
 		watcher: watcher,
 		files:   map[string]File{},
@@ -113,12 +116,17 @@ func (ix *Index) addTree(abs string) []string {
 			ix.enterDir(p, rel)
 			return nil
 		}
-		if isMarkdown(d.Name()) && !ix.ignore.ignored(rel, false) && ix.put(p, rel) {
+		if ix.wanted(rel) && ix.put(p, rel) {
 			added = append(added, rel)
 		}
 		return nil
 	})
 	return added
+}
+
+// wanted reports whether the file at rel belongs in the index.
+func (ix *Index) wanted(rel string) bool {
+	return isMarkdown(rel) && !ix.ignore.ignored(rel, false) && (ix.exclude == nil || !ix.exclude(rel))
 }
 
 func (ix *Index) skipDir(rel, name string) bool {

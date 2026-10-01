@@ -53,7 +53,7 @@ func (ix *Index) update(abs, rel string) {
 		}
 		return
 	}
-	if !isMarkdown(abs) || ix.ignore.ignored(rel, false) {
+	if !ix.wanted(rel) {
 		return
 	}
 	if ix.put(abs, rel) {

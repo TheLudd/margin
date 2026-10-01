@@ -98,3 +98,43 @@ func TestExpandAndAbbreviate(t *testing.T) {
 		t.Errorf("Abbreviate outside home: %s", got)
 	}
 }
+
+func TestValidateExclude(t *testing.T) {
+	if err := (Config{Exclude: []string{"CHANGELOG.md", "*.draft.md"}}).Validate(); err != nil {
+		t.Errorf("valid patterns rejected: %v", err)
+	}
+	if err := (Config{Exclude: []string{"[broken"}}).Validate(); err == nil || !strings.Contains(err.Error(), "not valid") {
+		t.Errorf("broken pattern: %v", err)
+	}
+}
+
+func TestExcluded(t *testing.T) {
+	c := Config{Exclude: []string{"CHANGELOG.md", "*.draft.md", "generated/*.md", "  "}}
+	cases := map[string]bool{
+		"CHANGELOG.md":                     true,
+		"mediatool/domain/ui/CHANGELOG.md": true,
+		"mediatool/changelog.md":           true, // case is ignored
+		"docs/plan.draft.md":               true,
+		"api/generated/types.md":           true,
+		"generated.md":                     false,
+		"api/generated/deep/types.md":      false,
+		"docs/plan.md":                     false,
+		"CHANGELOG-notes.md":               false,
+	}
+	for rel, want := range cases {
+		if got := c.Excluded(rel); got != want {
+			t.Errorf("%s: got %v, want %v", rel, got, want)
+		}
+	}
+}
+
+func TestSaveNormalizes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	Save(path, Config{Exclude: []string{" CHANGELOG.md ", " ", ""}})
+
+	got, _ := Load(path)
+
+	if len(got.Exclude) != 1 || got.Exclude[0] != "CHANGELOG.md" {
+		t.Fatalf("got %v", got.Exclude)
+	}
+}

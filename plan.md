@@ -111,6 +111,7 @@ The folders margin serves (roots) are listed in `$XDG_CONFIG_HOME/margin/config.
 - **Paths and URLs** start with the root's name: `/code/gaius/plan.md`. With a single root the name is left out of displayed paths, but kept in URLs.
 - **First run:** without a usable config, margin serves nothing and the browser shows a setup screen asking for folders.
 - **Settings** (`/settings`, the gear in the sidebar) adds, removes and renames roots. Saving validates the folders (they must exist, names must be unique, roots must not overlap), writes the file and re-indexes in place, without a restart.
+- **Hidden files:** `"exclude"` lists file patterns to leave out of the index, and with it the sidebar, search and recent activity (a direct URL still opens them). A pattern without a slash matches the file name anywhere (`CHANGELOG.md`, `*.draft.md`); one with a slash matches the end of the path (`generated/*.md`). Case is ignored. Edited on the settings screen, one pattern per line.
 - **Hand edits** to the file are picked up live. A broken file keeps the current roots and its error is shown on the settings screen.
 - **Views** recorded before roots were named are moved to the root that has the file.
 

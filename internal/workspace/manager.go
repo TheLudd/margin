@@ -59,6 +59,7 @@ func loadValid(file string) (config.Config, error) {
 	if err != nil {
 		return config.Config{}, err
 	}
+	c = c.Normalize()
 	return c, c.Validate()
 }
 
@@ -79,6 +80,7 @@ func (m *Manager) Config() (config.Config, error) {
 
 // Apply validates c, saves it and switches to its workspace.
 func (m *Manager) Apply(c config.Config) error {
+	c = c.Normalize()
 	if err := c.Validate(); err != nil {
 		return err
 	}

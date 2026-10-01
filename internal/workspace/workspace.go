@@ -46,7 +46,7 @@ func Open(cfg config.Config, publish func(index.Event), treeChanged func()) (*Wo
 	ctx, cancel := context.WithCancel(context.Background())
 	w := &Workspace{byName: map[string]*Root{}, cancel: cancel}
 	for _, rc := range cfg.Roots {
-		root, err := openRoot(ctx, rc, publish, treeChanged)
+		root, err := openRoot(ctx, rc, cfg.Excluded, publish, treeChanged)
 		if err != nil {
 			w.Close()
 			return nil, err
@@ -57,7 +57,7 @@ func Open(cfg config.Config, publish func(index.Event), treeChanged func()) (*Wo
 	return w, nil
 }
 
-func openRoot(ctx context.Context, rc config.Root, publish func(index.Event), treeChanged func()) (*Root, error) {
+func openRoot(ctx context.Context, rc config.Root, exclude func(string) bool, publish func(index.Event), treeChanged func()) (*Root, error) {
 	dir, err := config.Resolve(rc.Path)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func openRoot(ctx context.Context, rc config.Root, publish func(index.Event), tr
 
 	// The tracker follows this root's events with root-relative paths.
 	local := events.NewHub[index.Event]()
-	root.Index, err = index.New(dir, func(e index.Event) {
+	root.Index, err = index.New(dir, exclude, func(e index.Event) {
 		local.Publish(e)
 		publish(index.Event{Kind: e.Kind, Path: root.Join(e.Path)})
 	})

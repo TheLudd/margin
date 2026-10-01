@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -31,7 +32,7 @@ func paths(files []File) []string {
 func watch(t *testing.T, root string) (*Index, <-chan Event) {
 	t.Helper()
 	events := make(chan Event, 100)
-	ix, err := New(root, func(e Event) { events <- e })
+	ix, err := New(root, nil, func(e Event) { events <- e })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,4 +143,28 @@ func TestWatchDirectoryChanges(t *testing.T) {
 	}
 	expect(t, events, Event{Removed, "repo/docs/a.md"})
 	expect(t, events, Event{Added, "repo/moved/a.md"})
+}
+
+func TestExclude(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "repo", "plan.md"), "")
+	write(t, filepath.Join(root, "repo", "CHANGELOG.md"), "")
+	events := make(chan Event, 10)
+	ix, err := New(root, func(rel string) bool { return strings.HasSuffix(rel, "CHANGELOG.md") }, func(e Event) { events <- e })
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() { cancel(); ix.Close() })
+	go ix.Run(ctx)
+
+	if got := paths(ix.Files()); !slices.Equal(got, []string{"repo/plan.md"}) {
+		t.Fatalf("got %v", got)
+	}
+	write(t, filepath.Join(root, "repo", "sub", "CHANGELOG.md"), "")
+	write(t, filepath.Join(root, "repo", "new.md"), "")
+	expect(t, events, Event{Added, "repo/new.md"})
+	if ix.Has("repo/sub/CHANGELOG.md") {
+		t.Fatal("excluded file added by the watcher")
+	}
 }

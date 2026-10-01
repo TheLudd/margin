@@ -11,6 +11,7 @@ const baseName = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? 
 export class SettingsView {
   private readonly section = h('section', { class: 'settings' })
   private readonly rowsEl = h('div', { class: 'roots' })
+  private readonly exclude = h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'CHANGELOG.md\n*.draft.md' })
   private readonly errorEl = h('p', { class: 'error', hidden: true })
   private readonly saveButton = h('button', { class: 'primary', type: 'button' })
   private rows: Row[] = []
@@ -36,10 +37,19 @@ export class SettingsView {
         : [h('h1', {}, 'Settings'), h('p', {}, 'The folders margin serves. Each name is the first part of every path in it.')]),
       h('div', { class: 'roots-head' }, h('span', {}, 'Name'), h('span', {}, 'Folder'), h('span', {}, 'Files')),
       this.rowsEl,
-      h('div', { class: 'actions' }, add, this.saveButton),
+      h('div', { class: 'actions' }, add),
+      h('h2', {}, 'Hidden files'),
+      h(
+        'p',
+        {},
+        'Files to leave out of the sidebar, search and recent activity, one pattern per line. A pattern without a slash matches file names anywhere, such as CHANGELOG.md or *.draft.md; one with a slash matches the end of a path, such as generated/*.md. Case is ignored.',
+      ),
+      this.exclude,
+      h('div', { class: 'actions save' }, this.saveButton),
       this.errorEl,
       h('p', { class: 'file' }, `Stored in ${settings.file}`),
     )
+    this.exclude.value = settings.exclude.join('\n')
     this.rowsEl.replaceChildren()
     this.rows = []
     const roots = settings.roots.length ? settings.roots : [{ name: '', path: '' }]
@@ -63,7 +73,8 @@ export class SettingsView {
     this.saveButton.disabled = true
     this.saveButton.textContent = 'Indexing…'
     try {
-      const result = await saveSettings(roots)
+      const exclude = this.exclude.value.split('\n').map((line) => line.trim()).filter(Boolean)
+      const result = await saveSettings(roots, exclude)
       if (result.kind === 'invalid') {
         this.showError(result.message)
         return

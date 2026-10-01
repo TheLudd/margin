@@ -66,7 +66,7 @@ func setup(t *testing.T) (root string, tracker *Tracker, ix *index.Index) {
 	write(t, filepath.Join(solo, "README.md"), "solo")
 	run(t, solo, "git", "init", "-q")
 
-	ix, err := index.New(root, func(index.Event) {})
+	ix, err := index.New(root, nil, func(index.Event) {})
 	if err != nil {
 		t.Fatal(err)
 	}

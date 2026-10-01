@@ -74,3 +74,15 @@ func TestDirs(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+func TestSaveSettingsExcludes(t *testing.T) {
+	f := setup(t)
+	write(t, filepath.Join(f.root, "repo", "CHANGELOG.md"), "")
+	body := `{"roots":[{"name":"code","path":"` + f.root + `"}],"exclude":["CHANGELOG.md"]}`
+
+	res := do(t, "PUT", f.url+"/api/settings", body, nil)
+
+	if got := settingsOf(t, res); res.StatusCode != 200 || len(got.Exclude) != 1 || got.Roots[0].Files != 1 {
+		t.Fatalf("got %d %+v", res.StatusCode, got)
+	}
+}

@@ -134,3 +134,18 @@ func TestManagerFollowsHandEdits(t *testing.T) {
 		t.Fatal("old root still served")
 	}
 }
+
+func TestWorkspaceExcludes(t *testing.T) {
+	code, _ := dirs(t)
+	write(t, filepath.Join(code, "repo", "CHANGELOG.md"), "")
+
+	ws, err := Open(config.Config{Roots: []config.Root{{Name: "code", Path: code}}, Exclude: []string{"CHANGELOG.md"}}, func(index.Event) {}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+
+	if ws.Has("code/repo/CHANGELOG.md") || !ws.Has("code/repo/plan.md") {
+		t.Fatal("exclude not applied")
+	}
+}

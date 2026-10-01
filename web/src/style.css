@@ -538,6 +538,34 @@ article {
   margin-top: 16px;
 }
 
+.settings .actions.save {
+  justify-content: flex-end;
+}
+
+.settings h2 {
+  margin: 40px 0 0;
+  font: 11px var(--cp-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-cyan);
+}
+
+.settings textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  resize: vertical;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px/1.5 var(--cp-mono);
+}
+
+.settings textarea:focus {
+  border-color: var(--cp-cyan);
+}
+
 .settings .error {
   padding: 10px 14px;
   border: 1px solid var(--cp-warn);
