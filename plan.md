@@ -145,6 +145,7 @@ The sidebar lists only files viewed in margin or modified in the last 14 days, c
 
 - `installs/margin` — builds and installs the binary. Requires installing `go`, which is currently missing.
 - `setups/margin` — installs and enables a systemd user unit.
+- `nginx/margin.conf` + `setups/nginx` — serve margin at http://margin.local through nginx on port 80; margin is started with `-host margin.local` so it accepts that name.
 - `bin/mp` — replaces the `mp` alias and opens `http://localhost:<port>/<path>`.
 - Optional: a dunst notification with a link when a markdown file changes, so files Claude writes are one click away.
 
