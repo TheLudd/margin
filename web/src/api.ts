@@ -19,9 +19,10 @@ export interface FileEntry {
   viewed?: string // when the file was last viewed in margin
 }
 
-export interface Recent {
-  viewed: string[]
-  modified: FileEntry[]
+export interface Activity {
+  path: string
+  at: string
+  kind: 'viewed' | 'modified' // whichever was last
 }
 
 // The service is the source of truth, so the browser cache is never used.
@@ -48,7 +49,7 @@ export async function fetchTree(): Promise<FileEntry[]> {
   return (await fetch('/api/tree', noStore)).json()
 }
 
-export async function fetchRecent(): Promise<Recent> {
+export async function fetchRecent(): Promise<Activity[]> {
   return (await fetch('/api/recent', noStore)).json()
 }
 

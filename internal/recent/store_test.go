@@ -3,12 +3,9 @@ package recent
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 )
-
-func all(string) bool { return true }
 
 // load returns a store whose clock advances a minute per view.
 func load(t *testing.T, path string) *Store {
@@ -23,22 +20,6 @@ func load(t *testing.T, path string) *Store {
 		return clock
 	}
 	return s
-}
-
-func TestLatest(t *testing.T) {
-	s := load(t, filepath.Join(t.TempDir(), "recent.json"))
-	for _, p := range []string{"a.md", "b.md", "c.md", "d.md", "b.md"} {
-		if err := s.Add(p); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if got := s.Latest(3, all); !slices.Equal(got, []string{"b.md", "d.md", "c.md"}) {
-		t.Fatalf("got %v", got)
-	}
-	if got := s.Latest(5, func(p string) bool { return p != "d.md" }); !slices.Equal(got, []string{"b.md", "c.md", "a.md"}) {
-		t.Fatalf("filtered got %v", got)
-	}
 }
 
 func TestViewed(t *testing.T) {
@@ -60,8 +41,8 @@ func TestForgetsOldViews(t *testing.T) {
 
 	s.Add("new.md")
 
-	if got := s.Latest(5, all); !slices.Equal(got, []string{"new.md"}) {
-		t.Fatalf("got %v", got)
+	if _, ok := s.Viewed("old.md"); ok {
+		t.Fatal("old view kept")
 	}
 }
 
@@ -76,8 +57,10 @@ func TestPersists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := reloaded.Latest(5, all); !slices.Equal(got, []string{"b.md", "a.md"}) {
-		t.Fatalf("got %v", got)
+	a, _ := reloaded.Viewed("a.md")
+	b, _ := reloaded.Viewed("b.md")
+	if !b.After(a) {
+		t.Fatalf("a %v, b %v", a, b)
 	}
 }
 
@@ -90,7 +73,9 @@ func TestLoadsLegacyList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := s.Latest(5, all); !slices.Equal(got, []string{"b.md", "a.md"}) {
-		t.Fatalf("got %v", got)
+	a, _ := s.Viewed("a.md")
+	b, okB := s.Viewed("b.md")
+	if !okB || !b.After(a) {
+		t.Fatalf("a %v, b %v", a, b)
 	}
 }

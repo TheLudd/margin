@@ -94,13 +94,6 @@ func (ix *Index) Has(rel string) bool {
 	return ok
 }
 
-// RecentlyModified returns the n most recently modified files.
-func (ix *Index) RecentlyModified(n int) []File {
-	files := ix.Files()
-	slices.SortStableFunc(files, func(a, b File) int { return b.ModTime.Compare(a.ModTime) })
-	return files[:min(n, len(files))]
-}
-
 // addTree scans abs, watching every directory it keeps, and returns the
 // markdown files it added.
 func (ix *Index) addTree(abs string) []string {

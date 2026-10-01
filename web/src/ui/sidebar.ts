@@ -1,4 +1,4 @@
-import type { Recent } from '../api'
+import type { Activity } from '../api'
 import { groupBy, isActive, type LogicalFile } from './copies'
 import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 
@@ -9,22 +9,31 @@ import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 export class Sidebar {
   private readonly recentEl = h('div', { class: 'recent' })
   private readonly treeEl = h('div', { class: 'tree' })
-  private readonly open_ = new Map<string, boolean>() // fold state by group key
+  private readonly open_ = loadFolds() // fold state by group key
   private current?: string
 
   constructor(
     root: HTMLElement,
     private readonly open: (path: string) => void,
   ) {
-    root.append(this.recentEl, h('h2', {}, 'Files'), this.treeEl)
+    root.append(
+      this.group('section:recent', h('h2', {}, 'Recent activity'), '', true, [this.recentEl], 'section'),
+      this.group('section:files', h('h2', {}, 'Files'), '', true, [this.treeEl], 'section'),
+    )
   }
 
-  renderRecent({ viewed, modified }: Recent) {
+  renderRecent(activity: Activity[]) {
     this.recentEl.replaceChildren(
-      h('h2', {}, 'Recently viewed'),
-      this.list(viewed.map((path) => this.entry(path, [path]))),
-      h('h2', {}, 'Recently modified'),
-      this.list(modified.map((f) => this.entry(f.path, [f.path], f.path, h('time', { datetime: f.mtime }, timeAgo(f.mtime))))),
+      this.list(
+        activity.map((a) =>
+          this.entry(
+            a.path,
+            [a.path],
+            a.path,
+            h('time', { datetime: a.at, class: a.kind, title: a.kind === 'viewed' ? 'viewed' : 'modified' }, timeAgo(a.at)),
+          ),
+        ),
+      ),
     )
     this.highlight()
   }
@@ -60,10 +69,18 @@ export class Sidebar {
     )
   }
 
-  // A foldable group that keeps its fold state across re-renders.
-  private group(key: string, label: HTMLElement, count: string, openByDefault: boolean, children: HTMLElement[]) {
-    const details = h('details', { 'data-key': key, open: this.open_.get(key) ?? openByDefault }, h('summary', {}, label, h('span', { class: 'count' }, count)), ...children)
-    details.addEventListener('toggle', () => this.open_.set(key, details.open))
+  // A foldable group that keeps its fold state across re-renders and reloads.
+  private group(key: string, label: HTMLElement, count: string, openByDefault: boolean, children: HTMLElement[], className?: string) {
+    const details = h(
+      'details',
+      { 'data-key': key, class: className, open: this.open_.get(key) ?? openByDefault },
+      h('summary', {}, label, h('span', { class: 'count' }, count)),
+      ...children,
+    )
+    details.addEventListener('toggle', () => {
+      this.open_.set(key, details.open)
+      saveFolds(this.open_)
+    })
     return details
   }
 
@@ -88,7 +105,8 @@ export class Sidebar {
     }
     // Unfold the groups around the open file, without overriding a fold the
     // user chose for other files.
-    for (let group = this.treeEl.querySelector('a.current')?.closest('details'); group; group = group.parentElement?.closest('details')) {
+    let group = this.treeEl.querySelector('a.current')?.closest('details')
+    for (; group && this.treeEl.contains(group); group = group.parentElement?.closest('details')) {
       group.open = true
     }
   }
@@ -103,6 +121,25 @@ export class Sidebar {
     const link = fileLink(path, this.open, h('span', { class: 'dir' }, dirName(label)), h('span', { class: 'name' }, fileName(label)), extra)
     link.dataset.paths = paths.join('\n')
     return link
+  }
+}
+
+const foldsKey = 'margin.folds'
+
+// Fold state is a per-browser convenience; storage may be unavailable.
+function loadFolds(): Map<string, boolean> {
+  try {
+    return new Map(Object.entries(JSON.parse(localStorage.getItem(foldsKey) ?? '{}')))
+  } catch {
+    return new Map()
+  }
+}
+
+function saveFolds(folds: Map<string, boolean>) {
+  try {
+    localStorage.setItem(foldsKey, JSON.stringify(Object.fromEntries(folds)))
+  } catch {
+    // not persisted
   }
 }
 

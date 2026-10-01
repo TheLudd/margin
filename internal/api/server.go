@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	recentLimit  = 5
+	recentLimit  = 8
 	maxFileSize  = 10 << 20
 	pingInterval = 20 * time.Second
 )
@@ -123,16 +124,40 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-type recentResponse struct {
-	Viewed   []string     `json:"viewed"`
-	Modified []index.File `json:"modified"`
+type activity struct {
+	Path string    `json:"path"`
+	At   time.Time `json:"at"`
+	Kind string    `json:"kind"` // "viewed" or "modified", whichever was last
 }
 
+// recent lists the files most recently viewed in margin or modified, most
+// recent first.
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, recentResponse{
-		Viewed:   s.Recent.Latest(recentLimit, s.Index.Has),
-		Modified: s.Index.RecentlyModified(recentLimit),
-	})
+	var all []activity
+	for _, f := range s.Index.Files() {
+		latest := activity{Path: f.Path}
+		if at, ok := s.modified(f); ok {
+			latest.At, latest.Kind = at, "modified"
+		}
+		if at, ok := s.Recent.Viewed(f.Path); ok && at.After(latest.At) {
+			latest.At, latest.Kind = at, "viewed"
+		}
+		if latest.Kind != "" {
+			all = append(all, latest)
+		}
+	}
+	slices.SortFunc(all, func(a, b activity) int { return b.At.Compare(a.At) })
+	writeJSON(w, all[:min(recentLimit, len(all))])
+}
+
+// modified reports when a file was last modified. A worktree's own copy
+// counts only when git says the worktree changed it, because checkouts
+// reset modification times.
+func (s *Server) modified(f index.File) (time.Time, bool) {
+	if s.Worktrees == nil || s.Worktrees.IsMain(f.Repo) {
+		return f.ModTime, true
+	}
+	return s.Worktrees.Changed(f.Repo, strings.TrimPrefix(f.Path, f.Repo+"/"))
 }
 
 func (s *Server) addRecent(w http.ResponseWriter, r *http.Request) {

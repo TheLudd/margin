@@ -143,18 +143,3 @@ func TestWatchDirectoryChanges(t *testing.T) {
 	expect(t, events, Event{Removed, "repo/docs/a.md"})
 	expect(t, events, Event{Added, "repo/moved/a.md"})
 }
-
-func TestRecentlyModified(t *testing.T) {
-	root := t.TempDir()
-	for i, name := range []string{"a.md", "b.md", "c.md"} {
-		path := filepath.Join(root, name)
-		write(t, path, "")
-		at := time.Now().Add(time.Duration(i) * time.Minute)
-		os.Chtimes(path, at, at)
-	}
-	ix, _ := watch(t, root)
-
-	if got := paths(ix.RecentlyModified(2)); !slices.Equal(got, []string{"c.md", "b.md"}) {
-		t.Fatalf("got %v", got)
-	}
-}

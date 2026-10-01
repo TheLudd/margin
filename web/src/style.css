@@ -237,8 +237,38 @@ kbd {
   color: var(--cp-muted);
 }
 
-#sidebar details details {
+#sidebar details[data-key='older'] details {
   margin-left: 10px;
+}
+
+#sidebar details.section {
+  margin-top: 12px;
+}
+
+#sidebar details.section > summary {
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 0;
+}
+
+#sidebar details.section > summary h2 {
+  margin: 0;
+}
+
+#sidebar details.section > div > ul {
+  margin-left: 0;
+}
+
+#sidebar details.section > summary .count {
+  display: none;
+}
+
+#sidebar time.modified {
+  color: var(--cp-cyan);
+}
+
+#sidebar time.modified::before {
+  content: '✎ ';
 }
 
 #sidebar details ul {

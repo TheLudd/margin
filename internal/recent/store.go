@@ -9,7 +9,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 )
@@ -62,26 +61,6 @@ func (s *Store) Viewed(rel string) (time.Time, bool) {
 	defer s.mu.Unlock()
 	at, ok := s.views[rel]
 	return at, ok
-}
-
-// Latest returns up to n of the most recently viewed paths accepted by exists,
-// most recent first.
-func (s *Store) Latest(n int, exists func(string) bool) []string {
-	s.mu.Lock()
-	paths := slices.Collect(maps.Keys(s.views))
-	slices.SortFunc(paths, func(a, b string) int { return s.views[b].Compare(s.views[a]) })
-	s.mu.Unlock()
-
-	out := []string{}
-	for _, p := range paths {
-		if len(out) == n {
-			break
-		}
-		if exists(p) {
-			out = append(out, p)
-		}
-	}
-	return out
 }
 
 func (s *Store) save() error {

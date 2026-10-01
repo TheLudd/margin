@@ -2,7 +2,7 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import './style.css'
 
-import { fetchRecent, fetchTree, markViewed, readFile, type Recent, writeFile } from './api'
+import { type Activity, fetchRecent, fetchTree, markViewed, readFile, writeFile } from './api'
 import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
@@ -17,7 +17,7 @@ import { Toc } from './ui/toc'
 const pollInterval = 15_000
 
 let files: LogicalFile[] = []
-let recent: Recent = { viewed: [], modified: [] }
+let recent: Activity[] = []
 let session: DocumentSession | undefined
 let editor: Editor | undefined
 let opening = 0
@@ -34,7 +34,7 @@ const finderItem = (f: LogicalFile) => ({ label: f.project ? `${f.project}/${f.r
 new Finder(
   () => files.filter((f) => isActive(f)).map(finderItem),
   () => files.filter((f) => !isActive(f)).map(finderItem),
-  () => recent.viewed.map((path) => ({ label: path, path })),
+  () => recent.map((a) => ({ label: a.path, path: a.path })),
   (path) => open(path),
 )
 

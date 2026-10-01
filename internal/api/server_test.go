@@ -208,18 +208,20 @@ func TestApp(t *testing.T) {
 	}
 }
 
-func TestRecent(t *testing.T) {
+func TestRecentLatestKindWins(t *testing.T) {
 	f := setup(t)
-	do(t, "POST", f.url+"/api/recent?path=repo/plan.md", "", nil)
-
-	var got recentResponse
-	json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
-
-	if len(got.Viewed) != 1 || got.Viewed[0] != "repo/plan.md" {
-		t.Fatalf("viewed %v", got.Viewed)
+	recentOf := func() []activity {
+		var got []activity
+		json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+		return got
 	}
-	if len(got.Modified) != 1 || got.Modified[0].Path != "repo/plan.md" {
-		t.Fatalf("modified %v", got.Modified)
+
+	if got := recentOf(); len(got) != 1 || got[0].Kind != "modified" || !got[0].At.Equal(time.Unix(100, 0)) {
+		t.Fatalf("before viewing: %+v", got)
+	}
+	do(t, "POST", f.url+"/api/recent?path=repo/plan.md", "", nil)
+	if got := recentOf(); len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Kind != "viewed" {
+		t.Fatalf("after viewing: %+v", got)
 	}
 	if unknown := do(t, "POST", f.url+"/api/recent?path=repo/nope.md", "", nil); unknown.StatusCode != 404 {
 		t.Fatalf("unknown file got %d", unknown.StatusCode)
