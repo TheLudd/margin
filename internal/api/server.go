@@ -17,6 +17,7 @@ import (
 	"margin/internal/files"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/workspace"
 )
 
 const (
@@ -25,25 +26,14 @@ const (
 	pingInterval = 20 * time.Second
 )
 
-// TreeChanged is published when file metadata other than content changes,
-// such as which worktree changed a file. Clients refetch the tree.
-const TreeChanged index.Kind = "tree"
-
-// Worktrees tells how repositories relate as git worktrees.
-type Worktrees interface {
-	Project(repo string) string
-	IsMain(repo string) bool
-	Changed(repo, rel string) (time.Time, bool)
-}
-
+// Paths in the API are workspace paths: the root name, then the path within
+// that root, as in code/gaius/plan.md.
 type Server struct {
-	Index     *index.Index
-	Files     *files.Store
-	Recent    *recent.Store
-	Events    *events.Hub[index.Event]
-	Worktrees Worktrees
-	Web       fs.FS // the built frontend: index.html and assets/
-	Port      int
+	Workspaces *workspace.Manager
+	Recent     *recent.Store
+	Events     *events.Hub[index.Event]
+	Web        fs.FS // the built frontend: index.html and assets/
+	Port       int
 }
 
 func (s *Server) Handler() http.Handler {
@@ -54,13 +44,18 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/recent", s.recent)
 	mux.HandleFunc("POST /api/recent", s.addRecent)
 	mux.HandleFunc("GET /api/events", s.events)
+	mux.HandleFunc("GET /api/settings", s.settings)
+	mux.HandleFunc("PUT /api/settings", s.saveSettings)
+	mux.HandleFunc("GET /api/dirs", s.dirs)
 	mux.Handle("GET /assets/", http.FileServerFS(s.Web))
 	mux.HandleFunc("GET /", s.app)
 	return guard(s.Port, mux)
 }
 
 type treeEntry struct {
-	index.File
+	Path    string     `json:"path"`
+	Repo    string     `json:"repo"`
+	ModTime time.Time  `json:"mtime"`
 	Project string     `json:"project"`
 	Main    bool       `json:"main"`              // the repo is its project's main checkout
 	Changed *time.Time `json:"changed,omitempty"` // when the repo changed the file relative to main
@@ -68,27 +63,51 @@ type treeEntry struct {
 }
 
 func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
-	files := s.Index.Files()
-	entries := make([]treeEntry, len(files))
-	for i, f := range files {
-		entries[i] = treeEntry{File: f, Project: f.Repo, Main: true}
-		if at, ok := s.Recent.Viewed(f.Path); ok {
-			entries[i].Viewed = &at
-		}
-		if s.Worktrees == nil {
-			continue
-		}
-		entries[i].Project = s.Worktrees.Project(f.Repo)
-		entries[i].Main = s.Worktrees.IsMain(f.Repo)
-		if at, ok := s.Worktrees.Changed(f.Repo, strings.TrimPrefix(f.Path, f.Repo+"/")); ok {
-			entries[i].Changed = &at
+	entries := []treeEntry{}
+	for _, root := range s.Workspaces.Workspace().Roots() {
+		for _, f := range root.Index.Files() {
+			e := treeEntry{
+				Path:    root.Join(f.Path),
+				Repo:    root.Join(f.Repo),
+				ModTime: f.ModTime,
+				Project: root.Join(root.Trees.Project(f.Repo)),
+				Main:    root.Trees.IsMain(f.Repo),
+			}
+			if at, ok := root.Trees.Changed(f.Repo, inRepo(f)); ok {
+				e.Changed = &at
+			}
+			if at, ok := s.Recent.Viewed(e.Path); ok {
+				e.Viewed = &at
+			}
+			entries = append(entries, e)
 		}
 	}
 	writeJSON(w, entries)
 }
 
+func inRepo(f index.File) string {
+	if f.Repo == "" {
+		return f.Path
+	}
+	return strings.TrimPrefix(f.Path, f.Repo+"/")
+}
+
+// file resolves a workspace path to its root's file store and the path in it.
+func (s *Server) file(path string) (*files.Store, string, error) {
+	root, rel, ok := s.Workspaces.Workspace().Resolve(path)
+	if !ok {
+		return nil, "", files.ErrNotFound
+	}
+	return root.Files, rel, nil
+}
+
 func (s *Server) readFile(w http.ResponseWriter, r *http.Request) {
-	doc, err := s.Files.Read(r.URL.Query().Get("path"))
+	store, rel, err := s.file(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	doc, err := store.Read(rel)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -115,7 +134,12 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 		return
 	}
-	etag, err := s.Files.Write(r.URL.Query().Get("path"), content, unquote(ifMatch))
+	store, rel, err := s.file(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	etag, err := store.Write(rel, content, unquote(ifMatch))
 	if err != nil {
 		writeError(w, err)
 		return
@@ -133,17 +157,19 @@ type activity struct {
 // recent lists the files most recently viewed in margin or modified, most
 // recent first.
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
-	var all []activity
-	for _, f := range s.Index.Files() {
-		latest := activity{Path: f.Path}
-		if at, ok := s.modified(f); ok {
-			latest.At, latest.Kind = at, "modified"
-		}
-		if at, ok := s.Recent.Viewed(f.Path); ok && at.After(latest.At) {
-			latest.At, latest.Kind = at, "viewed"
-		}
-		if latest.Kind != "" {
-			all = append(all, latest)
+	all := []activity{}
+	for _, root := range s.Workspaces.Workspace().Roots() {
+		for _, f := range root.Index.Files() {
+			latest := activity{Path: root.Join(f.Path)}
+			if at, ok := modified(root, f); ok {
+				latest.At, latest.Kind = at, "modified"
+			}
+			if at, ok := s.Recent.Viewed(latest.Path); ok && at.After(latest.At) {
+				latest.At, latest.Kind = at, "viewed"
+			}
+			if latest.Kind != "" {
+				all = append(all, latest)
+			}
 		}
 	}
 	slices.SortFunc(all, func(a, b activity) int { return b.At.Compare(a.At) })
@@ -153,16 +179,16 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 // modified reports when a file was last modified. A worktree's own copy
 // counts only when git says the worktree changed it, because checkouts
 // reset modification times.
-func (s *Server) modified(f index.File) (time.Time, bool) {
-	if s.Worktrees == nil || s.Worktrees.IsMain(f.Repo) {
+func modified(root *workspace.Root, f index.File) (time.Time, bool) {
+	if root.Trees.IsMain(f.Repo) {
 		return f.ModTime, true
 	}
-	return s.Worktrees.Changed(f.Repo, strings.TrimPrefix(f.Path, f.Repo+"/"))
+	return root.Trees.Changed(f.Repo, inRepo(f))
 }
 
 func (s *Server) addRecent(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	if !s.Index.Has(path) {
+	if !s.Workspaces.Workspace().Has(path) {
 		http.Error(w, "unknown file", http.StatusNotFound)
 		return
 	}
@@ -206,9 +232,10 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// app serves the single-page app for the root and for any markdown path.
+// app serves the single-page app for the root, the settings and any
+// markdown path.
 func (s *Server) app(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" && !strings.HasSuffix(strings.ToLower(r.URL.Path), ".md") {
+	if r.URL.Path != "/" && r.URL.Path != "/settings" && !strings.HasSuffix(strings.ToLower(r.URL.Path), ".md") {
 		http.NotFound(w, r)
 		return
 	}

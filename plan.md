@@ -4,11 +4,11 @@ status: implemented
 
 # margin — plan
 
-A local, always-running service to browse and edit the markdown files under `~/code` in the browser. It replaces `mp` (nvim + markdown-preview) for reading what Claude writes.
+A local, always-running service to browse and edit the markdown files in a set of configured folders (such as `~/code`) in the browser. It replaces `mp` (nvim + markdown-preview) for reading what Claude writes.
 
 ## Goals
 
-- Browse every `.md` file under `~/code` from the browser.
+- Browse every `.md` file in the configured folders from the browser.
 - Read and edit in the same view, with WYSIWYG editing and no separate source pane.
 - Show a TOC sidebar for every document, without needing `[[toc]]` in the file.
 - Never show a stale document.
@@ -18,7 +18,6 @@ A local, always-running service to browse and edit the markdown files under `~/c
 
 - Creating, renaming or deleting files. margin only edits existing files.
 - Real-time collaboration and multi-user support.
-- Roots other than `~/code`.
 
 ## Stack
 
@@ -33,7 +32,8 @@ A local, always-running service to browse and edit the markdown files under `~/c
 
 ```
 Go service (127.0.0.1:<port>)
-├── index    walks ~/code, keeps an in-memory list of .md files, watches with inotify
+├── workspace one index, file store and worktree tracker per configured root
+├── index    walks a root, keeps an in-memory list of .md files, watches with inotify
 ├── files    read/write with path checks and content-hash etags
 ├── recent   viewed + modified history, JSON in ~/.local/state/margin/
 ├── events   SSE stream: changed / added / removed
@@ -49,8 +49,8 @@ Browser
 
 Each package does one job and can be tested without the HTTP layer.
 
-- **`index`** — walks `~/code` and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
-- **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside `~/code`.
+- **`index`** — walks a root and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
+- **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
 - **`recent`** — records views and modifications and persists them to `~/.local/state/margin/recent.json`. The lists are capped.
 - **`events`** — fans index events out to the SSE subscribers.
 - **`api`** — handlers only, wiring the packages together.
@@ -100,6 +100,20 @@ The main risk. Milkdown serializes the whole document on save, which can normali
 - **Source-preserving save** (`preserveSource`): the original and the edited markdown are split into top-level blocks and matched by structure (LCS over the mdast with positions removed). Untouched blocks keep their original bytes, so a one-word edit gives a one-block diff.
 - **Round-trip report** (`make roundtrip`): loads every unique `.md` under `~/code` into the editor and lists the files an unchanged save would not reproduce exactly.
 
+## Configuration
+
+The folders margin serves (roots) are listed in `$XDG_CONFIG_HOME/margin/config.json`, falling back to `~/.config/margin/config.json`:
+
+```json
+{ "roots": [{ "name": "code", "path": "~/code" }, { "name": "notes", "path": "~/notes" }] }
+```
+
+- **Paths and URLs** start with the root's name: `/code/gaius/plan.md`. With a single root the name is left out of displayed paths, but kept in URLs.
+- **First run:** without a usable config, margin serves nothing and the browser shows a setup screen asking for folders.
+- **Settings** (`/settings`, the gear in the sidebar) adds, removes and renames roots. Saving validates the folders (they must exist, names must be unique, roots must not overlap), writes the file and re-indexes in place, without a restart.
+- **Hand edits** to the file are picked up live. A broken file keeps the current roots and its error is shown on the settings screen.
+- **Views** recorded before roots were named are moved to the root that has the file.
+
 ## Worktrees
 
 The same file checked out in several git worktrees is shown once in the sidebar and the finder, grouped by project. A project is a main checkout plus its linked worktrees, found by following each worktree's `.git` file. When they are laid out as `<name>/<worktree>`, the project is called `<name>`.
@@ -124,7 +138,8 @@ The sidebar lists only files viewed in margin or modified in the last 14 days, c
 
 - Binds to `127.0.0.1` only.
 - Validates the `Host` and `Origin` headers, against DNS rebinding and cross-site requests from pages open in the browser.
-- Resolves every path (including symlinks) and rejects anything outside `~/code`.
+- Resolves every path (including symlinks) and rejects anything outside its root.
+- The settings screen can change which folders margin serves and suggests folders anywhere on disk; it is protected by the same host and origin checks.
 
 ## Integration with newdotfiles
 

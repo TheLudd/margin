@@ -63,6 +63,30 @@ func (s *Store) Viewed(rel string) (time.Time, bool) {
 	return at, ok
 }
 
+// Rename moves views to new paths. rename returns a view's new path and
+// whether to move it; when two views end up on one path, the newer wins.
+func (s *Store) Rename(rename func(string) (string, bool)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	changed := false
+	for path, at := range maps.Clone(s.views) {
+		to, ok := rename(path)
+		if !ok || to == path {
+			continue
+		}
+		delete(s.views, path)
+		if existing, ok := s.views[to]; !ok || at.After(existing) {
+			s.views[to] = at
+		}
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+	return s.save()
+}
+
 func (s *Store) save() error {
 	data, err := json.Marshal(s.views)
 	if err != nil {

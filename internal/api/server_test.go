@@ -2,7 +2,6 @@ package api
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"io"
 	"net"
@@ -15,14 +14,15 @@ import (
 	"testing/fstest"
 	"time"
 
+	"margin/internal/config"
 	"margin/internal/events"
-	"margin/internal/files"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/workspace"
 )
 
 type fixture struct {
-	root string
+	root string // the folder served as the root named code
 	url  string
 }
 
@@ -30,30 +30,24 @@ func setup(t *testing.T) fixture {
 	t.Helper()
 	root := t.TempDir()
 	write(t, filepath.Join(root, "repo", "plan.md"), "v1")
+	configFile := filepath.Join(t.TempDir(), "config.json")
+	config.Save(configFile, config.Config{Roots: []config.Root{{Name: "code", Path: root}}})
 
 	hub := events.NewHub[index.Event]()
-	ix, err := index.New(root, hub.Publish)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	go ix.Run(ctx)
-	store, _ := files.New(root)
+	workspaces := workspace.NewManager(configFile, hub.Publish, nil)
 	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), time.Hour)
 
 	srv := httptest.NewUnstartedServer(nil)
 	s := &Server{
-		Index:     ix,
-		Files:     store,
-		Recent:    rec,
-		Events:    hub,
-		Worktrees: fakeWorktrees{},
-		Web:       fstest.MapFS{"index.html": {Data: []byte("<app>")}},
-		Port:      srv.Listener.Addr().(*net.TCPAddr).Port,
+		Workspaces: workspaces,
+		Recent:     rec,
+		Events:     hub,
+		Web:        fstest.MapFS{"index.html": {Data: []byte("<app>")}},
+		Port:       srv.Listener.Addr().(*net.TCPAddr).Port,
 	}
 	srv.Config.Handler = s.Handler()
 	srv.Start()
-	t.Cleanup(func() { srv.Close(); cancel(); ix.Close() })
+	t.Cleanup(func() { srv.Close(); workspaces.Close() })
 	return fixture{root: root, url: srv.URL}
 }
 
@@ -84,33 +78,25 @@ func bodyOf(res *http.Response) string {
 	return string(b)
 }
 
-type fakeWorktrees struct{}
-
-func (fakeWorktrees) Project(repo string) string { return "proj" }
-func (fakeWorktrees) IsMain(repo string) bool    { return false }
-func (fakeWorktrees) Changed(repo, rel string) (time.Time, bool) {
-	return time.Unix(100, 0), rel == "plan.md"
-}
-
 func TestTree(t *testing.T) {
 	f := setup(t)
 
 	var got []treeEntry
 	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
 
-	if len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Project != "proj" || got[0].Main || got[0].Changed == nil || got[0].Viewed != nil {
+	if len(got) != 1 || got[0].Path != "code/repo/plan.md" || got[0].Repo != "code/repo" || got[0].Project != "code/repo" || !got[0].Main || got[0].Viewed != nil {
 		t.Fatalf("got %+v", got)
 	}
 }
 
 func TestTreeIncludesViews(t *testing.T) {
 	f := setup(t)
-	do(t, "POST", f.url+"/api/recent?path=repo/plan.md", "", nil)
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
 
 	var got []treeEntry
 	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
 
-	if got[0].Viewed == nil {
+	if len(got) != 1 || got[0].Viewed == nil {
 		t.Fatal("view not reported")
 	}
 }
@@ -118,12 +104,12 @@ func TestTreeIncludesViews(t *testing.T) {
 func TestReadFile(t *testing.T) {
 	f := setup(t)
 
-	res := do(t, "GET", f.url+"/api/file?path=repo/plan.md", "", nil)
+	res := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil)
 
 	if res.StatusCode != 200 || bodyOf(res) != "v1" || res.Header.Get("ETag") == "" {
 		t.Fatalf("got %d", res.StatusCode)
 	}
-	again := do(t, "GET", f.url+"/api/file?path=repo/plan.md", "", map[string]string{"If-None-Match": res.Header.Get("ETag")})
+	again := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", map[string]string{"If-None-Match": res.Header.Get("ETag")})
 	if again.StatusCode != http.StatusNotModified {
 		t.Fatalf("revalidate got %d", again.StatusCode)
 	}
@@ -132,9 +118,10 @@ func TestReadFile(t *testing.T) {
 func TestReadFileErrors(t *testing.T) {
 	f := setup(t)
 	cases := map[string]int{
-		"repo/missing.md": 404,
-		"../x.md":         403,
-		"repo/plan.txt":   400,
+		"code/repo/missing.md": 404,
+		"code/../x.md":         403,
+		"other/plan.md":        404,
+		"code/repo/plan.txt":   400,
 	}
 	for path, want := range cases {
 		if got := do(t, "GET", f.url+"/api/file?path="+path, "", nil).StatusCode; got != want {
@@ -145,9 +132,9 @@ func TestReadFileErrors(t *testing.T) {
 
 func TestWriteFile(t *testing.T) {
 	f := setup(t)
-	etag := do(t, "GET", f.url+"/api/file?path=repo/plan.md", "", nil).Header.Get("ETag")
+	etag := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil).Header.Get("ETag")
 
-	res := do(t, "PUT", f.url+"/api/file?path=repo/plan.md", "v2", map[string]string{"If-Match": etag})
+	res := do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v2", map[string]string{"If-Match": etag})
 
 	if res.StatusCode != 204 {
 		t.Fatalf("got %d", res.StatusCode)
@@ -156,11 +143,11 @@ func TestWriteFile(t *testing.T) {
 	if string(content) != "v2" {
 		t.Fatalf("content %q", content)
 	}
-	stale := do(t, "PUT", f.url+"/api/file?path=repo/plan.md", "v3", map[string]string{"If-Match": etag})
+	stale := do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v3", map[string]string{"If-Match": etag})
 	if stale.StatusCode != http.StatusPreconditionFailed {
 		t.Fatalf("stale write got %d", stale.StatusCode)
 	}
-	if missing := do(t, "PUT", f.url+"/api/file?path=repo/plan.md", "v3", nil); missing.StatusCode != http.StatusPreconditionRequired {
+	if missing := do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v3", nil); missing.StatusCode != http.StatusPreconditionRequired {
 		t.Fatalf("write without If-Match got %d", missing.StatusCode)
 	}
 }
@@ -179,7 +166,7 @@ func TestGuard(t *testing.T) {
 		{"cross-site link", map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"}, 200},
 	}
 	for _, c := range cases {
-		req, _ := http.NewRequest("GET", f.url+"/repo/plan.md", nil)
+		req, _ := http.NewRequest("GET", f.url+"/code/repo/plan.md", nil)
 		for k, v := range c.headers {
 			req.Header.Set(k, v)
 		}
@@ -200,10 +187,10 @@ func TestGuard(t *testing.T) {
 func TestApp(t *testing.T) {
 	f := setup(t)
 
-	if body := bodyOf(do(t, "GET", f.url+"/repo/plan.md", "", nil)); body != "<app>" {
+	if body := bodyOf(do(t, "GET", f.url+"/code/repo/plan.md", "", nil)); body != "<app>" {
 		t.Fatalf("got %q", body)
 	}
-	if got := do(t, "GET", f.url+"/repo/main.go", "", nil).StatusCode; got != 404 {
+	if got := do(t, "GET", f.url+"/code/repo/main.go", "", nil).StatusCode; got != 404 {
 		t.Fatalf("non-markdown path got %d", got)
 	}
 }
@@ -216,14 +203,14 @@ func TestRecentLatestKindWins(t *testing.T) {
 		return got
 	}
 
-	if got := recentOf(); len(got) != 1 || got[0].Kind != "modified" || !got[0].At.Equal(time.Unix(100, 0)) {
+	if got := recentOf(); len(got) != 1 || got[0].Kind != "modified" {
 		t.Fatalf("before viewing: %+v", got)
 	}
-	do(t, "POST", f.url+"/api/recent?path=repo/plan.md", "", nil)
-	if got := recentOf(); len(got) != 1 || got[0].Path != "repo/plan.md" || got[0].Kind != "viewed" {
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+	if got := recentOf(); len(got) != 1 || got[0].Path != "code/repo/plan.md" || got[0].Kind != "viewed" {
 		t.Fatalf("after viewing: %+v", got)
 	}
-	if unknown := do(t, "POST", f.url+"/api/recent?path=repo/nope.md", "", nil); unknown.StatusCode != 404 {
+	if unknown := do(t, "POST", f.url+"/api/recent?path=code/repo/nope.md", "", nil); unknown.StatusCode != 404 {
 		t.Fatalf("unknown file got %d", unknown.StatusCode)
 	}
 }
@@ -246,13 +233,13 @@ func TestNeverStale(t *testing.T) {
 		},
 	}
 	for i, change := range changes {
-		etag := do(t, "GET", f.url+"/api/file?path=repo/plan.md", "", nil).Header.Get("ETag")
+		etag := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil).Header.Get("ETag")
 		content := "changed " + string(rune('a'+i))
 
 		change(content)
 
-		expectEvent(t, lines, `{"kind":"changed","path":"repo/plan.md"}`)
-		res := do(t, "GET", f.url+"/api/file?path=repo/plan.md", "", map[string]string{"If-None-Match": etag})
+		expectEvent(t, lines, `{"kind":"changed","path":"code/repo/plan.md"}`)
+		res := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", map[string]string{"If-None-Match": etag})
 		if res.StatusCode != 200 || bodyOf(res) != content {
 			t.Fatalf("change %d: got %d", i, res.StatusCode)
 		}

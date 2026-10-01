@@ -1,5 +1,6 @@
 import type { Activity } from '../api'
 import { groupBy, isActive, type LogicalFile } from './copies'
+import { display } from './display'
 import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 
 // The recent lists and every markdown file, grouped by project. Files
@@ -29,7 +30,7 @@ export class Sidebar {
           this.entry(
             a.path,
             [a.path],
-            a.path,
+            display(a.path),
             h('time', { datetime: a.at, class: a.kind, title: a.kind === 'viewed' ? 'viewed' : 'modified' }, timeAgo(a.at)),
           ),
         ),
@@ -61,7 +62,7 @@ export class Sidebar {
     return [...groupBy(files, (f) => f.project)].sort(order).map(([project, entries]) =>
       this.group(
         `${section}:${project}`,
-        h('span', {}, project || '~/code'),
+        h('span', {}, display(project) || project),
         String(entries.length),
         openByDefault,
         [this.list(entries.sort((a, b) => a.rel.localeCompare(b.rel)).map((f) => this.fileEntry(f)))],

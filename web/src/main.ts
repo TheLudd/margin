@@ -2,20 +2,23 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import './style.css'
 
-import { type Activity, fetchRecent, fetchTree, markViewed, readFile, writeFile } from './api'
+import { type Activity, fetchRecent, fetchSettings, fetchTree, markViewed, readFile, type Settings, writeFile } from './api'
 import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
 import { connect, debounce } from './sync'
 import { groupCopies, isActive, type LogicalFile } from './ui/copies'
+import { display, setRoots } from './ui/display'
 import { byId, fileUrl } from './ui/dom'
 import { DocumentView } from './ui/document-view'
 import { Finder } from './ui/finder'
+import { SettingsView } from './ui/settings-view'
 import { Sidebar } from './ui/sidebar'
 import { Toc } from './ui/toc'
 
 const pollInterval = 15_000
 
+let settings: Settings = { file: '', roots: [] }
 let files: LogicalFile[] = []
 let recent: Activity[] = []
 let session: DocumentSession | undefined
@@ -30,11 +33,15 @@ const view = new DocumentView(
   (path) => open(path),
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
-const finderItem = (f: LogicalFile) => ({ label: f.project ? `${f.project}/${f.rel}` : f.rel, path: f.preferred.path })
+const settingsView = new SettingsView(main, (saved) => {
+  applySettings(saved)
+  navigate('/')
+})
+const finderItem = (f: LogicalFile) => ({ label: display(`${f.project}/${f.rel}`), path: f.preferred.path })
 new Finder(
   () => files.filter((f) => isActive(f)).map(finderItem),
   () => files.filter((f) => !isActive(f)).map(finderItem),
-  () => recent.map((a) => ({ label: a.path, path: a.path })),
+  () => recent.map((a) => ({ label: display(a.path), path: a.path })),
   (path) => open(path),
 )
 
@@ -89,7 +96,8 @@ async function open(path: string, push = true) {
   refreshTree() // the file is now active
 }
 
-function showHome() {
+// Shows a page that isn't a document: home, setup or settings.
+function showPage(page: string, title: string) {
   ++opening
   session?.flush()
   session?.dispose()
@@ -97,17 +105,45 @@ function showHome() {
   session = undefined
   editor = undefined
   view.editorEl.replaceChildren()
-  main.dataset.view = 'home'
-  document.title = 'margin'
+  main.dataset.view = page
+  document.title = title
   sidebar.setCurrent(undefined)
   toc.build()
 }
 
 function route() {
   const path = decodeURIComponent(location.pathname.slice(1))
-  if (path === '') showHome()
-  else open(path, false)
+  if (path === 'settings') {
+    showPage('settings', 'Settings · margin')
+    settingsView.show('settings', settings)
+  } else if (settings.roots.length === 0) {
+    showPage('settings', 'Welcome · margin')
+    settingsView.show('setup', settings)
+  } else if (path === '') {
+    showPage('home', 'margin')
+  } else {
+    open(path, false)
+  }
 }
+
+function navigate(path: string) {
+  history.pushState(null, '', path)
+  route()
+}
+
+// Uses new settings. Gaining the first folder or losing the last one
+// switches between setup and the app, so the page is routed again.
+function applySettings(next: Settings, reroute = true) {
+  const hadRoots = settings.roots.length > 0
+  settings = next
+  setRoots(settings.roots.map((r) => r.name))
+  document.body.classList.toggle('setup', settings.roots.length === 0)
+  if (reroute && hadRoots !== settings.roots.length > 0) route()
+  refreshTree()
+  refreshRecent()
+}
+
+const refreshSettings = debounce(async () => applySettings(await fetchSettings()), 300)
 
 const refreshTree = debounce(async () => {
   files = groupCopies(await fetchTree())
@@ -132,6 +168,7 @@ connect({
   },
   event(event) {
     if (event.path === session?.path) revalidate()
+    if (event.kind === 'tree') refreshSettings() // roots may have changed
     if (event.kind !== 'changed') refreshTree()
     refreshRecent()
   },
@@ -169,4 +206,12 @@ view.editorEl.addEventListener('click', (event) => {
   }
 })
 
-route()
+byId('settings-link').addEventListener('click', (event) => {
+  event.preventDefault()
+  navigate('/settings')
+})
+
+fetchSettings().then((loaded) => {
+  applySettings(loaded, false)
+  route()
+})

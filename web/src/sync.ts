@@ -3,7 +3,7 @@
 // meantime are lost, so every (re)connect is reported to resynchronize.
 
 export interface FileEvent {
-  kind: 'added' | 'changed' | 'removed'
+  kind: 'added' | 'changed' | 'removed' | 'tree'
   path: string
 }
 

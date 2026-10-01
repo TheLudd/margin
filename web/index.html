@@ -8,7 +8,10 @@
   </head>
   <body>
     <aside id="sidebar">
-      <a class="brand" href="/">margin</a>
+      <div class="brand-row">
+        <a class="brand" href="/">margin</a>
+        <a id="settings-link" class="settings-link" href="/settings" title="Settings">⚙</a>
+      </div>
       <button class="find" type="button" onclick="document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))">
         Open file… <kbd>Ctrl K</kbd>
       </button>
@@ -18,7 +21,7 @@
         <h1>margin</h1>
         <p>Pick a file in the sidebar, or press <kbd>Ctrl K</kbd>.</p>
       </section>
-      <section class="not-found"><h1>Not found</h1><p>This file doesn't exist under ~/code.</p></section>
+      <section class="not-found"><h1>Not found</h1><p>This file doesn't exist in any of margin's folders.</p></section>
     </main>
     <nav id="toc" hidden></nav>
     <script type="module" src="/src/main.ts"></script>

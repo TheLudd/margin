@@ -1,5 +1,6 @@
 import type { State } from '../document/session'
 import { type LogicalFile, worktreeName } from './copies'
+import { display } from './display'
 import { h, timeAgo } from './dom'
 
 const statusText: Record<State, string> = {
@@ -45,7 +46,7 @@ export class DocumentView {
   }
 
   show(path: string, frontmatter: string) {
-    this.pathEl.textContent = path
+    this.pathEl.textContent = display(path)
     document.title = `${path.slice(path.lastIndexOf('/') + 1)} · margin`
     this.state('clean')
     this.frontmatter(frontmatter)

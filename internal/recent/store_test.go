@@ -79,3 +79,29 @@ func TestLoadsLegacyList(t *testing.T) {
 		t.Fatalf("a %v, b %v", a, b)
 	}
 }
+
+func TestRename(t *testing.T) {
+	s := load(t, filepath.Join(t.TempDir(), "recent.json"))
+	s.Add("plan.md")
+	s.Add("code/other.md")
+
+	err := s.Rename(func(p string) (string, bool) {
+		if p == "plan.md" {
+			return "code/plan.md", true
+		}
+		return "", false
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := s.Viewed("code/plan.md"); !ok {
+		t.Fatal("not moved")
+	}
+	if _, ok := s.Viewed("plan.md"); ok {
+		t.Fatal("old path kept")
+	}
+	if _, ok := s.Viewed("code/other.md"); !ok {
+		t.Fatal("unrelated view lost")
+	}
+}

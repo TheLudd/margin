@@ -56,3 +56,33 @@ export async function fetchRecent(): Promise<Activity[]> {
 export async function markViewed(path: string): Promise<void> {
   await fetch(`/api/recent?path=${encodeURIComponent(path)}`, { method: 'POST' })
 }
+
+export interface RootSettings {
+  name: string
+  path: string
+  files?: number
+}
+
+export interface Settings {
+  file: string // where the config is stored
+  roots: RootSettings[]
+  error?: string // why the config file could not be used
+}
+
+export async function fetchSettings(): Promise<Settings> {
+  return (await fetch('/api/settings', noStore)).json()
+}
+
+export type SaveResult = { kind: 'saved'; settings: Settings } | { kind: 'invalid'; message: string }
+
+export async function saveSettings(roots: RootSettings[]): Promise<SaveResult> {
+  const body = JSON.stringify({ roots: roots.map(({ name, path }) => ({ name, path })) })
+  const res = await fetch('/api/settings', { ...noStore, method: 'PUT', body, headers: { 'Content-Type': 'application/json' } })
+  if (res.status === 400) return { kind: 'invalid', message: (await res.text()).trim() }
+  if (!res.ok) throw new Error(`save settings: ${res.status}`)
+  return { kind: 'saved', settings: await res.json() }
+}
+
+export async function suggestDirs(path: string): Promise<string[]> {
+  return (await fetch(`/api/dirs?path=${encodeURIComponent(path)}`, noStore)).json()
+}
