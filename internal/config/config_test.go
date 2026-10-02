@@ -18,6 +18,29 @@ func TestFile(t *testing.T) {
 	if got := File(); got != "/home/u/.config/margin/config.json" {
 		t.Errorf("without XDG_CONFIG_HOME: %s", got)
 	}
+
+	t.Setenv("XDG_CONFIG_HOME", "relative")
+	if got := File(); got != "/home/u/.config/margin/config.json" {
+		t.Errorf("with a relative XDG_CONFIG_HOME: %s", got)
+	}
+}
+
+func TestStateDir(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/xdg")
+	if got := StateDir(); got != "/xdg/margin" {
+		t.Errorf("with XDG_STATE_HOME: %s", got)
+	}
+
+	t.Setenv("XDG_STATE_HOME", "")
+	t.Setenv("HOME", "/home/u")
+	if got := StateDir(); got != "/home/u/.local/state/margin" {
+		t.Errorf("without XDG_STATE_HOME: %s", got)
+	}
+
+	t.Setenv("XDG_STATE_HOME", "relative")
+	if got := StateDir(); got != "/home/u/.local/state/margin" {
+		t.Errorf("with a relative XDG_STATE_HOME: %s", got)
+	}
 }
 
 func TestLoadMissingIsEmpty(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
@@ -29,10 +28,9 @@ import (
 const defaultPort = 48217
 
 func main() {
-	home, _ := os.UserHomeDir()
 	configFile := flag.String("config", config.File(), "config file listing the folders to serve")
 	port := flag.Int("port", defaultPort, "port to listen on (127.0.0.1 only)")
-	state := flag.String("state", stateDir(home), "directory for margin's own state")
+	state := flag.String("state", config.StateDir(), "directory for margin's own state")
 	var hosts []string
 	flag.Func("host", "another name margin is reached by, such as margin.local behind a reverse proxy (repeatable)", func(host string) error {
 		hosts = append(hosts, host)
@@ -104,11 +102,4 @@ func migrateViews(viewed *recent.Store, ws *workspace.Workspace) {
 	if err != nil {
 		log.Printf("views: %v", err)
 	}
-}
-
-func stateDir(home string) string {
-	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
-		return filepath.Join(dir, "margin")
-	}
-	return filepath.Join(home, ".local", "state", "margin")
 }

@@ -42,11 +42,24 @@ func (c Config) Active() int {
 // File returns where the config lives: $XDG_CONFIG_HOME/margin/config.json,
 // falling back to ~/.config/margin/config.json.
 func File() string {
-	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
-		return filepath.Join(dir, "margin", "config.json")
+	return filepath.Join(xdgDir("XDG_CONFIG_HOME", ".config"), "margin", "config.json")
+}
+
+// StateDir returns where margin keeps its own state: $XDG_STATE_HOME/margin,
+// falling back to ~/.local/state/margin.
+func StateDir() string {
+	return filepath.Join(xdgDir("XDG_STATE_HOME", filepath.Join(".local", "state")), "margin")
+}
+
+// xdgDir returns the base directory named by the XDG variable env, falling
+// back to fallback in the home folder. As the spec says, a relative path in
+// env is ignored.
+func xdgDir(env, fallback string) string {
+	if dir := os.Getenv(env); filepath.IsAbs(dir) {
+		return dir
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "margin", "config.json")
+	return filepath.Join(home, fallback)
 }
 
 // Load reads the config at path. A missing file is an empty config.
