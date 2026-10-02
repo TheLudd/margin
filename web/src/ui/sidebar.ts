@@ -10,6 +10,7 @@ import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 export class Sidebar {
   private readonly recentEl = h('div', { class: 'recent' })
   private readonly olderEl = h('div', { class: 'tree' })
+  private readonly recentCount = h('span', { class: 'count' })
   private readonly olderCount = h('span', { class: 'count' })
   private readonly open_ = loadFolds() // fold state by group key
   private activity: Activity[] = []
@@ -23,7 +24,7 @@ export class Sidebar {
     private readonly forget: (path: string) => void,
   ) {
     root.append(
-      this.group('section:recent', h('h2', {}, 'Recent'), undefined, true, [this.recentEl], 'section'),
+      this.group('section:recent', h('h2', {}, 'Recent'), this.recentCount, true, [this.recentEl], 'section'),
       this.group('section:older', h('h2', {}, 'Older'), this.olderCount, false, [this.olderEl], 'section'),
     )
   }
@@ -51,6 +52,7 @@ export class Sidebar {
         : h('p', { class: 'empty' }, `Nothing in the last ${this.activeDays} ${this.activeDays === 1 ? 'day' : 'days'}`),
     )
     this.olderEl.replaceChildren(...this.projects('older', older, byName, false))
+    this.recentCount.textContent = String(this.activity.length)
     this.olderCount.textContent = String(older.length)
     this.highlight()
   }
@@ -80,7 +82,7 @@ export class Sidebar {
   }
 
   // A foldable group that keeps its fold state across re-renders and reloads.
-  private group(key: string, label: HTMLElement, count: HTMLElement | undefined, openByDefault: boolean, children: HTMLElement[], className?: string) {
+  private group(key: string, label: HTMLElement, count: HTMLElement, openByDefault: boolean, children: HTMLElement[], className?: string) {
     const details = h(
       'details',
       { 'data-key': key, class: className, open: this.open_.get(key) ?? openByDefault },
