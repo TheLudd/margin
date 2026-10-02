@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	recentLimit  = 8
 	maxFileSize  = 10 << 20
 	pingInterval = 20 * time.Second
 )
@@ -157,8 +156,8 @@ type activity struct {
 	Kind string    `json:"kind"` // "viewed" or "modified", whichever was last
 }
 
-// recent lists the files most recently viewed in margin or modified within
-// the active window, most recent first.
+// recent lists the files viewed in margin or modified within the active
+// window, most recent first.
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 	c, _ := s.Workspaces.Config()
 	since := time.Now().AddDate(0, 0, -c.Active())
@@ -181,7 +180,7 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	slices.SortFunc(all, func(a, b activity) int { return b.At.Compare(a.At) })
-	writeJSON(w, all[:min(recentLimit, len(all))])
+	writeJSON(w, all)
 }
 
 // modified reports when a file was last modified. A worktree's own copy

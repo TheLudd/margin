@@ -289,20 +289,6 @@ body.setup #sidebar > :not(.brand-row) {
   color: var(--cp-muted);
 }
 
-#sidebar details[data-key='older'] {
-  margin-top: 10px;
-  border-top: 1px solid var(--cp-line);
-  padding-top: 6px;
-}
-
-#sidebar details[data-key='older'] > summary {
-  color: var(--cp-muted);
-}
-
-#sidebar details[data-key='older'] details {
-  margin-left: 10px;
-}
-
 #sidebar details.section {
   margin-top: 12px;
 }
@@ -314,6 +300,7 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 #sidebar details.section > summary h2 {
+  flex: 1;
   margin: 0;
 }
 
@@ -322,7 +309,7 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 #sidebar details.section > summary .count {
-  display: none;
+  flex: none;
 }
 
 #sidebar time.modified {

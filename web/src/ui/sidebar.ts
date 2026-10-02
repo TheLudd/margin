@@ -1,16 +1,20 @@
 import type { Activity } from '../api'
-import { groupBy, isActive, type LogicalFile } from './copies'
+import { groupBy, type LogicalFile } from './copies'
 import { display } from './display'
 import { dirName, fileLink, fileName, h, timeAgo } from './dom'
 
-// The recent lists and every markdown file, grouped by project. Files
-// viewed or modified recently (see isActive) are listed; the rest are folded
-// under "Older". A file checked out in several worktrees is listed once and
-// opens the copy that was changed last.
+// Every markdown file, once: the ones viewed or modified within the active
+// window under "Recent", latest first, and the rest under "Older", grouped by
+// project. A file checked out in several worktrees is listed once and opens
+// the copy that was changed last.
 export class Sidebar {
   private readonly recentEl = h('div', { class: 'recent' })
-  private readonly treeEl = h('div', { class: 'tree' })
+  private readonly olderEl = h('div', { class: 'tree' })
+  private readonly olderCount = h('span', { class: 'count' })
   private readonly open_ = loadFolds() // fold state by group key
+  private activity: Activity[] = []
+  private files: LogicalFile[] = []
+  private activeDays = 0
   private current?: string
 
   constructor(
@@ -19,13 +23,35 @@ export class Sidebar {
     private readonly forget: (path: string) => void,
   ) {
     root.append(
-      this.group('section:recent', h('h2', {}, 'Recent activity'), '', true, [this.recentEl], 'section'),
-      this.group('section:files', h('h2', {}, 'Files'), '', true, [this.treeEl], 'section'),
+      this.group('section:recent', h('h2', {}, 'Recent'), undefined, true, [this.recentEl], 'section'),
+      this.group('section:older', h('h2', {}, 'Older'), this.olderCount, false, [this.olderEl], 'section'),
     )
   }
 
-  renderRecent(activity: Activity[]) {
-    this.recentEl.replaceChildren(this.list(activity.map((a) => this.recentEntry(a))))
+  // Shows activity, the files within an active window of activeDays.
+  renderRecent(activity: Activity[], activeDays: number) {
+    this.activity = activity
+    this.activeDays = activeDays
+    this.render()
+  }
+
+  renderTree(files: LogicalFile[]) {
+    this.files = files
+    this.render()
+  }
+
+  private render() {
+    const recent = new Set(this.activity.map((a) => a.path))
+    const older = this.files.filter((f) => !f.copies.some((c) => recent.has(c.path)))
+    const byName = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => a[0].localeCompare(b[0])
+
+    this.recentEl.replaceChildren(
+      this.activity.length
+        ? this.list(this.activity.map((a) => this.recentEntry(a)))
+        : h('p', { class: 'empty' }, `Nothing in the last ${this.activeDays} ${this.activeDays === 1 ? 'day' : 'days'}`),
+    )
+    this.olderEl.replaceChildren(...this.projects('older', older, byName, false))
+    this.olderCount.textContent = String(older.length)
     this.highlight()
   }
 
@@ -34,20 +60,6 @@ export class Sidebar {
     const remove = h('button', { type: 'button', class: 'forget', title: 'Remove from recent activity' }, '×')
     remove.addEventListener('click', () => this.forget(a.path))
     return h('div', { class: 'recent-entry' }, this.entry(a.path, [a.path], display(a.path), time), remove)
-  }
-
-  renderTree(files: LogicalFile[], activeDays: number, now = Date.now()) {
-    const active = files.filter((f) => isActive(f, activeDays, now))
-    const older = files.filter((f) => !isActive(f, activeDays, now))
-    const latest = (group: LogicalFile[]) => Math.max(...group.map((f) => f.activeAt))
-    const byRecency = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => latest(b[1]) - latest(a[1])
-    const byName = (a: [string, LogicalFile[]], b: [string, LogicalFile[]]) => a[0].localeCompare(b[0])
-
-    this.treeEl.replaceChildren(
-      ...(active.length ? this.projects('active', active, byRecency, true) : [h('p', { class: 'empty' }, `Nothing in the last ${activeDays} days`)]),
-      this.group('older', h('span', {}, 'Older'), String(older.length), false, this.projects('older', older, byName, false)),
-    )
-    this.highlight()
   }
 
   private projects(
@@ -60,7 +72,7 @@ export class Sidebar {
       this.group(
         `${section}:${project}`,
         h('span', {}, display(project) || project),
-        String(entries.length),
+        h('span', { class: 'count' }, String(entries.length)),
         openByDefault,
         [this.list(entries.sort((a, b) => a.rel.localeCompare(b.rel)).map((f) => this.fileEntry(f)))],
       ),
@@ -68,11 +80,11 @@ export class Sidebar {
   }
 
   // A foldable group that keeps its fold state across re-renders and reloads.
-  private group(key: string, label: HTMLElement, count: string, openByDefault: boolean, children: HTMLElement[], className?: string) {
+  private group(key: string, label: HTMLElement, count: HTMLElement | undefined, openByDefault: boolean, children: HTMLElement[], className?: string) {
     const details = h(
       'details',
       { 'data-key': key, class: className, open: this.open_.get(key) ?? openByDefault },
-      h('summary', {}, label, h('span', { class: 'count' }, count)),
+      h('summary', {}, label, count),
       ...children,
     )
     details.addEventListener('toggle', () => {
@@ -103,8 +115,8 @@ export class Sidebar {
     }
     // Unfold the groups around the open file, without overriding a fold the
     // user chose for other files.
-    let group = this.treeEl.querySelector('a.current')?.closest('details')
-    for (; group && this.treeEl.contains(group); group = group.parentElement?.closest('details')) {
+    let group = this.olderEl.querySelector('a.current')?.closest('details')
+    for (; group; group = group.parentElement?.closest('details')) {
       group.open = true
     }
   }

@@ -155,13 +155,13 @@ const refreshSettings = debounce(async () => applySettings(await fetchSettings()
 
 const refreshTree = debounce(async () => {
   files = groupCopies(await fetchTree())
-  sidebar.renderTree(files, settings.activeDays)
+  sidebar.renderTree(files)
   if (session) view.copies(copiesOf(session.path), session.path)
 }, 300)
 
 const refreshRecent = debounce(async () => {
   recent = await fetchRecent()
-  sidebar.renderRecent(recent)
+  sidebar.renderRecent(recent, settings.activeDays)
 }, 300)
 
 const revalidate = debounce(() => session?.revalidate(), 50)
@@ -190,7 +190,7 @@ setInterval(() => {
 }, pollInterval)
 
 // The active window moves with time, not only with changes.
-setInterval(() => sidebar.renderTree(files, settings.activeDays), 10 * 60_000)
+setInterval(refreshRecent, 10 * 60_000)
 
 window.addEventListener('popstate', route)
 window.addEventListener('beforeunload', (event) => {

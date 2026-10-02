@@ -69,7 +69,7 @@ export class Finder {
     } else {
       const older = fuzzyFilter(query, this.olderFiles(), (f) => f.label, Infinity)
       this.olderMatches = older.length
-      this.sections = [section('Active', fuzzyFilter(query, this.files(), (f) => f.label, Infinity), limit)]
+      this.sections = [section('Recent', fuzzyFilter(query, this.files(), (f) => f.label, Infinity), limit)]
       if (this.includeOlder) this.sections.push(section('Older', older, limit))
     }
     this.results = this.sections.flatMap((section) => section.items)
