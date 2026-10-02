@@ -49,6 +49,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/settings", s.settings)
 	mux.HandleFunc("PUT /api/settings", s.saveSettings)
 	mux.HandleFunc("GET /api/dirs", s.dirs)
+	mux.HandleFunc("GET /api/home-folders", s.homeFolders)
 	mux.Handle("GET /assets/", http.FileServerFS(s.Web))
 	mux.HandleFunc("GET /", s.app)
 	return guard(s.Port, s.Hosts, mux)

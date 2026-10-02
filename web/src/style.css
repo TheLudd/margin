@@ -575,6 +575,36 @@ article {
   cursor: wait;
 }
 
+.settings .suggestions .loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--cp-muted);
+  font: 13px var(--cp-mono);
+}
+
+.settings .suggestions .loading .spinner {
+  --size: 16px;
+}
+
+.settings .suggestion {
+  min-height: 36px;
+  font: 14px var(--cp-mono);
+}
+
+.settings .suggestion .path {
+  color: var(--cp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings button.add {
+  padding: 6px 0;
+  color: var(--cp-cyan);
+}
+
 .settings .actions {
   display: flex;
   justify-content: space-between;
@@ -661,9 +691,11 @@ dialog.busy p {
   margin: 0;
 }
 
-dialog.busy .spinner {
-  width: 32px;
-  height: 32px;
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: var(--size, 32px);
+  height: var(--size, 32px);
   border: 2px solid var(--cp-line);
   border-top-color: var(--cp-magenta);
   border-right-color: var(--cp-cyan);

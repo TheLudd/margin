@@ -1,13 +1,18 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"margin/internal/config"
 )
 
-const suggestionLimit = 20
+const (
+	suggestionLimit = 20
+	countTimeout    = 3 * time.Second // how long home folders are counted
+)
 
 type rootSettings struct {
 	Name  string `json:"name"`
@@ -64,4 +69,12 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 // dirs suggests folders completing a partly typed path.
 func (s *Server) dirs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, config.SuggestDirs(r.URL.Query().Get("path"), suggestionLimit))
+}
+
+// homeFolders suggests the folders in the home folder that hold markdown.
+func (s *Server) homeFolders(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), countTimeout)
+	defer cancel()
+	c, _ := s.Workspaces.Config()
+	writeJSON(w, config.HomeFolders(ctx, c.Excluded))
 }

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"margin/internal/config"
 )
 
 func settingsOf(t *testing.T, res *http.Response) settingsResponse {
@@ -71,6 +73,20 @@ func TestDirs(t *testing.T) {
 	json.NewDecoder(do(t, "GET", f.url+"/api/dirs?path="+f.root+"/", "", nil).Body).Decode(&got)
 
 	if len(got) != 1 || got[0] != filepath.Join(f.root, "repo") {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestHomeFolders(t *testing.T) {
+	f := setup(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	write(t, filepath.Join(home, "docs", "readme.md"), "")
+
+	var got []config.Folder
+	json.NewDecoder(do(t, "GET", f.url+"/api/home-folders", "", nil).Body).Decode(&got)
+
+	if len(got) != 1 || got[0] != (config.Folder{Path: "~/docs", Files: 1, Complete: true}) {
 		t.Fatalf("got %v", got)
 	}
 }

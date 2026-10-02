@@ -93,3 +93,13 @@ export async function saveSettings(roots: RootSettings[], exclude: string[], act
 export async function suggestDirs(path: string): Promise<string[]> {
   return (await fetch(`/api/dirs?path=${encodeURIComponent(path)}`, noStore)).json()
 }
+
+export interface Folder {
+  path: string // with a leading ~
+  files: number
+  complete: boolean // false if counting ran out of time, making files a lower bound
+}
+
+export async function fetchHomeFolders(): Promise<Folder[]> {
+  return (await fetch('/api/home-folders', noStore)).json()
+}

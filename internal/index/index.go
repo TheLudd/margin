@@ -4,7 +4,6 @@ package index
 
 import (
 	"cmp"
-	"io/fs"
 	"log"
 	"os"
 	"path"
@@ -37,8 +36,6 @@ type File struct {
 }
 
 type Index struct {
-	root    string
-	exclude func(rel string) bool // files to leave out, by root-relative path
 	emit    func(Event)
 	watcher *fsnotify.Watcher
 
@@ -46,9 +43,9 @@ type Index struct {
 	files map[string]File
 
 	// Only touched while scanning in New and by the Run goroutine after.
-	ignore ignorer
-	repos  map[string]bool
-	dirs   map[string]bool
+	scope
+	repos map[string]bool
+	dirs  map[string]bool
 }
 
 // New scans root and starts watching it, leaving out the files exclude
@@ -63,8 +60,7 @@ func New(root string, exclude func(rel string) bool, emit func(Event)) (*Index, 
 		return nil, err
 	}
 	ix := &Index{
-		root:    resolved,
-		exclude: exclude,
+		scope:   scope{root: resolved, exclude: exclude},
 		emit:    emit,
 		watcher: watcher,
 		files:   map[string]File{},
@@ -101,48 +97,24 @@ func (ix *Index) Has(rel string) bool {
 // markdown files it added.
 func (ix *Index) addTree(abs string) []string {
 	var added []string
-	filepath.WalkDir(abs, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			if d != nil && d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		rel := ix.rel(p)
-		if d.IsDir() {
-			if rel != "" && ix.skipDir(rel, d.Name()) {
-				return fs.SkipDir
-			}
-			ix.enterDir(p, rel)
-			return nil
-		}
-		if ix.wanted(rel) && ix.put(p, rel) {
+	ix.walk(abs, ix.enterDir, func(p, rel string) {
+		if ix.put(p, rel) {
 			added = append(added, rel)
 		}
-		return nil
 	})
 	return added
 }
 
-// wanted reports whether the file at rel belongs in the index.
-func (ix *Index) wanted(rel string) bool {
-	return isMarkdown(rel) && !ix.ignore.ignored(rel, false) && (ix.exclude == nil || !ix.exclude(rel))
-}
-
-func (ix *Index) skipDir(rel, name string) bool {
-	return skippedDirs[name] || ix.ignore.ignored(rel, true)
-}
-
-func (ix *Index) enterDir(abs, rel string) {
-	ix.ignore.load(abs, rel)
+func (ix *Index) enterDir(abs, rel string) error {
 	if _, err := os.Lstat(filepath.Join(abs, ".git")); err == nil {
 		ix.repos[rel] = true
 	}
 	if err := ix.watcher.Add(abs); err != nil {
 		log.Printf("watch %s: %v", abs, err)
-		return
+		return nil
 	}
 	ix.dirs[abs] = true
+	return nil
 }
 
 // put records the file at abs and reports whether it is new to the index.
@@ -194,16 +166,4 @@ func (ix *Index) repoOf(rel string) string {
 		return top
 	}
 	return ""
-}
-
-func (ix *Index) rel(abs string) string {
-	rel, err := filepath.Rel(ix.root, abs)
-	if err != nil || rel == "." {
-		return ""
-	}
-	return filepath.ToSlash(rel)
-}
-
-func isMarkdown(name string) bool {
-	return strings.HasSuffix(strings.ToLower(name), ".md")
 }

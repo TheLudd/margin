@@ -175,3 +175,23 @@ func TestExclude(t *testing.T) {
 		t.Fatal("excluded file added by the watcher")
 	}
 }
+
+func TestCount(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ".gitignore"), "build/\n")
+	write(t, filepath.Join(root, "a.md"), "")
+	write(t, filepath.Join(root, "repo", "b.md"), "")
+	write(t, filepath.Join(root, "repo", "CHANGELOG.md"), "")
+	write(t, filepath.Join(root, "build", "c.md"), "")
+	write(t, filepath.Join(root, "node_modules", "d.md"), "")
+	exclude := func(rel string) bool { return strings.HasSuffix(rel, "CHANGELOG.md") }
+
+	if n, complete := Count(context.Background(), root, exclude); n != 2 || !complete {
+		t.Errorf("got %d, %v", n, complete)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if n, complete := Count(ctx, root, exclude); n != 0 || complete {
+		t.Errorf("cancelled: got %d, %v", n, complete)
+	}
+}

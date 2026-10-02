@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,5 +32,21 @@ func TestSuggestDirs(t *testing.T) {
 	}
 	if got := SuggestDirs("~/", 1); len(got) != 1 {
 		t.Errorf("limit: got %v", got)
+	}
+}
+
+func TestHomeFolders(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	for _, file := range []string{"code/a/plan.md", "code/b/notes.md", "docs/readme.md", "docs/CHANGELOG.md", ".config/x.md", "Videos/clip.mp4"} {
+		os.MkdirAll(filepath.Join(home, filepath.Dir(file)), 0o755)
+		os.WriteFile(filepath.Join(home, file), nil, 0o644)
+	}
+	os.WriteFile(filepath.Join(home, "loose.md"), nil, 0o644)
+
+	got := HomeFolders(context.Background(), func(rel string) bool { return filepath.Base(rel) == "CHANGELOG.md" })
+	want := []Folder{{Path: "~/code", Files: 2, Complete: true}, {Path: "~/docs", Files: 1, Complete: true}}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }

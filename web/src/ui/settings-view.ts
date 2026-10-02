@@ -1,11 +1,12 @@
-import { type RootSettings, saveSettings, type Settings, suggestDirs } from '../api'
+import { type Folder, type RootSettings, saveSettings, type Settings, suggestDirs } from '../api'
 import { debounce } from '../sync'
 import { BusyOverlay } from './busy-overlay'
-import { h } from './dom'
+import { fileName, h } from './dom'
+import { fileCount, FolderSuggestions } from './folder-suggestions'
 
 export type SettingsMode = 'setup' | 'settings'
 
-const baseName = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? ''
+const baseName = (path: string) => fileName(path.replace(/\/+$/, ''))
 
 // Edits the folders margin serves. In setup mode it is the first screen,
 // shown while no folder is configured.
@@ -17,6 +18,7 @@ export class SettingsView {
   private readonly errorEl = h('p', { class: 'error', hidden: true })
   private readonly saveButton = h('button', { class: 'primary', type: 'button' })
   private readonly busy = new BusyOverlay()
+  private readonly suggestions = new FolderSuggestions((folder) => this.addSuggested(folder))
   private rows: Row[] = []
 
   constructor(
@@ -36,9 +38,13 @@ export class SettingsView {
       ...(mode === 'setup'
         ? [h('h1', {}, 'Welcome to margin'), h('p', {}, 'Which folders should margin serve? Every markdown file in them can be read and edited here.')]
         : [h('h1', {}, 'Settings'), h('p', {}, 'The folders margin serves. Each name is the first part of every path in it.')]),
+      h('h2', {}, 'Folders'),
       h('div', { class: 'roots-head' }, h('span', {}, 'Name'), h('span', {}, 'Folder'), h('span', {}, 'Files')),
       this.rowsEl,
       h('div', { class: 'actions' }, add),
+      h('h2', {}, 'Suggested'),
+      h('p', {}, 'Folders in your home that hold markdown.'),
+      this.suggestions.element,
       h('h2', {}, 'Hidden files'),
       h(
         'p',
@@ -58,18 +64,37 @@ export class SettingsView {
     this.rows = []
     const roots = settings.roots.length ? settings.roots : [{ name: '', path: '' }]
     for (const root of roots) this.addRow(root)
+    this.suggestions.load()
     this.showError(settings.error ? `The config file could not be used: ${settings.error}` : '')
     if (mode === 'setup') this.rows[0]?.focus()
   }
 
-  private addRow(root: RootSettings): Row {
-    const row = new Row(root, () => {
-      this.rows = this.rows.filter((r) => r !== row)
-      row.element.remove()
-    })
+  private addRow(root: RootSettings, files = root.files === undefined ? '' : String(root.files)): Row {
+    const row = new Row(
+      root,
+      files,
+      () => {
+        this.rows = this.rows.filter((r) => r !== row)
+        row.element.remove()
+        this.excludeServed()
+      },
+      () => this.excludeServed(),
+    )
     this.rows.push(row)
     this.rowsEl.append(row.element)
+    this.excludeServed()
     return row
+  }
+
+  // Adds a suggested folder in place of any blank rows.
+  private addSuggested(folder: Folder) {
+    for (const row of this.rows.filter((r) => r.isBlank())) row.element.remove()
+    this.rows = this.rows.filter((r) => !r.isBlank())
+    this.addRow({ name: baseName(folder.path), path: folder.path }, fileCount(folder))
+  }
+
+  private excludeServed() {
+    this.suggestions.exclude(this.rows.map((r) => r.value().path))
   }
 
   private async save() {
@@ -106,7 +131,7 @@ class Row {
   private readonly path = h('input', { type: 'text', placeholder: '~/code', spellcheck: 'false' })
   private autoName: boolean // the name follows the folder until edited
 
-  constructor(root: RootSettings, remove: () => void) {
+  constructor(root: RootSettings, files: string, remove: () => void, changed: () => void) {
     const suggestions = h('datalist', { id: `folders-${++rowIds}` })
     this.path.setAttribute('list', suggestions.id)
     this.name.value = root.name
@@ -121,6 +146,7 @@ class Row {
     this.path.addEventListener('input', () => {
       if (this.autoName) this.name.value = baseName(this.path.value)
       suggest()
+      changed()
     })
     this.name.addEventListener('input', () => (this.autoName = this.name.value === ''))
 
@@ -132,13 +158,18 @@ class Row {
       this.name,
       this.path,
       suggestions,
-      h('span', { class: 'files' }, root.files === undefined ? '' : String(root.files)),
+      h('span', { class: 'files' }, files),
       removeButton,
     )
   }
 
   value(): RootSettings {
     return { name: this.name.value.trim(), path: this.path.value.trim().replace(/(.)\/+$/, '$1') }
+  }
+
+  isBlank(): boolean {
+    const { name, path } = this.value()
+    return name === '' && path === ''
   }
 
   focus() {
