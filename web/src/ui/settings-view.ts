@@ -1,5 +1,6 @@
 import { type RootSettings, saveSettings, type Settings, suggestDirs } from '../api'
 import { debounce } from '../sync'
+import { BusyOverlay } from './busy-overlay'
 import { h } from './dom'
 
 export type SettingsMode = 'setup' | 'settings'
@@ -15,8 +16,8 @@ export class SettingsView {
   private readonly activeDays = h('input', { type: 'number', min: '1', max: '365', class: 'days' })
   private readonly errorEl = h('p', { class: 'error', hidden: true })
   private readonly saveButton = h('button', { class: 'primary', type: 'button' })
+  private readonly busy = new BusyOverlay()
   private rows: Row[] = []
-  private saveLabel = 'Save'
 
   constructor(
     main: HTMLElement,
@@ -29,8 +30,7 @@ export class SettingsView {
   show(mode: SettingsMode, settings: Settings) {
     const add = h('button', { type: 'button' }, '+ Add folder')
     add.addEventListener('click', () => this.addRow({ name: '', path: '' }).focus())
-    this.saveLabel = mode === 'setup' ? 'Start' : 'Save'
-    this.saveButton.textContent = this.saveLabel
+    this.saveButton.textContent = mode === 'setup' ? 'Start' : 'Save'
 
     this.section.replaceChildren(
       ...(mode === 'setup'
@@ -75,10 +75,9 @@ export class SettingsView {
   private async save() {
     const roots = this.rows.map((r) => r.value()).filter((r) => r.name || r.path)
     this.saveButton.disabled = true
-    this.saveButton.textContent = 'Indexing…'
     try {
       const exclude = this.exclude.value.split('\n').map((line) => line.trim()).filter(Boolean)
-      const result = await saveSettings(roots, exclude, Number(this.activeDays.value))
+      const result = await this.busy.during('Indexing…', saveSettings(roots, exclude, Number(this.activeDays.value)))
       if (result.kind === 'invalid') {
         this.showError(result.message)
         return
@@ -89,7 +88,6 @@ export class SettingsView {
       this.showError((error as Error).message)
     } finally {
       this.saveButton.disabled = false
-      this.saveButton.textContent = this.saveLabel
     }
   }
 

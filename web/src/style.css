@@ -633,6 +633,50 @@ article {
   font: 12px var(--cp-mono);
 }
 
+/* Busy overlay */
+dialog.busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-text);
+  font: 13px var(--cp-mono);
+  outline: 0;
+}
+
+dialog.busy:not([open]) {
+  display: none;
+}
+
+dialog.busy::backdrop {
+  background: #05060fcc;
+  backdrop-filter: blur(3px);
+}
+
+dialog.busy p {
+  margin: 0;
+}
+
+dialog.busy .spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--cp-line);
+  border-top-color: var(--cp-magenta);
+  border-right-color: var(--cp-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* TOC */
 #toc {
   overflow-y: auto;
