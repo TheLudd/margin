@@ -40,7 +40,7 @@ export class ChangesView {
   private pulsing?: number
   private timer?: ReturnType<typeof setTimeout>
   readonly el = h('span', { class: 'changes', hidden: true }, this.countEl, this.previousEl, this.nextEl, this.markEl)
-  readonly commitEl = h('button', { type: 'button', class: 'commit', hidden: true })
+  readonly commitEl = h('button', { type: 'button', class: 'badge commit', hidden: true })
 
   constructor(
     private readonly scroller: HTMLElement,
@@ -67,6 +67,7 @@ export class ChangesView {
     this.commitEl.hidden = committed === undefined
     this.commitEl.textContent = committed ? 'committed' : 'uncommitted'
     this.commitEl.disabled = committed !== false
+    this.commitEl.classList.toggle('unstable', committed === false)
     this.commitEl.title = current === 'committed' ? 'Show unread changes' : 'Show the changes since the last commit'
     this.commitEl.classList.toggle('active', current === 'committed')
     this.update()

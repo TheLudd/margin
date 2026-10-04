@@ -398,18 +398,64 @@ body.setup #sidebar > :not(.brand-row) {
   display: none;
 }
 
-.doc-header .status {
+/* Status badges, sitting together. Each is as wide as its longest value,
+   so the header doesn't shift as values change; stable values are dim. */
+.doc-header .badges {
+  display: flex;
   flex-shrink: 0;
-  color: var(--cp-muted);
+  align-self: center;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  overflow: hidden;
 }
 
-.doc-header .status[data-state='dirty'],
-.doc-header .status[data-state='saving'] {
-  color: var(--cp-cyan);
+.doc-header .badge {
+  box-sizing: content-box;
+  width: calc(var(--chars) * (1ch + 0.1em));
+  padding: 1px 8px;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.6;
+}
+
+.doc-header .badge[hidden] {
+  display: none;
+}
+
+.doc-header .badge.unstable {
+  --tint: var(--cp-cyan);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .commit {
+  --chars: 11; /* uncommitted */
+}
+
+.doc-header .commit.unstable {
+  --tint: var(--cp-warn);
+  cursor: pointer;
+}
+
+.doc-header .commit.unstable:hover,
+.doc-header .commit.active {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
+.doc-header .status {
+  --chars: 8; /* conflict, retrying */
 }
 
 .doc-header .status:is([data-state='conflict'], [data-state='missing'], [data-state='error']) {
-  color: var(--cp-warn);
+  --tint: var(--change-removed);
 }
 
 .banner {
@@ -958,34 +1004,6 @@ article:has(.ProseMirror:focus) {
 
 .doc-header .changes .mark-read {
   color: var(--change-added);
-}
-
-.doc-header .commit {
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--cp-muted);
-  font: inherit;
-}
-
-.doc-header .commit[hidden] {
-  display: none;
-}
-
-.doc-header .commit:not(:disabled) {
-  color: var(--cp-warn);
-  cursor: pointer;
-}
-
-.doc-header .commit:not(:disabled):hover {
-  text-decoration: underline;
-}
-
-.doc-header .commit.active {
-  text-decoration: underline;
-  text-decoration-color: var(--cp-warn);
-  text-underline-offset: 3px;
 }
 
 .milkdown .ProseMirror .change-block {

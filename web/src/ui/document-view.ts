@@ -11,7 +11,7 @@ const statusText: Record<State, string> = {
   saving: 'saving',
   conflict: 'conflict',
   missing: 'deleted',
-  error: 'save failed, retrying',
+  error: 'retrying',
 }
 
 export interface ConflictActions {
@@ -23,7 +23,7 @@ export interface ConflictActions {
 // and the frontmatter panel.
 export class DocumentView {
   private readonly pathEl = h('span', { class: 'path' })
-  private readonly statusEl = h('span', { class: 'status' })
+  private readonly statusEl = h('span', { class: 'badge status' })
   private readonly worktreeEl = h('select', { class: 'worktree', title: 'Worktree', hidden: true })
   private readonly bannerEl = h('div', { class: 'banner', hidden: true })
   private readonly textarea = h('textarea', { spellcheck: 'false' })
@@ -38,7 +38,7 @@ export class DocumentView {
     commit: HTMLElement,
   ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'mode' }, 'editing'), commit, this.statusEl),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'mode' }, 'editing'), h('span', { class: 'badges' }, commit, this.statusEl)),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )
@@ -90,6 +90,8 @@ export class DocumentView {
   state(state: State, actions?: ConflictActions) {
     this.statusEl.textContent = statusText[state]
     this.statusEl.dataset.state = state
+    this.statusEl.classList.toggle('unstable', state !== 'clean')
+    this.statusEl.title = state === 'error' ? 'Saving failed; retrying' : ''
     this.bannerEl.hidden = state !== 'conflict' && state !== 'missing'
     if (state === 'missing') {
       this.bannerEl.replaceChildren('This file was deleted or moved. Edits are not saved.')
