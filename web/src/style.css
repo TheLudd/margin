@@ -162,6 +162,28 @@ body.setup #sidebar > :not(.brand-row) {
   background: var(--cp-raised);
 }
 
+/* Unread changes: a colored name and a dot in the padding, so marking
+   files read never moves anything */
+#sidebar li a.unread {
+  position: relative;
+}
+
+#sidebar li a.unread::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - 2px);
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cp-code);
+  box-shadow: 0 0 4px var(--cp-code);
+}
+
+#sidebar li a.unread .name {
+  color: var(--cp-code);
+}
+
 #sidebar li a.current {
   background: var(--cp-raised);
   border-left-color: var(--cp-magenta);

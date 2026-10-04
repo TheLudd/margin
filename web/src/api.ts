@@ -68,6 +68,11 @@ export async function markSeen(path: string, etag: string): Promise<boolean> {
   return true
 }
 
+// The files changed since they were last read.
+export async function fetchUnread(): Promise<string[]> {
+  return (await fetch('/api/unread', noStore)).json()
+}
+
 export async function fetchTree(): Promise<FileEntry[]> {
   return (await fetch('/api/tree', noStore)).json()
 }

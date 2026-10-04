@@ -66,6 +66,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 | PUT | `/api/file?path=` | Save; requires `If-Match`, otherwise `412` |
 | GET | `/api/seen?path=` | The file as last read |
 | PUT | `/api/seen?path=` | Mark the version with the `If-Match` etag read; otherwise `412` |
+| GET | `/api/unread` | The files changed since they were last read |
 | GET | `/api/committed?path=` | The file as committed in `HEAD`; `404` when not committed |
 | GET | `/api/recent` | Recently viewed and recently modified |
 | GET | `/api/events` | SSE stream |

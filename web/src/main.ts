@@ -7,6 +7,7 @@ import {
   fetchRecent,
   fetchSettings,
   fetchTree,
+  fetchUnread,
   forgetRecent,
   markSeen,
   markViewed,
@@ -107,7 +108,10 @@ async function open(path: string, push = true) {
     state: (state) => {
       view.state(state, current)
       // Saved or reloaded: the baselines may have moved.
-      if (state === 'clean' && session === current) comparison?.load(current.version.content)
+      if (state === 'clean' && session === current) {
+        comparison?.load(current.version.content)
+        refreshUnread()
+      }
     },
     frontmatter: (value) => view.frontmatter(value),
   })
@@ -158,6 +162,7 @@ async function markRead() {
   await current.flush()
   if (!(await markSeen(current.path, current.version.etag))) await current.revalidate()
   comparing.load(current.version.content)
+  refreshUnread()
 }
 
 // Shows a page that isn't a document: home, setup or settings.
@@ -221,6 +226,8 @@ const refreshRecent = debounce(async () => {
   sidebar.renderRecent(recent, settings.activeDays)
 }, 300)
 
+const refreshUnread = debounce(async () => sidebar.setUnread(new Set(await fetchUnread())), 300)
+
 // Commits don't touch the file, so the baselines are refetched as well.
 const revalidate = debounce(() => {
   session?.revalidate()
@@ -234,12 +241,14 @@ connect({
     revalidate()
     refreshTree()
     refreshRecent()
+    refreshUnread()
   },
   event(event) {
     if (event.path === session?.path) revalidate()
     if (event.kind === 'tree') refreshSettings() // roots may have changed
     if (event.kind !== 'changed') refreshTree()
     refreshRecent()
+    refreshUnread()
   },
 })
 document.addEventListener('visibilitychange', () => {

@@ -17,6 +17,7 @@ export class Sidebar {
   private files: LogicalFile[] = []
   private activeDays = 0
   private current?: string
+  private unread = new Set<string>() // files with changes not yet read
 
   constructor(
     root: HTMLElement,
@@ -110,10 +111,16 @@ export class Sidebar {
     this.highlight()
   }
 
+  setUnread(paths: Set<string>) {
+    this.unread = paths
+    this.highlight()
+  }
+
   private highlight() {
     for (const link of document.querySelectorAll<HTMLElement>('#sidebar a[data-paths]')) {
       const paths = link.dataset.paths!.split('\n')
       link.classList.toggle('current', this.current !== undefined && paths.includes(this.current))
+      link.classList.toggle('unread', paths.some((p) => this.unread.has(p)))
     }
   }
 

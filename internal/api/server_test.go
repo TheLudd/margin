@@ -289,6 +289,25 @@ func TestWriteFileKeepsUnreadChanges(t *testing.T) {
 	}
 }
 
+func TestUnread(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	old := time.Now().Add(-time.Hour)
+	os.Chtimes(filepath.Join(f.root, "repo", "plan.md"), old, old) // not modified since
+	write(t, filepath.Join(f.root, "repo", "other.md"), "other")
+	f.seen.Put("code/repo/other.md", []byte("before"))
+	time.Sleep(10 * time.Millisecond)
+	write(t, filepath.Join(f.root, "repo", "other.md"), "after")
+	time.Sleep(200 * time.Millisecond) // let the index see it
+
+	var got []string
+	json.NewDecoder(do(t, "GET", f.url+"/api/unread", "", nil).Body).Decode(&got)
+
+	if len(got) != 1 || got[0] != "code/repo/other.md" {
+		t.Fatalf("got %v", got)
+	}
+}
+
 func TestReadCommitted(t *testing.T) {
 	f := setup(t)
 	repo := filepath.Join(f.root, "repo")

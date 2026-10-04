@@ -48,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/seen", s.readSeen)
 	mux.HandleFunc("PUT /api/seen", s.markSeen)
 	mux.HandleFunc("GET /api/committed", s.readCommitted)
+	mux.HandleFunc("GET /api/unread", s.unread)
 	mux.HandleFunc("GET /api/recent", s.recent)
 	mux.HandleFunc("POST /api/recent", s.addRecent)
 	mux.HandleFunc("DELETE /api/recent", s.forgetRecent)
@@ -203,6 +204,27 @@ func (s *Server) markSeen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// unread lists the files changed since they were last read.
+func (s *Server) unread(w http.ResponseWriter, r *http.Request) {
+	paths := []string{}
+	for _, root := range s.Workspaces.Workspace().Roots() {
+		for _, f := range root.Index.Files() {
+			path := root.Join(f.Path)
+			unread, err := s.Seen.Unread(path, f.ModTime, func() ([]byte, error) {
+				doc, err := root.Files.Read(f.Path)
+				return doc.Content, err
+			})
+			if err != nil && !errors.Is(err, files.ErrNotFound) {
+				log.Printf("unread %s: %v", path, err)
+			}
+			if unread {
+				paths = append(paths, path)
+			}
+		}
+	}
+	writeJSON(w, paths)
 }
 
 // readCommitted returns a file as committed in its repository's HEAD.

@@ -9,6 +9,7 @@
 package seen
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -77,6 +78,26 @@ func (s *Store) Advance(path, from string, content []byte) error {
 		return err
 	}
 	return s.write(path, content)
+}
+
+// Unread reports whether the file at path, last modified at modified,
+// differs from the version read. A copy is written with the file's content
+// of that moment, so a file not modified since is read; only then is read
+// called for its content.
+func (s *Store) Unread(path string, modified time.Time, read func() ([]byte, error)) (bool, error) {
+	info, err := os.Stat(s.file(path))
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil || !modified.After(info.ModTime()) {
+		return false, err
+	}
+	current, err := read()
+	if err != nil {
+		return false, err
+	}
+	version, _, err := s.Get(path)
+	return err == nil && !bytes.Equal(current, version), err
 }
 
 // Prune forgets the versions read longer ago than keep. Every write

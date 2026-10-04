@@ -140,3 +140,47 @@ func TestPutRenewsAVersion(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestUnreadWhenChanged(t *testing.T) {
+	s := open(t)
+	s.Put("code/a.md", []byte("v1"))
+
+	unread, _ := s.Unread("code/a.md", time.Now().Add(time.Minute), read("v2"))
+
+	if !unread {
+		t.Fatal("change not reported")
+	}
+}
+
+func TestUnreadWhenRewrittenUnchanged(t *testing.T) {
+	s := open(t)
+	s.Put("code/a.md", []byte("v1"))
+
+	unread, _ := s.Unread("code/a.md", time.Now().Add(time.Minute), read("v1"))
+
+	if unread {
+		t.Fatal("same content reported")
+	}
+}
+
+func TestUnreadSkipsFilesNotModifiedSince(t *testing.T) {
+	s := open(t)
+	s.Put("code/a.md", []byte("v1"))
+
+	unread, _ := s.Unread("code/a.md", time.Now().Add(-time.Minute), func() ([]byte, error) {
+		t.Fatal("read the file")
+		return nil, nil
+	})
+
+	if unread {
+		t.Fatal("reported")
+	}
+}
+
+func TestUnreadWithoutAVersion(t *testing.T) {
+	s := open(t)
+
+	if unread, err := s.Unread("code/a.md", time.Now(), read("v1")); unread || err != nil {
+		t.Fatalf("got %v, %v", unread, err)
+	}
+}
