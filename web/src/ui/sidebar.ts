@@ -115,12 +115,6 @@ export class Sidebar {
       const paths = link.dataset.paths!.split('\n')
       link.classList.toggle('current', this.current !== undefined && paths.includes(this.current))
     }
-    // Unfold the groups around the open file, without overriding a fold the
-    // user chose for other files.
-    let group = this.olderEl.querySelector('a.current')?.closest('details')
-    for (; group; group = group.parentElement?.closest('details')) {
-      group.open = true
-    }
   }
 
   private list(items: HTMLElement[]) {
