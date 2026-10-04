@@ -162,13 +162,20 @@ body.setup #sidebar > :not(.brand-row) {
   background: var(--cp-raised);
 }
 
-/* Unread changes: a colored name and a dot in the padding, so marking
-   files read never moves anything */
+/* Unread changes: a mark by the time (or the copy count, or the right edge
+   when there is neither), drawn in existing padding so that marking files
+   read never moves anything */
 #sidebar li a.unread {
   position: relative;
 }
 
-#sidebar li a.unread::before {
+#sidebar li a.unread :is(time, .copies) {
+  position: relative;
+  color: var(--cp-code);
+}
+
+#sidebar li a.unread :is(time, .copies)::after,
+#sidebar li a.unread:not(:has(time, .copies))::after {
   content: '';
   position: absolute;
   top: calc(50% - 2px);
@@ -180,8 +187,9 @@ body.setup #sidebar > :not(.brand-row) {
   box-shadow: 0 0 4px var(--cp-code);
 }
 
-#sidebar li a.unread .name {
-  color: var(--cp-code);
+#sidebar li a.unread:not(:has(time, .copies))::after {
+  left: auto;
+  right: 6px;
 }
 
 #sidebar li a.current {
