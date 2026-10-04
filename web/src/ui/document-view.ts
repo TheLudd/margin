@@ -38,7 +38,7 @@ export class DocumentView {
     commit: HTMLElement,
   ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'mode' }, 'editing'), h('span', { class: 'badges' }, commit, this.statusEl)),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'badges' }, commit, this.statusEl)),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )

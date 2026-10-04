@@ -150,7 +150,7 @@ The diff is Milkdown's `computeDocDiff` (block LCS, recursing into lists and tab
 
 ## Editing state
 
-While editing, the page shows it: an EDITING label in the header, an accent along the document, the block holding the cursor highlighted, and a high-contrast cursor. Esc stops editing, unless it closes a menu first.
+While editing, the page shows it: an accent along the document, the block holding the cursor highlighted, and a high-contrast cursor. Esc stops editing, unless it closes a menu first.
 
 ## Security
 

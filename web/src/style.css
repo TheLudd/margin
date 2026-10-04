@@ -930,25 +930,10 @@ article:has(.ProseMirror:focus) {
   box-shadow: -6px 0 18px -10px var(--cp-magenta);
 }
 
-.doc-header .mode {
-  display: none;
-  padding: 0 8px;
-  border: 1px solid var(--cp-magenta);
-  border-radius: 3px;
-  color: var(--cp-magenta);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .milkdown .ProseMirror:focus .cursor-block {
   border-radius: 3px;
   background: #ff2bd610;
   box-shadow: -10px 0 0 #ff2bd610, 10px 0 0 #ff2bd610;
-}
-
-#main:has(.ProseMirror:focus) .doc-header .mode {
-  display: inline-block;
 }
 
 /* Changes since the version read or committed */
