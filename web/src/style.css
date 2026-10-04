@@ -905,6 +905,136 @@ article:has(.ProseMirror:focus) {
   display: inline-block;
 }
 
+/* Changes since the version read or committed */
+:root {
+  --change-added: var(--cp-code);
+  --change-removed: #ff5c7a;
+}
+
+.doc-header .changes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes[hidden],
+.doc-header .changes [hidden] {
+  display: none;
+}
+
+.doc-header .changes button {
+  padding: 0 6px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .changes button:hover:not(:disabled) {
+  border-color: var(--cp-cyan);
+  color: var(--cp-text);
+}
+
+.doc-header .changes button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.doc-header .changes .baselines {
+  display: flex;
+}
+
+.doc-header .changes .baselines button {
+  border-radius: 0;
+}
+
+.doc-header .changes .baselines button:first-child {
+  border-radius: 3px 0 0 3px;
+}
+
+.doc-header .changes .baselines button:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.doc-header .changes .baselines button + button {
+  border-left: none;
+}
+
+.doc-header .changes .baselines button.active {
+  border-color: var(--change-added);
+  color: var(--change-added);
+}
+
+.doc-header .changes .mark-read {
+  color: var(--change-added);
+}
+
+.milkdown .ProseMirror .change-block {
+  position: relative;
+}
+
+.milkdown .ProseMirror .change-block::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  /* List items are indented; the bar stays in the gutter */
+  left: calc(-14px - var(--list-depth, 0) * 34px);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--change-added);
+  box-shadow: 0 0 6px var(--change-added);
+}
+
+/* Too thin for a bar */
+.milkdown .ProseMirror hr.change-block {
+  outline: 1px solid var(--change-added);
+  outline-offset: 4px;
+}
+
+.milkdown .ProseMirror .change-inserted {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--change-added), transparent 82%);
+  box-shadow: 0 1px 0 var(--change-added);
+}
+
+.milkdown .ProseMirror .change-deleted {
+  margin: 0 1px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--change-removed), transparent 85%);
+  color: var(--change-removed);
+  text-decoration: line-through;
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-removed {
+  position: relative;
+  margin: 4px 0;
+  padding: 0 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--change-removed), transparent 90%);
+  color: color-mix(in srgb, var(--change-removed), var(--cp-text) 40%);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--change-removed), transparent 40%);
+  opacity: 0.75;
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-removed::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: -14px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--change-removed);
+}
+
 .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--cp-mono);
   letter-spacing: 0.02em;

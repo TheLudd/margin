@@ -19,8 +19,8 @@ export interface ConflictActions {
   takeTheirs(): void
 }
 
-// The chrome around the editor: path, save status, conflict banner and the
-// frontmatter panel.
+// The chrome around the editor: path, changes, save status, conflict banner
+// and the frontmatter panel.
 export class DocumentView {
   private readonly pathEl = h('span', { class: 'path' })
   private readonly statusEl = h('span', { class: 'status' })
@@ -34,9 +34,10 @@ export class DocumentView {
     root: HTMLElement,
     onFrontmatter: (value: string) => void,
     onWorktree: (path: string) => void,
+    changes: HTMLElement,
   ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, h('span', { class: 'mode' }, 'editing'), this.statusEl),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'mode' }, 'editing'), this.statusEl),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )

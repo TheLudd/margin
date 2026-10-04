@@ -45,6 +45,29 @@ export async function writeFile(path: string, content: string, etag: string): Pr
   return { kind: 'saved', etag: res.headers.get('ETag')! }
 }
 
+// A version to compare a file with, if there is one.
+async function readVersion(url: string): Promise<string | undefined> {
+  const res = await fetch(url, noStore)
+  if (res.status === 404) return undefined
+  if (!res.ok) throw new Error(`read ${url}: ${res.status}`)
+  return res.text()
+}
+
+// The version of a file last read in margin.
+export const readSeen = (path: string) => readVersion(`/api/seen?path=${encodeURIComponent(path)}`)
+
+// The file as committed in its repository's HEAD.
+export const readCommitted = (path: string) => readVersion(`/api/committed?path=${encodeURIComponent(path)}`)
+
+// Records the version with etag as read; false when the file has changed
+// since.
+export async function markSeen(path: string, etag: string): Promise<boolean> {
+  const res = await fetch(`/api/seen?path=${encodeURIComponent(path)}`, { ...noStore, method: 'PUT', headers: { 'If-Match': etag } })
+  if (res.status === 412) return false
+  if (!res.ok) throw new Error(`mark ${path} read: ${res.status}`)
+  return true
+}
+
 export async function fetchTree(): Promise<FileEntry[]> {
   return (await fetch('/api/tree', noStore)).json()
 }

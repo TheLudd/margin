@@ -58,6 +58,11 @@ export class DocumentSession {
     return this.disk.body
   }
 
+  // The file as last read or written.
+  get version(): Doc {
+    return { content: joinFrontmatter(this.disk), etag: this.etag }
+  }
+
   get initialFrontmatter(): string {
     return this.disk.frontmatter
   }

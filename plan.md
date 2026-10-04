@@ -36,6 +36,7 @@ Go service (127.0.0.1:<port>)
 ├── index    walks a root, keeps an in-memory list of .md files, watches with inotify
 ├── files    read/write with path checks and content-hash etags
 ├── recent   viewed + modified history, JSON in ~/.local/state/margin/
+├── seen     every file as last read, for showing unread changes
 ├── events   SSE stream: changed / added / removed
 └── api      HTTP handlers + embedded frontend
 
@@ -52,6 +53,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 - **`index`** — walks a root and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
 - **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
 - **`recent`** — records views and modifications and persists them to `~/.local/state/margin/recent.json`. The lists are capped.
+- **`seen`** — keeps a copy of every file as last read in margin, in `~/.local/state/margin/seen/`. margin only learns of a change after it is made, so a file's first version found by the index counts as read. Marking a file read replaces the copy; a save made in margin advances it too, unless the copy holds unread changes.
 - **`events`** — fans index events out to the SSE subscribers.
 - **`api`** — handlers only, wiring the packages together.
 
@@ -62,6 +64,9 @@ Each package does gsone job and can be tested without the HTTP layer.
 | GET | `/api/tree` | All markdown files, grouped by repo |
 | GET | `/api/file?path=` | Content + `ETag`; answers `If-None-Match` with `304` |
 | PUT | `/api/file?path=` | Save; requires `If-Match`, otherwise `412` |
+| GET | `/api/seen?path=` | The file as last read |
+| PUT | `/api/seen?path=` | Mark the version with the `If-Match` etag read; otherwise `412` |
+| GET | `/api/committed?path=` | The file as committed in `HEAD`; `404` when not committed |
 | GET | `/api/recent` | Recently viewed and recently modified |
 | GET | `/api/events` | SSE stream |
 | GET | `/<path>` | Opens the SPA on that file (deep link used by `mp`) |
@@ -136,6 +141,12 @@ The sidebar lists only files viewed in margin or modified within the active wind
 - Changing only the active window applies at once; changing folders or hidden files re-indexes.
 - **Removing from recent activity:** the × on an entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals are kept with the views.
 - Both sidebar sections fold, and fold state is kept per browser across reloads.
+
+## Changes
+
+The open file is compared with a baseline: the version last read (unread changes) or the one last committed (uncommitted changes). Until the reader picks one, unread changes are preferred and new ones switch to them. Several writes add up into one diff until the file is marked read.
+
+The diff is Milkdown's `computeDocDiff` (block LCS, recursing into lists and tables) widened to whole words, drawn as ProseMirror decorations: inserted text highlighted, deleted text as struck-through widgets, removed blocks rendered where they were, and a gutter bar on every changed textblock. The document itself is untouched, so it stays editable and the changes follow edits.
 
 ## Editing state
 

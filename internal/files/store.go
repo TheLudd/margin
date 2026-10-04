@@ -79,6 +79,12 @@ func (s *Store) Write(rel string, content []byte, ifMatch string) (string, error
 	return ETag(content), nil
 }
 
+// Abs returns the absolute path of the markdown file at rel, which must
+// exist under the root.
+func (s *Store) Abs(rel string) (string, error) {
+	return s.resolve(rel)
+}
+
 // resolve maps a root-relative path to the absolute path of an existing
 // markdown file, following symlinks, and rejects anything outside the root.
 func (s *Store) resolve(rel string) (string, error) {

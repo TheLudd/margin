@@ -125,3 +125,11 @@ func commitTimes(abs, base string) map[string]time.Time {
 	}
 	return times
 }
+
+// Committed returns the file at abs as committed in its repository's HEAD,
+// if it is committed.
+func Committed(abs string) ([]byte, bool) {
+	// A ./ path is relative to the working directory, not the repository.
+	out, err := git(filepath.Dir(abs), "show", "HEAD:./"+filepath.Base(abs))
+	return out, err == nil
+}

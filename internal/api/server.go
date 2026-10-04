@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -17,7 +18,9 @@ import (
 	"margin/internal/files"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/seen"
 	"margin/internal/workspace"
+	"margin/internal/worktree"
 )
 
 const (
@@ -30,6 +33,7 @@ const (
 type Server struct {
 	Workspaces *workspace.Manager
 	Recent     *recent.Store
+	Seen       *seen.Store
 	Events     *events.Hub[index.Event]
 	Web        fs.FS // the built frontend: index.html and assets/
 	Port       int
@@ -41,6 +45,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/tree", s.tree)
 	mux.HandleFunc("GET /api/file", s.readFile)
 	mux.HandleFunc("PUT /api/file", s.writeFile)
+	mux.HandleFunc("GET /api/seen", s.readSeen)
+	mux.HandleFunc("PUT /api/seen", s.markSeen)
+	mux.HandleFunc("GET /api/committed", s.readCommitted)
 	mux.HandleFunc("GET /api/recent", s.recent)
 	mux.HandleFunc("POST /api/recent", s.addRecent)
 	mux.HandleFunc("DELETE /api/recent", s.forgetRecent)
@@ -121,8 +128,7 @@ func (s *Server) readFile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-	w.Write(doc.Content)
+	writeMarkdown(w, doc.Content)
 }
 
 func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
@@ -146,8 +152,75 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	if err := s.Seen.Advance(r.URL.Query().Get("path"), unquote(ifMatch), content); err != nil {
+		log.Printf("seen: %v", err)
+	}
 	w.Header().Set("ETag", quote(etag))
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// readSeen returns the version of a file last read in margin.
+func (s *Server) readSeen(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if !s.Workspaces.Workspace().Has(path) {
+		writeError(w, files.ErrNotFound)
+		return
+	}
+	content, ok, err := s.Seen.Get(path)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if !ok {
+		writeError(w, files.ErrNotFound)
+		return
+	}
+	writeMarkdown(w, content)
+}
+
+// markSeen records the file's content as read, if it is still the version
+// with the If-Match etag: the one the reader has seen.
+func (s *Server) markSeen(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	store, rel, err := s.file(path)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	doc, err := store.Read(rel)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if quote(doc.ETag) != r.Header.Get("If-Match") {
+		writeError(w, files.ErrConflict)
+		return
+	}
+	if err := s.Seen.Put(path, doc.Content); err != nil {
+		writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// readCommitted returns a file as committed in its repository's HEAD.
+func (s *Server) readCommitted(w http.ResponseWriter, r *http.Request) {
+	store, rel, err := s.file(r.URL.Query().Get("path"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	abs, err := store.Abs(rel)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	content, ok := worktree.Committed(abs)
+	if !ok {
+		writeError(w, files.ErrNotFound)
+		return
+	}
+	writeMarkdown(w, content)
 }
 
 type activity struct {
@@ -264,6 +337,12 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(v)
+}
+
+func writeMarkdown(w http.ResponseWriter, content []byte) {
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(content)
 }
 
 func writeError(w http.ResponseWriter, err error) {

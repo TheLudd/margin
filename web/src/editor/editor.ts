@@ -1,10 +1,11 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
-import { editorViewOptionsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
+import { editorViewCtx, editorViewOptionsCtx, parserCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
 import { Plugin } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
+import { changesKey, changesPlugin, type SetBase } from './changes'
 import { remarkImageTitle } from './remark-image-title'
 
 // Marks the top-level block holding the cursor, so it is easy to find.
@@ -27,6 +28,7 @@ export type RenderPreview = NonNullable<CodeMirrorFeatureConfig['renderPreview']
 
 export interface EditorOptions {
   onChange?: (markdown: string) => void
+  onChanges?: () => void // the changes shown since the base were recomputed
   renderPreview?: RenderPreview
 }
 
@@ -35,17 +37,27 @@ export interface EditorOptions {
 export interface Editor {
   markdown(): string
   replace(markdown: string): void
+  // Shows the changes made since base, a markdown body; undefined hides them.
+  compare(base: string | undefined): void
   destroy(): Promise<void>
 }
 
 export async function createEditor(root: HTMLElement, markdown: string, options: EditorOptions = {}): Promise<Editor> {
   let replacing = false
+  let base: string | undefined // what changes are shown against
   const crepe = await createCrepe(root, markdown, {
     renderPreview: options.renderPreview,
+    onChanges: options.onChanges,
     onChange: (updated) => {
       if (!replacing) options.onChange?.(updated)
     },
   })
+  const showChanges = () =>
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      const meta: SetBase = { base: base === undefined ? undefined : ctx.get(parserCtx)(base) }
+      view.dispatch(view.state.tr.setMeta(changesKey, meta))
+    })
 
   return {
     markdown: () => crepe.getMarkdown(),
@@ -56,6 +68,11 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
       } finally {
         replacing = false
       }
+      if (base !== undefined) showChanges() // replacing starts a new state
+    },
+    compare(next) {
+      base = next
+      showChanges()
     },
     async destroy() {
       await crepe.destroy()
@@ -91,6 +108,7 @@ export async function createCrepe(root: HTMLElement, markdown: string, options: 
     })
     .use($remark('imageTitle', () => remarkImageTitle))
     .use(cursorBlock)
+    .use($prose(() => changesPlugin(() => options.onChanges?.())))
   // Otherwise an empty paragraph (an extra Enter) is saved as a `<br />` block.
   await crepe.editor.remove(remarkPreserveEmptyLinePlugin)
 

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"margin/internal/events"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/seen"
 	"margin/internal/workspace"
 )
 
@@ -26,6 +28,7 @@ type fixture struct {
 	root string // the folder served as the root named code
 	url  string
 	port int
+	seen *seen.Store
 }
 
 func setup(t *testing.T) fixture {
@@ -38,11 +41,13 @@ func setup(t *testing.T) fixture {
 	hub := events.NewHub[index.Event]()
 	workspaces := workspace.NewManager(configFile, hub.Publish, nil)
 	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), time.Hour)
+	read, _ := seen.Open(t.TempDir())
 
 	srv := httptest.NewUnstartedServer(nil)
 	s := &Server{
 		Workspaces: workspaces,
 		Recent:     rec,
+		Seen:       read,
 		Events:     hub,
 		Web:        fstest.MapFS{"index.html": {Data: []byte("<app>")}},
 		Port:       srv.Listener.Addr().(*net.TCPAddr).Port,
@@ -51,7 +56,7 @@ func setup(t *testing.T) fixture {
 	srv.Config.Handler = s.Handler()
 	srv.Start()
 	t.Cleanup(func() { srv.Close(); workspaces.Close() })
-	return fixture{root: root, url: srv.URL, port: s.Port}
+	return fixture{root: root, url: srv.URL, port: s.Port, seen: read}
 }
 
 func write(t *testing.T, path, content string) {
@@ -190,6 +195,96 @@ func TestWriteFile(t *testing.T) {
 	}
 	if missing := do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v3", nil); missing.StatusCode != http.StatusPreconditionRequired {
 		t.Fatalf("write without If-Match got %d", missing.StatusCode)
+	}
+}
+
+func TestReadSeen(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+
+	res := do(t, "GET", f.url+"/api/seen?path=code/repo/plan.md", "", nil)
+
+	if res.StatusCode != 200 || bodyOf(res) != "v0" {
+		t.Fatalf("got %d", res.StatusCode)
+	}
+	if res := do(t, "GET", f.url+"/api/seen?path=code/repo/other.md", "", nil); res.StatusCode != 404 {
+		t.Fatalf("unknown file got %d", res.StatusCode)
+	}
+}
+
+func TestMarkSeen(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	etag := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil).Header.Get("ETag")
+
+	res := do(t, "PUT", f.url+"/api/seen?path=code/repo/plan.md", "", map[string]string{"If-Match": etag})
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); res.StatusCode != 204 || string(got) != "v1" {
+		t.Fatalf("got %d, seen %q", res.StatusCode, got)
+	}
+}
+
+func TestMarkSeenOfAnotherVersion(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+
+	res := do(t, "PUT", f.url+"/api/seen?path=code/repo/plan.md", "", map[string]string{"If-Match": `"stale"`})
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); res.StatusCode != http.StatusPreconditionFailed || string(got) != "v0" {
+		t.Fatalf("got %d, seen %q", res.StatusCode, got)
+	}
+}
+
+func TestWriteFileAdvancesSeen(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v1"))
+	etag := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil).Header.Get("ETag")
+
+	do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v2", map[string]string{"If-Match": etag})
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); string(got) != "v2" {
+		t.Fatalf("seen %q", got)
+	}
+}
+
+func TestWriteFileKeepsUnreadChanges(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	etag := do(t, "GET", f.url+"/api/file?path=code/repo/plan.md", "", nil).Header.Get("ETag")
+
+	do(t, "PUT", f.url+"/api/file?path=code/repo/plan.md", "v2", map[string]string{"If-Match": etag})
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); string(got) != "v0" {
+		t.Fatalf("seen %q", got)
+	}
+}
+
+func TestReadCommitted(t *testing.T) {
+	f := setup(t)
+	repo := filepath.Join(f.root, "repo")
+	git(t, repo, "init", "-q")
+	git(t, repo, "add", "plan.md")
+	git(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "plan")
+	write(t, filepath.Join(repo, "plan.md"), "v2")
+	write(t, filepath.Join(repo, "new.md"), "new")
+	time.Sleep(200 * time.Millisecond) // let the index see new.md
+
+	res := do(t, "GET", f.url+"/api/committed?path=code/repo/plan.md", "", nil)
+
+	if res.StatusCode != 200 || bodyOf(res) != "v1" {
+		t.Fatalf("got %d", res.StatusCode)
+	}
+	if res := do(t, "GET", f.url+"/api/committed?path=code/repo/new.md", "", nil); res.StatusCode != 404 {
+		t.Fatalf("uncommitted file got %d", res.StatusCode)
+	}
+}
+
+func git(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
 	}
 }
 

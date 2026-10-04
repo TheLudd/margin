@@ -21,6 +21,7 @@ import (
 	"margin/internal/events"
 	"margin/internal/index"
 	"margin/internal/recent"
+	"margin/internal/seen"
 	"margin/internal/workspace"
 	"margin/web"
 )
@@ -56,6 +57,11 @@ func run(configFile string, port int, state string, hosts []string) error {
 	workspaces := workspace.NewManager(configFile, hub.Publish, func(ws *workspace.Workspace) { migrateViews(viewed, ws) })
 	defer workspaces.Close()
 	go workspaces.Watch(ctx)
+	read, err := seen.Open(filepath.Join(state, "seen"))
+	if err != nil {
+		return err
+	}
+	go seen.Track(ctx, read, workspaces.Workspace, hub.Subscribe)
 
 	dist, err := fs.Sub(web.Dist, "dist")
 	if err != nil {
@@ -67,6 +73,7 @@ func run(configFile string, port int, state string, hosts []string) error {
 		Handler: (&api.Server{
 			Workspaces: workspaces,
 			Recent:     viewed,
+			Seen:       read,
 			Events:     hub,
 			Web:        dist,
 			Port:       port,

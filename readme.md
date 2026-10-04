@@ -10,6 +10,7 @@ It is meant mainly for reading, with minor edits on the side: fixing a typo, tic
 - **Finder:** Ctrl K fuzzy-searches the recent files; Tab adds the older ones.
 - **Editor:** always editable, with autosave. Saves keep the original bytes of every block you didn't touch, so a one-word edit changes only that block. Frontmatter, task lists and mermaid diagrams are supported.
 - **Table of contents** built from the headings of every document.
+- **Changes:** the open file shows what changed since you last read it (**unread**) or since its last commit (**uncommitted**): new words highlighted, removed ones struck through, a bar beside every changed block. Alt ↑/↓ steps through them; **mark read** clears the unread ones. margin keeps a copy of every file as you last read it, so changes made while the browser is closed show too. Your own edits in margin count as read.
 - **Never stale:** changes on disk are pushed to the browser, and the open file is revalidated on focus and on reconnect. Unsaved edits are never overwritten; a banner asks which version to keep.
 - **Worktrees:** a file checked out in several git worktrees is listed once and opens the copy changed last.
 - **`.gitignore` aware:** ignored files, `.git` and `node_modules` are left out.
@@ -64,7 +65,7 @@ Settings are edited on the settings screen (the gear in the sidebar) and stored 
 - **`exclude`** leaves files out of the sidebar, search and recent activity. A pattern without a slash matches file names anywhere; one with a slash matches the end of a path. Case is ignored.
 - **`activeDays`** (1–365) is the window that divides Recent from Older.
 
-Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`.
+Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`, and the copies of files as last read in `seen/` next to it.
 
 ### Flags
 

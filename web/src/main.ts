@@ -2,11 +2,26 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import './style.css'
 
-import { type Activity, fetchRecent, fetchSettings, fetchTree, forgetRecent, markViewed, readFile, type Settings, writeFile } from './api'
+import {
+  type Activity,
+  fetchRecent,
+  fetchSettings,
+  fetchTree,
+  forgetRecent,
+  markSeen,
+  markViewed,
+  readCommitted,
+  readFile,
+  readSeen,
+  type Settings,
+  writeFile,
+} from './api'
+import { Comparison } from './document/comparison'
 import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
 import { connect, debounce } from './sync'
+import { ChangesView } from './ui/changes-view'
 import { groupCopies, isActive, type LogicalFile } from './ui/copies'
 import { display, setRoots } from './ui/display'
 import { byId, fileUrl } from './ui/dom'
@@ -23,6 +38,7 @@ let files: LogicalFile[] = []
 let recent: Activity[] = []
 let session: DocumentSession | undefined
 let editor: Editor | undefined
+let comparison: Comparison | undefined
 let opening = 0
 
 const main = byId('main')
@@ -35,10 +51,15 @@ const sidebar = new Sidebar(
     refreshTree() // the file may no longer be active
   },
 )
+const changes = new ChangesView(main, {
+  use: (baseline) => comparison?.use(baseline),
+  markRead,
+})
 const view = new DocumentView(
   main,
   (value) => session?.editFrontmatter(value),
   (path) => open(path),
+  changes.el,
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
 const settingsView = new SettingsView(main, (saved) => {
@@ -69,6 +90,7 @@ async function open(path: string, push = true) {
   await editor?.destroy()
   editor = undefined
   session = undefined
+  comparison = undefined
   view.editorEl.replaceChildren()
   if (push) history.pushState(null, '', fileUrl(path))
   sidebar.setCurrent(path)
@@ -80,13 +102,18 @@ async function open(path: string, push = true) {
   main.dataset.view = 'document'
 
   const current: DocumentSession = new DocumentSession(path, result.doc, remote, {
-    state: (state) => view.state(state, current),
+    state: (state) => {
+      view.state(state, current)
+      // Saved or reloaded: the baselines may have moved.
+      if (state === 'clean' && session === current) comparison?.load(current.version.content)
+    },
     frontmatter: (value) => view.frontmatter(value),
   })
   view.show(path, current.initialFrontmatter)
   view.copies(copiesOf(path), path)
   const created = await createEditor(view.editorEl, current.body, {
     onChange: () => current.edited(),
+    onChanges: () => changes.update(),
     renderPreview: renderMermaid,
   })
   if (token !== opening) {
@@ -98,10 +125,36 @@ async function open(path: string, push = true) {
   session.attach(editor)
   main.scrollTop = 0
   toc.build()
+  compare(current, created)
 
   await markViewed(path)
   refreshRecent()
   refreshTree() // the file is now active
+}
+
+// Shows the changes in the open document against the chosen baseline.
+function compare(current: DocumentSession, shown: Editor) {
+  const live = () => editor === shown
+  const comparing: Comparison = new Comparison(
+    current.path,
+    { seen: readSeen, committed: readCommitted },
+    {
+      compare: (body) => live() && shown.compare(body),
+      baselines: (available, baseline) => live() && changes.baselines(available, baseline),
+    },
+  )
+  comparison = comparing
+  comparing.load(current.version.content)
+}
+
+// Records the version on screen as read, which clears its unread changes.
+async function markRead() {
+  const current = session
+  const comparing = comparison
+  if (!current || !comparing) return
+  await current.flush()
+  if (!(await markSeen(current.path, current.version.etag))) await current.revalidate()
+  comparing.load(current.version.content)
 }
 
 // Shows a page that isn't a document: home, setup or settings.
@@ -112,6 +165,7 @@ function showPage(page: string, title: string) {
   editor?.destroy()
   session = undefined
   editor = undefined
+  comparison = undefined
   view.editorEl.replaceChildren()
   main.dataset.view = page
   document.title = title
@@ -164,7 +218,11 @@ const refreshRecent = debounce(async () => {
   sidebar.renderRecent(recent, settings.activeDays)
 }, 300)
 
-const revalidate = debounce(() => session?.revalidate(), 50)
+// Commits don't touch the file, so the baselines are refetched as well.
+const revalidate = debounce(() => {
+  session?.revalidate()
+  if (session) comparison?.load(session.version.content)
+}, 50)
 
 // Never stale: changes are pushed, and the document is also revalidated on
 // every reconnect, whenever the tab comes back, and periodically.
