@@ -112,6 +112,36 @@ func TestRecentKeepsToActiveWindow(t *testing.T) {
 	}
 }
 
+func TestRecentIgnoresCheckouts(t *testing.T) {
+	f := setup(t)
+	repo := filepath.Join(f.root, "repo")
+	git(t, repo, "init", "-q")
+	git(t, repo, "add", "plan.md")
+	git(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "plan")
+	write(t, filepath.Join(repo, "plan.md"), "v1") // rewritten as by a checkout
+	time.Sleep(1500 * time.Millisecond)            // let the worktree tracker catch up
+
+	if got := recentPaths(t, f); len(got) != 0 {
+		t.Fatalf("got %v", got)
+	}
+	write(t, filepath.Join(repo, "plan.md"), "v2")
+	time.Sleep(1500 * time.Millisecond)
+	if got := recentPaths(t, f); len(got) != 1 {
+		t.Fatalf("an uncommitted change does not show: %v", got)
+	}
+}
+
+func recentPaths(t *testing.T, f fixture) []string {
+	t.Helper()
+	var got []activity
+	json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+	paths := []string{}
+	for _, a := range got {
+		paths = append(paths, a.Path)
+	}
+	return paths
+}
+
 func TestForgetRecent(t *testing.T) {
 	f := setup(t)
 	recentOf := func() []activity {

@@ -20,6 +20,7 @@ const debounce = time.Second
 
 type repo struct {
 	main    string // the main checkout, root-relative
+	git     bool   // a git checkout, not just a folder of files
 	changed map[string]time.Time
 }
 
@@ -60,6 +61,13 @@ func (t *Tracker) IsMain(repoPath string) bool {
 	defer t.mu.RUnlock()
 	r, ok := t.repos[repoPath]
 	return !ok || r.main == repoPath
+}
+
+// IsGit reports whether repo is a git checkout rather than a plain folder.
+func (t *Tracker) IsGit(repoPath string) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.repos[repoPath].git
 }
 
 // Changed reports when the worktree last changed the file at rel (relative
@@ -115,17 +123,18 @@ func (t *Tracker) follow(ctx context.Context, events <-chan index.Event) {
 // paths is nil or the set of repositories changed.
 func (t *Tracker) update(paths []string) {
 	mains := map[string]string{} // repo -> main checkout
+	git := map[string]bool{}
 	for _, f := range t.files() {
 		if _, seen := mains[f.Repo]; seen {
 			continue
 		}
+		mains[f.Repo] = f.Repo
 		if main, ok := mainCheckout(filepath.Join(t.root, f.Repo)); ok {
+			git[f.Repo] = true
 			if rel, err := filepath.Rel(t.root, main); err == nil && filepath.IsLocal(rel) {
 				mains[f.Repo] = filepath.ToSlash(rel)
-				continue
 			}
 		}
-		mains[f.Repo] = f.Repo
 	}
 
 	t.mu.RLock()
@@ -135,7 +144,7 @@ func (t *Tracker) update(paths []string) {
 	dirty := map[string]bool{} // main checkouts to recompute
 	sameRepos := len(old) == len(mains)
 	for r, main := range mains {
-		if o, ok := old[r]; !ok || o.main != main {
+		if o, ok := old[r]; !ok || o.main != main || o.git != git[r] {
 			sameRepos = false
 		}
 	}
@@ -148,7 +157,7 @@ func (t *Tracker) update(paths []string) {
 	next := map[string]repo{}
 	for r, main := range mains {
 		if dirty[main] {
-			next[r] = repo{main: main, changed: t.changes(r, main)}
+			next[r] = repo{main: main, git: git[r], changed: t.changes(r, main)}
 		} else {
 			next[r] = old[r]
 		}
@@ -210,6 +219,6 @@ func touches(paths []string, repoPath string) bool {
 
 func equal(a, b map[string]repo) bool {
 	return maps.EqualFunc(a, b, func(x, y repo) bool {
-		return x.main == y.main && maps.EqualFunc(x.changed, y.changed, time.Time.Equal)
+		return x.main == y.main && x.git == y.git && maps.EqualFunc(x.changed, y.changed, time.Time.Equal)
 	})
 }

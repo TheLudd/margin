@@ -6,7 +6,7 @@ It is meant mainly for reading, with minor edits on the side: fixing a typo, tic
 
 ## Features
 
-- **Sidebar:** Recent lists the files viewed or modified within the active window (14 days by default), latest first. Older holds every other file, grouped by project.
+- **Sidebar:** Recent lists the files viewed or modified within the active window (14 days by default), latest first. In git, modified means changed and not yet committed (or changed on a worktree's branch), so checkouts and pulls don't fill it. Older holds every other file, grouped by project.
 - **Finder:** Ctrl K fuzzy-searches the recent files; Tab adds the older ones.
 - **Editor:** always editable, with autosave. Saves keep the original bytes of every block you didn't touch, so a one-word edit changes only that block. Frontmatter, task lists and mermaid diagrams are supported.
 - **Table of contents** built from the headings of every document.

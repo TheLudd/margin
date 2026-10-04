@@ -62,13 +62,13 @@ func (s *Server) Handler() http.Handler {
 }
 
 type treeEntry struct {
-	Path    string     `json:"path"`
-	Repo    string     `json:"repo"`
-	ModTime time.Time  `json:"mtime"`
-	Project string     `json:"project"`
-	Main    bool       `json:"main"`              // the repo is its project's main checkout
-	Changed *time.Time `json:"changed,omitempty"` // when the repo changed the file relative to main
-	Viewed  *time.Time `json:"viewed,omitempty"`  // when the file was last viewed in margin
+	Path     string     `json:"path"`
+	Repo     string     `json:"repo"`
+	Project  string     `json:"project"`
+	Main     bool       `json:"main"`               // the repo is its project's main checkout
+	Changed  *time.Time `json:"changed,omitempty"`  // when the repo changed the file relative to main
+	Modified *time.Time `json:"modified,omitempty"` // when the file was last modified, see modified
+	Viewed   *time.Time `json:"viewed,omitempty"`   // when the file was last viewed in margin
 }
 
 func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
@@ -78,12 +78,14 @@ func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
 			e := treeEntry{
 				Path:    root.Join(f.Path),
 				Repo:    root.Join(f.Repo),
-				ModTime: f.ModTime,
 				Project: root.Join(root.Trees.Project(f.Repo)),
 				Main:    root.Trees.IsMain(f.Repo),
 			}
 			if at, ok := root.Trees.Changed(f.Repo, inRepo(f)); ok {
 				e.Changed = &at
+			}
+			if at, ok := modified(root, f); ok {
+				e.Modified = &at
 			}
 			if at, ok := s.Recent.Viewed(e.Path); ok {
 				e.Viewed = &at
@@ -256,11 +258,12 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, all)
 }
 
-// modified reports when a file was last modified. A worktree's own copy
-// counts only when git says the worktree changed it, because checkouts
-// reset modification times.
+// modified reports when a file was last modified by someone working on it.
+// In a git checkout only the changes git reports count, uncommitted or made
+// on the worktree's branch: checkouts, rebases and pulls rewrite files that
+// nobody edited. Outside git, the modification time is all there is.
 func modified(root *workspace.Root, f index.File) (time.Time, bool) {
-	if root.Trees.IsMain(f.Repo) {
+	if !root.Trees.IsGit(f.Repo) {
 		return f.ModTime, true
 	}
 	return root.Trees.Changed(f.Repo, inRepo(f))

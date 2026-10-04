@@ -41,6 +41,7 @@ func write(t *testing.T, path, content string) {
 //	proj/feature  committed a change to docs/plan.md, uncommitted to other.md
 //	proj/idle     changed nothing
 //	solo          its own repository
+//	notes         a plain folder, not in git
 func setup(t *testing.T) (root string, tracker *Tracker, ix *index.Index) {
 	t.Helper()
 	root = t.TempDir()
@@ -66,6 +67,8 @@ func setup(t *testing.T) (root string, tracker *Tracker, ix *index.Index) {
 	write(t, filepath.Join(solo, "README.md"), "solo")
 	run(t, solo, "git", "init", "-q")
 
+	write(t, filepath.Join(root, "notes", "todo.md"), "todo")
+
 	ix, err := index.New(root, nil, func(index.Event) {})
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +77,15 @@ func setup(t *testing.T) (root string, tracker *Tracker, ix *index.Index) {
 	tracker = New(root, ix.Files, nil)
 	tracker.Refresh()
 	return root, tracker, ix
+}
+
+func TestIsGit(t *testing.T) {
+	_, tracker, _ := setup(t)
+	for repo, want := range map[string]bool{"proj/master": true, "proj/feature": true, "solo": true, "notes": false} {
+		if got := tracker.IsGit(repo); got != want {
+			t.Errorf("%s: got %v", repo, got)
+		}
+	}
 }
 
 func TestProject(t *testing.T) {

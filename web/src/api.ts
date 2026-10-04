@@ -12,10 +12,10 @@ export type WriteResult = { kind: 'saved'; etag: string } | { kind: 'conflict' }
 export interface FileEntry {
   path: string
   repo: string
-  mtime: string
   project: string // the repo, or the worktree family it belongs to
   main: boolean // the repo is its project's main checkout
   changed?: string // when the repo changed the file relative to main
+  modified?: string // when someone last modified the file; checkouts don't count
   viewed?: string // when the file was last viewed in margin
 }
 

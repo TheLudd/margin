@@ -16,12 +16,9 @@ const day = 24 * 60 * 60 * 1000
 // Viewed or modified within the last `days` days.
 export const isActive = (f: LogicalFile, days: number, now = Date.now()) => f.activeAt >= now - days * day
 
-// When a copy was last viewed or modified. Checkouts reset modification
-// times, so a worktree's own copy counts as modified only when git says
-// the worktree changed it.
+// When a copy was last viewed or modified.
 function activityOf(copy: FileEntry): number {
-  const modified = copy.main ? copy.mtime : copy.changed
-  return Math.max(copy.viewed ? Date.parse(copy.viewed) : 0, modified ? Date.parse(modified) : 0)
+  return Math.max(copy.viewed ? Date.parse(copy.viewed) : 0, copy.modified ? Date.parse(copy.modified) : 0)
 }
 
 export function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
