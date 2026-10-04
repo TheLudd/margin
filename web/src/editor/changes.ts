@@ -9,29 +9,55 @@ import { DOMSerializer, type Fragment, type Node } from '@milkdown/kit/prose/mod
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 
+// A change the reader steps through: a changed block, or the blocks
+// removed at a position.
+type Change =
+  | { kind: 'block'; from: number; to: number; depth: number }
+  | { kind: 'removed'; at: number; content: Fragment; key: string }
+
+interface Diff {
+  marks: Decoration[] // inserted text and deleted words, within the changes
+  changes: Change[] // in document order
+}
+
+// Which change is current, and whether it pulses after a jump.
+export interface Focus {
+  index: number
+  pulse: boolean
+}
+
 interface ChangesState {
   base?: Node
+  diff: Diff
+  focus?: Focus
   decorations: DecorationSet
 }
 
+// The transaction meta: a new base (undefined stops comparing), or a new
+// current change.
+export type ChangesMeta = { base?: Node } | { focus?: Focus }
+
 export const changesKey = new PluginKey<ChangesState>('changes')
 
-// The transaction meta that sets the base; undefined stops comparing.
-export interface SetBase {
-  base?: Node
-}
+const noDiff: Diff = { marks: [], changes: [] }
 
-// onUpdate is called whenever the changes shown are recomputed.
+// onUpdate is called whenever the changes shown are redrawn.
 export function changesPlugin(onUpdate: () => void): Plugin<ChangesState> {
   return new Plugin<ChangesState>({
     key: changesKey,
     state: {
-      init: () => ({ decorations: DecorationSet.empty }),
+      init: () => ({ diff: noDiff, decorations: DecorationSet.empty }),
       apply(tr, value, _, state) {
-        const meta = tr.getMeta(changesKey) as SetBase | undefined
+        const meta = tr.getMeta(changesKey) as ChangesMeta | undefined
         if (!meta && !tr.docChanged) return value
-        const base = meta ? meta.base : value.base
-        return { base, decorations: base ? decorate(base, state.doc) : DecorationSet.empty }
+        let { base, diff, focus } = value
+        if (meta && 'focus' in meta) {
+          focus = meta.focus
+        } else {
+          if (meta && 'base' in meta) base = meta.base
+          diff = base ? compare(base, state.doc) : noDiff
+        }
+        return { base, diff, focus, decorations: draw(state.doc, diff, focus) }
       },
     },
     props: {
@@ -48,51 +74,70 @@ export function changesPlugin(onUpdate: () => void): Plugin<ChangesState> {
 // Heading ids are derived from their text, so they only add noise.
 const ignoreAttrs = { heading: ['id'] }
 
-export function decorate(base: Node, doc: Node): DecorationSet {
-  let changes
+export function compare(base: Node, doc: Node): Diff {
+  let steps
   try {
     // Widened to whole words, which read better than single characters.
-    changes = simplifyChanges(computeDocDiff(base, doc, { ignoreAttrs }), doc)
+    steps = simplifyChanges(computeDocDiff(base, doc, { ignoreAttrs }), doc)
   } catch {
-    return DecorationSet.empty
+    return noDiff
   }
-  const serializer = DOMSerializer.fromSchema(doc.type.schema)
-  const decorations: Decoration[] = []
+  const marks: Decoration[] = []
+  const changes: Change[] = []
   const blocks = new Set<number>()
-  for (const change of changes) {
-    if (change.toB > change.fromB) {
-      decorations.push(Decoration.inline(change.fromB, change.toB, { class: 'change-inserted' }))
+  for (const step of steps) {
+    if (step.toB > step.fromB) {
+      marks.push(Decoration.inline(step.fromB, step.toB, { class: 'change-inserted' }))
     }
-    if (change.toA > change.fromA && !blank(base.slice(change.fromA, change.toA).content)) {
-      decorations.push(deleted(base, change.fromA, change.toA, change.fromB, serializer))
+    if (step.toA > step.fromA && !blank(base.slice(step.fromA, step.toA).content)) {
+      const $from = base.resolve(step.fromA)
+      if ($from.sameParent(base.resolve(step.toA)) && $from.parent.isTextblock) {
+        marks.push(deletedText(base.textBetween(step.fromA, step.toA), step.fromB))
+      } else {
+        const content = base.slice(step.fromA, step.toA).content
+        changes.push({ kind: 'removed', at: step.fromB, content, key: `${step.fromA}:${step.toA}` })
+      }
     }
-    changedBlocks(doc, change.fromB, change.toB).forEach((pos) => blocks.add(pos))
+    changedBlocks(doc, step.fromB, step.toB).forEach((pos) => blocks.add(pos))
   }
   for (const pos of blocks) {
-    const attrs = { class: 'change-block', style: `--list-depth: ${listDepth(doc, pos)}` }
-    decorations.push(Decoration.node(pos, pos + doc.nodeAt(pos)!.nodeSize, attrs))
+    changes.push({ kind: 'block', from: pos, to: pos + doc.nodeAt(pos)!.nodeSize, depth: listDepth(doc, pos) })
   }
-  return DecorationSet.create(doc, decorations)
+  // Removed blocks are drawn before a block starting at the same position.
+  const position = (c: Change) => (c.kind === 'block' ? c.from + 0.5 : c.at)
+  changes.sort((a, b) => position(a) - position(b))
+  return { marks, changes }
 }
 
-// The deleted range from..to of base, shown at `at`: inline as struck text
-// when it lies within one block, or as the removed blocks otherwise.
-function deleted(base: Node, from: number, to: number, at: number, serializer: DOMSerializer): Decoration {
-  const $from = base.resolve(from)
-  const $to = base.resolve(to)
-  if ($from.sameParent($to) && $from.parent.isTextblock) {
-    const text = base.textBetween(from, to)
-    const render = () => Object.assign(document.createElement('del'), { className: 'change-deleted', textContent: text })
-    return Decoration.widget(at, render, { side: -1, ignoreSelection: true, key: `del:${text}` })
-  }
-  const render = () => {
-    const removed = document.createElement('div')
-    removed.className = 'change-removed'
-    removed.contentEditable = 'false'
-    removed.append(serializer.serializeFragment(base.slice(from, to).content))
-    return removed
-  }
-  return Decoration.widget(at, render, { side: -1, ignoreSelection: true, key: `removed:${from}:${to}` })
+// Each change carries its index in data-change, for the header to refer to.
+function draw(doc: Node, diff: Diff, focus: Focus | undefined): DecorationSet {
+  const serializer = DOMSerializer.fromSchema(doc.type.schema)
+  const changes = diff.changes.map((change, index) => {
+    const classes = [`change-${change.kind}`]
+    if (focus?.index === index) classes.push('change-current')
+    if (focus?.index === index && focus.pulse) classes.push('change-pulse')
+    const className = classes.join(' ')
+    if (change.kind === 'block') {
+      const attrs = { class: className, style: `--list-depth: ${change.depth}`, 'data-change': String(index) }
+      return Decoration.node(change.from, change.to, attrs)
+    }
+    const render = () => {
+      const removed = document.createElement('div')
+      removed.className = className
+      removed.dataset.change = String(index)
+      removed.contentEditable = 'false'
+      removed.append(serializer.serializeFragment(change.content))
+      return removed
+    }
+    return Decoration.widget(change.at, render, { side: -1, ignoreSelection: true, key: `removed:${change.key}:${className}` })
+  })
+  return DecorationSet.create(doc, [...diff.marks, ...changes])
+}
+
+// Deleted text within a block, shown struck through at `at`.
+function deletedText(text: string, at: number): Decoration {
+  const render = () => Object.assign(document.createElement('del'), { className: 'change-deleted', textContent: text })
+  return Decoration.widget(at, render, { side: -1, ignoreSelection: true, key: `del:${text}` })
 }
 
 // The positions of the blocks holding from..to: textblocks and leaf blocks

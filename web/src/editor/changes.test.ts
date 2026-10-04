@@ -66,3 +66,41 @@ describe('compare when the document is replaced', () => {
   it('shows the new changes', () => expect(texts('.change-inserted')).toEqual([' four']))
   it('reports the update', () => expect(updates).toBeGreaterThan(1))
 })
+
+const numbered = () => [...root.querySelectorAll<HTMLElement>('[data-change]')].map((e) => [e.dataset.change, e.textContent])
+
+describe('compare when blocks are removed and changed', () => {
+  beforeEach(() => compare('a\n\nc\n\nd2\n', 'a\n\nb\n\nc\n\nd\n'))
+
+  it('numbers the changes in document order', () => expect(numbered()).toEqual([['0', 'b'], ['1', 'd2']]))
+})
+
+describe('focusChange on a changed block', () => {
+  beforeEach(async () => {
+    await compare('a2\n\nb2\n', 'a\n\nb\n')
+    editor.focusChange({ index: 1, pulse: true })
+  })
+
+  it('marks it current', () => expect(texts('.change-current')).toEqual(['b2']))
+  it('pulses it', () => expect(texts('.change-pulse')).toEqual(['b2']))
+})
+
+describe('focusChange on removed blocks', () => {
+  beforeEach(async () => {
+    await compare('a\n\nc\n', 'a\n\nb\n\nc\n')
+    editor.focusChange({ index: 0, pulse: false })
+  })
+
+  it('marks them current', () => expect(texts('.change-removed.change-current')).toEqual(['b']))
+  it('does not pulse them', () => expect(root.querySelectorAll('.change-pulse').length).toBe(0))
+})
+
+describe('focusChange to nothing', () => {
+  beforeEach(async () => {
+    await compare('a2\n', 'a\n')
+    editor.focusChange({ index: 0, pulse: false })
+    editor.focusChange(undefined)
+  })
+
+  it('leaves no change current', () => expect(root.querySelectorAll('.change-current').length).toBe(0))
+})

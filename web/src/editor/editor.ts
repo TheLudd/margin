@@ -1,11 +1,12 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
+import type { Ctx } from '@milkdown/kit/ctx'
 import { editorViewCtx, editorViewOptionsCtx, parserCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
 import { Plugin } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
-import { changesKey, changesPlugin, type SetBase } from './changes'
+import { type ChangesMeta, changesKey, changesPlugin, type Focus } from './changes'
 import { remarkImageTitle } from './remark-image-title'
 
 // Marks the top-level block holding the cursor, so it is easy to find.
@@ -39,6 +40,8 @@ export interface Editor {
   replace(markdown: string): void
   // Shows the changes made since base, a markdown body; undefined hides them.
   compare(base: string | undefined): void
+  // Highlights the change with that index, as numbered in data-change.
+  focusChange(focus: Focus | undefined): void
   destroy(): Promise<void>
 }
 
@@ -52,12 +55,12 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
       if (!replacing) options.onChange?.(updated)
     },
   })
-  const showChanges = () =>
+  const setChanges = (meta: (ctx: Ctx) => ChangesMeta) =>
     crepe.editor.action((ctx) => {
       const view = ctx.get(editorViewCtx)
-      const meta: SetBase = { base: base === undefined ? undefined : ctx.get(parserCtx)(base) }
-      view.dispatch(view.state.tr.setMeta(changesKey, meta))
+      view.dispatch(view.state.tr.setMeta(changesKey, meta(ctx)))
     })
+  const showChanges = () => setChanges((ctx) => ({ base: base === undefined ? undefined : ctx.get(parserCtx)(base) }))
 
   return {
     markdown: () => crepe.getMarkdown(),
@@ -73,6 +76,9 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
     compare(next) {
       base = next
       showChanges()
+    },
+    focusChange(focus) {
+      setChanges(() => ({ focus }))
     },
     async destroy() {
       await crepe.destroy()

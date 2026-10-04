@@ -969,6 +969,22 @@ article:has(.ProseMirror:focus) {
   color: var(--change-added);
 }
 
+.doc-header .changes button.count {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes button.count:hover:not(:disabled) {
+  color: var(--cp-cyan);
+  text-decoration: underline;
+}
+
+.doc-header .changes button.count:disabled {
+  opacity: 1;
+}
+
 .doc-header .changes .mark-read {
   color: var(--change-added);
 }
@@ -988,6 +1004,33 @@ article:has(.ProseMirror:focus) {
   border-radius: 2px;
   background: var(--change-added);
   box-shadow: 0 0 6px var(--change-added);
+}
+
+/* The change nearest the middle of the view */
+.milkdown .ProseMirror :is(.change-block, .change-removed).change-current {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cp-cyan), transparent 93%);
+  box-shadow:
+    -10px 0 0 color-mix(in srgb, var(--cp-cyan), transparent 93%),
+    10px 0 0 color-mix(in srgb, var(--cp-cyan), transparent 93%);
+}
+
+.milkdown .ProseMirror :is(.change-block, .change-removed).change-current::after {
+  width: 5px;
+  margin-left: -1px;
+  background: var(--cp-cyan);
+  box-shadow: 0 0 8px var(--cp-cyan);
+}
+
+/* After jumping to a change */
+.milkdown .ProseMirror .change-pulse {
+  animation: change-pulse 1.2s ease-out;
+}
+
+@keyframes change-pulse {
+  from {
+    background-color: color-mix(in srgb, var(--cp-cyan), transparent 70%);
+  }
 }
 
 /* Too thin for a bar */

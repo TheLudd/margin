@@ -54,6 +54,7 @@ const sidebar = new Sidebar(
 const changes = new ChangesView(main, {
   use: (baseline) => comparison?.use(baseline),
   markRead,
+  focus: (focus) => editor?.focusChange(focus),
 })
 const view = new DocumentView(
   main,
@@ -125,6 +126,7 @@ async function open(path: string, push = true) {
   session.attach(editor)
   main.scrollTop = 0
   toc.build()
+  changes.reset()
   compare(current, created)
 
   await markViewed(path)

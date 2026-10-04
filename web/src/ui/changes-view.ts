@@ -1,4 +1,6 @@
 import type { Baseline } from '../document/comparison'
+import type { Focus } from '../editor/changes'
+import { debounce } from '../sync'
 import { h } from './dom'
 
 const labels: Record<Baseline, string> = { seen: 'unread', committed: 'uncommitted' }
@@ -6,30 +8,47 @@ const labels: Record<Baseline, string> = { seen: 'unread', committed: 'uncommitt
 // The changes found by the editor's changes plugin.
 const changeSelector = '.change-block, .change-removed'
 
+// Header controls for the changes shown in the document: which baseline
+// they are against, how many there are, stepping through them, and marking
+// them read. A change jumped to becomes current: it is highlighted and
+// counted in the header until it leaves the screen.
+
+// Leaves room for the sticky header.
+const headerHeight = 40
+// How long a change pulses once a jump reaches it.
+const pulseTime = 1200
+// When a jump turns out to need no scrolling, so no scrollend comes.
+const stillTime = 100
+
 export interface ChangesActions {
   use(baseline: Baseline): void
   markRead(): void
+  focus(focus: Focus | undefined): void
 }
 
-// Header controls for the changes shown in the document: which baseline
-// they are against, how many there are, stepping through them, and marking
-// them read.
 export class ChangesView {
   private readonly picker = h('span', { class: 'baselines' })
-  private readonly countEl = h('span', { class: 'count' })
+  private readonly countEl = h('button', { type: 'button', class: 'count', title: 'First change' })
   private readonly previousEl = h('button', { type: 'button', title: 'Previous change (Alt ↑)' }, '↑')
   private readonly nextEl = h('button', { type: 'button', title: 'Next change (Alt ↓)' }, '↓')
   private readonly markEl = h('button', { type: 'button', class: 'mark-read' }, 'mark read')
   private current: Baseline = 'seen'
+  private focused?: Focus // as last sent to the editor
+  private jumping?: number // the change being scrolled to
+  private pulsing?: number
+  private timer?: ReturnType<typeof setTimeout>
   readonly el = h('span', { class: 'changes', hidden: true }, this.picker, this.countEl, this.previousEl, this.nextEl, this.markEl)
 
   constructor(
     private readonly scroller: HTMLElement,
     private readonly actions: ChangesActions,
   ) {
+    this.countEl.onclick = () => this.jump(0)
     this.previousEl.onclick = () => this.step(-1)
     this.nextEl.onclick = () => this.step(1)
     this.markEl.onclick = () => actions.markRead()
+    scroller.addEventListener('scroll', debounce(() => this.update(), 50), { passive: true })
+    scroller.addEventListener('scrollend', () => this.arrive())
     document.addEventListener('keydown', (event) => {
       if (!event.altKey || this.el.hidden || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return
       event.preventDefault()
@@ -50,28 +69,92 @@ export class ChangesView {
     this.update()
   }
 
-  // Recounts the changes shown; called whenever the editor recomputes them.
+  // Shows the count and the current change; called whenever the editor
+  // redraws the changes and on scrolling.
   update() {
-    const count = this.changes().length
-    this.countEl.textContent = count === 0 ? 'no changes' : count === 1 ? '1 change' : `${count} changes`
-    this.previousEl.disabled = this.nextEl.disabled = count === 0
+    const changes = this.changes()
+    const kept = this.focused && this.onScreen(changes[this.focused.index]) ? this.focused.index : undefined
+    const index = this.jumping ?? kept
+    const count = changes.length
+    this.focus(index === undefined || index >= count ? undefined : index)
+    this.countEl.textContent =
+      this.focused !== undefined
+        ? `Change ${this.focused.index + 1} of ${count}`
+        : count === 0
+          ? 'no changes'
+          : count === 1
+            ? '1 change'
+            : `${count} changes`
+    this.countEl.disabled = this.previousEl.disabled = this.nextEl.disabled = count === 0
     this.markEl.hidden = this.current !== 'seen' || count === 0
   }
 
-  // Scrolls to the next change below the middle of the view, or the
-  // previous one above it.
-  private step(direction: 1 | -1) {
-    const view = this.scroller.getBoundingClientRect()
-    const middle = view.top + view.height / 2
-    const centers = this.changes().map((el) => {
-      const box = el.getBoundingClientRect()
-      return { el, center: box.top + box.height / 2 }
-    })
-    const target =
-      direction === 1 ? centers.find((c) => c.center > middle + 1) : centers.findLast((c) => c.center < middle - 1)
-    target?.el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // A new document starts without a jump in progress.
+  reset() {
+    clearTimeout(this.timer)
+    this.jumping = this.pulsing = this.focused = undefined
   }
 
+  private onScreen(change: HTMLElement | undefined): boolean {
+    if (!change) return false
+    const view = this.scroller.getBoundingClientRect()
+    const box = change.getBoundingClientRect()
+    return box.bottom > view.top + headerHeight && box.top < view.bottom
+  }
+
+  private focus(index: number | undefined) {
+    const next = index === undefined ? undefined : { index, pulse: index === this.pulsing }
+    if (next?.index === this.focused?.index && next?.pulse === this.focused?.pulse) return
+    this.focused = next
+    this.actions.focus(next)
+  }
+
+  // Steps from the current change, or from the middle of the view when no
+  // change is on screen.
+  private step(direction: 1 | -1) {
+    const changes = this.changes()
+    let target: number | undefined
+    if (this.focused) {
+      target = this.focused.index + direction
+    } else {
+      const view = this.scroller.getBoundingClientRect()
+      const middle = view.top + view.height / 2
+      const above = (el: HTMLElement) => el.getBoundingClientRect().top < middle
+      target = direction === 1 ? changes.findIndex((el) => !above(el)) : changes.findLastIndex(above)
+    }
+    if (target >= 0 && target < changes.length) this.jump(target)
+  }
+
+  // Scrolls to a change, which is current from then on. It pulses once it
+  // is reached, so the eye finds where it went.
+  private jump(index: number) {
+    const change = this.changes()[index]
+    if (!change) return
+    clearTimeout(this.timer)
+    this.jumping = index
+    this.pulsing = undefined
+    const before = this.scroller.scrollTop
+    change.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    this.update()
+    this.timer = setTimeout(() => {
+      if (this.scroller.scrollTop === before) this.arrive()
+    }, stillTime)
+  }
+
+  // A jump reached its change, or the reader scrolled.
+  private arrive() {
+    if (this.jumping === undefined) return
+    clearTimeout(this.timer)
+    this.pulsing = this.jumping
+    this.jumping = undefined
+    this.update()
+    this.timer = setTimeout(() => {
+      this.pulsing = undefined
+      this.update()
+    }, pulseTime)
+  }
+
+  // In document order, which is the order of their data-change indexes.
   private changes(): HTMLElement[] {
     return [...this.scroller.querySelectorAll<HTMLElement>(changeSelector)]
   }
