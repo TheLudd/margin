@@ -104,3 +104,58 @@ describe('focusChange to nothing', () => {
 
   it('leaves no change current', () => expect(root.querySelectorAll('.change-current').length).toBe(0))
 })
+
+// Clicks the view button of the change with that index.
+const show = (index: number, label: '+' | '±' | '−') =>
+  [...root.querySelectorAll<HTMLElement>('.change-controls')][index].querySelectorAll('button').forEach((b) => b.textContent === label && b.click())
+
+describe('a changed block shown as it is now', () => {
+  beforeEach(async () => {
+    await compare('one four three\n', 'one two three\n')
+    show(0, '+')
+  })
+
+  it('leaves out the deleted words', () => expect(texts('.change-deleted')).toEqual([]))
+  it('leaves out the highlights', () => expect(texts('.change-inserted')).toEqual([]))
+  it('keeps the bar', () => expect(texts('.change-block')).toEqual(['one four three']))
+})
+
+describe('a changed block shown as it was', () => {
+  beforeEach(async () => {
+    await compare('a\n\none four three\n', 'a\n\none two three\n')
+    show(0, '−')
+  })
+
+  it('shows the old block', () => expect(texts('.change-old')).toEqual(['one two three']))
+  it('hides the new one', () => expect(texts('.change-hidden')).toEqual(['one four three']))
+  it('numbers the old block as the change', () => expect(numbered()).toEqual([['0', 'one two three']]))
+})
+
+describe('a new block shown as it was', () => {
+  beforeEach(async () => {
+    await compare('a\n\nb\n', 'a\n')
+    show(0, '−')
+  })
+
+  it('says there was nothing', () => expect(texts('.change-old .change-note')).toEqual(['Not in the old version']))
+})
+
+describe('removed blocks shown as it is now', () => {
+  beforeEach(async () => {
+    await compare('a\n\nc\n', 'a\n\nb\n\nc\n')
+    show(0, '+')
+  })
+
+  it('collapses them', () => expect(texts('.change-removed.change-collapsed')).toEqual(['']))
+})
+
+describe('a changed block shown as it was, then as a diff', () => {
+  beforeEach(async () => {
+    await compare('one four three\n', 'one two three\n')
+    show(0, '−')
+    show(0, '±')
+  })
+
+  it('shows the changes again', () => expect(texts('.change-inserted')).toEqual(['four']))
+  it('shows the document block again', () => expect(root.querySelectorAll('.change-hidden, .change-old').length).toBe(0))
+})

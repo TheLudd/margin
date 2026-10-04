@@ -1008,6 +1008,96 @@ article:has(.ProseMirror:focus) {
   box-shadow: 0 0 6px var(--change-added);
 }
 
+/* Buttons in the gutter showing a change as it is, as a diff or as it was;
+   visible for the current change and while pointing at one */
+.milkdown .ProseMirror .change-controls {
+  position: relative;
+  height: 0;
+}
+
+.milkdown .ProseMirror .change-controls > span {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  /* Left of the bar, with room to move the pointer across to it */
+  left: calc(-14px - var(--list-depth, 0) * 34px - 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.milkdown .ProseMirror .change-controls:is(.current, :hover, :has(+ :is(.change-block, .change-removed):hover)) > span {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.milkdown .ProseMirror .change-controls button {
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: 12px/1 var(--cp-mono);
+  cursor: pointer;
+}
+
+.milkdown .ProseMirror .change-controls button:hover {
+  border-color: var(--cp-cyan);
+  color: var(--cp-text);
+}
+
+.milkdown .ProseMirror .change-controls button.active {
+  border-color: var(--cp-cyan);
+  color: var(--cp-cyan);
+}
+
+/* A block shown as it was: the document's block is hidden */
+.milkdown .ProseMirror .change-hidden {
+  display: none;
+}
+
+.milkdown .ProseMirror .change-old {
+  position: relative;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--change-removed), transparent 92%);
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-old::after,
+.milkdown .ProseMirror .change-removed.change-plain::after {
+  background: var(--change-removed);
+  box-shadow: 0 0 6px var(--change-removed);
+}
+
+.milkdown .ProseMirror .change-old > :first-child {
+  margin-top: 0;
+}
+
+.milkdown .ProseMirror .change-note {
+  color: var(--cp-muted);
+  font-style: italic;
+}
+
+/* Removed blocks shown as it is now: a sliver, still a place to step to */
+.milkdown .ProseMirror .change-removed.change-collapsed {
+  height: 6px;
+  margin: 2px 0;
+  padding: 0;
+}
+
+/* Removed blocks shown as they were, without strike-through */
+.milkdown .ProseMirror .change-removed.change-plain {
+  color: inherit;
+  text-decoration: none;
+  opacity: 1;
+}
+
 /* The change nearest the middle of the view */
 .milkdown .ProseMirror :is(.change-block, .change-removed).change-current {
   border-radius: 3px;
