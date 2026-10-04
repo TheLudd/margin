@@ -14,16 +14,21 @@ import (
 )
 
 // track serves root as the root named code and tracks it until the test
-// ends.
+// ends, keeping versions read for a day.
 func track(t *testing.T, root string) *Store {
+	t.Helper()
+	return trackStore(t, root, open(t))
+}
+
+func trackStore(t *testing.T, root string, s *Store) *Store {
 	t.Helper()
 	configFile := filepath.Join(t.TempDir(), "config.json")
 	config.Save(configFile, config.Config{Roots: []config.Root{{Name: "code", Path: root}}})
 	hub := events.NewHub[index.Event]()
 	workspaces := workspace.NewManager(configFile, hub.Publish, nil)
-	s := open(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	go Track(ctx, s, workspaces.Workspace, hub.Subscribe)
+	tracker := &Tracker{Store: s, Workspace: workspaces.Workspace, Keep: func() time.Duration { return 24 * time.Hour }}
+	go tracker.Run(ctx, hub.Subscribe)
 	t.Cleanup(func() { cancel(); workspaces.Close() })
 	return s
 }
@@ -74,6 +79,22 @@ func TestTrackKeepsWhatWasReadThroughChanges(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	if got := get(s, "code/a.md"); got != "v1" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestTrackStartsOverFromOldVersions(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "a.md"), []byte("v2"), 0o644)
+	s := open(t)
+	s.Put("code/a.md", []byte("v1"))
+	old := time.Now().Add(-48 * time.Hour)
+	os.Chtimes(s.file("code/a.md"), old, old)
+	s = trackStore(t, root, s)
+
+	time.Sleep(100 * time.Millisecond)
+
+	if got := get(s, "code/a.md"); got != "v2" {
 		t.Fatalf("got %q", got)
 	}
 }

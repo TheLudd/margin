@@ -61,7 +61,15 @@ func run(configFile string, port int, state string, hosts []string) error {
 	if err != nil {
 		return err
 	}
-	go seen.Track(ctx, read, workspaces.Workspace, hub.Subscribe)
+	tracker := &seen.Tracker{
+		Store:     read,
+		Workspace: workspaces.Workspace,
+		Keep: func() time.Duration {
+			c, _ := workspaces.Config()
+			return time.Duration(c.Unread()) * 24 * time.Hour
+		},
+	}
+	go tracker.Run(ctx, hub.Subscribe)
 
 	dist, err := fs.Sub(web.Dist, "dist")
 	if err != nil {

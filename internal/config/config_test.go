@@ -162,6 +162,26 @@ func TestSaveNormalizes(t *testing.T) {
 	}
 }
 
+func TestUnreadDays(t *testing.T) {
+	if got := (Config{}).Unread(); got != DefaultUnreadDays {
+		t.Errorf("default: %d", got)
+	}
+	if got := (Config{UnreadDays: 90}).Unread(); got != 90 {
+		t.Errorf("set: %d", got)
+	}
+	for _, days := range []int{-1, MaxUnreadDays + 1} {
+		if err := (Config{UnreadDays: days}).Validate(); err == nil {
+			t.Errorf("%d days accepted", days)
+		}
+	}
+	if !Equal(Config{}, Config{UnreadDays: DefaultUnreadDays}) {
+		t.Error("the default should equal an unset window")
+	}
+	if Equal(Config{}, Config{UnreadDays: 90}) {
+		t.Error("a changed window should differ")
+	}
+}
+
 func TestActiveDays(t *testing.T) {
 	if got := (Config{}).Active(); got != DefaultActiveDays {
 		t.Errorf("default: %d", got)

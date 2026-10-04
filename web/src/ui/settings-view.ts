@@ -15,6 +15,7 @@ export class SettingsView {
   private readonly rowsEl = h('div', { class: 'roots' })
   private readonly exclude = h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'CHANGELOG.md\n*.draft.md' })
   private readonly activeDays = h('input', { type: 'number', min: '1', max: '365', class: 'days' })
+  private readonly unreadDays = h('input', { type: 'number', min: '1', max: '365', class: 'days' })
   private readonly errorEl = h('p', { class: 'error', hidden: true })
   private readonly saveButton = h('button', { class: 'primary', type: 'button' })
   private readonly busy = new BusyOverlay()
@@ -54,12 +55,21 @@ export class SettingsView {
       this.exclude,
       h('h2', {}, 'Recent files'),
       h('p', { class: 'inline' }, 'List files viewed or modified in the last ', this.activeDays, ' days under Recent. Others are under Older.'),
+      h('h2', {}, 'Unread changes'),
+      h(
+        'p',
+        { class: 'inline' },
+        'Show the changes made since a file was last read for ',
+        this.unreadDays,
+        " days after reading it, even when the file is gone for a while, as after switching branches. After that, its current version counts as read.",
+      ),
       h('div', { class: 'actions save' }, this.saveButton),
       this.errorEl,
       h('p', { class: 'file' }, `Stored in ${settings.file}`),
     )
     this.exclude.value = settings.exclude.join('\n')
     this.activeDays.value = String(settings.activeDays)
+    this.unreadDays.value = String(settings.unreadDays)
     this.rowsEl.replaceChildren()
     this.rows = []
     const roots = settings.roots.length ? settings.roots : [{ name: '', path: '' }]
@@ -102,7 +112,7 @@ export class SettingsView {
     this.saveButton.disabled = true
     try {
       const exclude = this.exclude.value.split('\n').map((line) => line.trim()).filter(Boolean)
-      const result = await this.busy.during('Indexing…', saveSettings(roots, exclude, Number(this.activeDays.value)))
+      const result = await this.busy.during('Indexing…', saveSettings(roots, exclude, Number(this.activeDays.value), Number(this.unreadDays.value)))
       if (result.kind === 'invalid') {
         this.showError(result.message)
         return

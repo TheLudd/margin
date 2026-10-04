@@ -24,11 +24,14 @@ type Config struct {
 	Roots      []Root   `json:"roots"`
 	Exclude    []string `json:"exclude,omitempty"`    // file patterns to leave out, see Excluded
 	ActiveDays int      `json:"activeDays,omitempty"` // how far back activity makes a file active; 0 means DefaultActiveDays
+	UnreadDays int      `json:"unreadDays,omitempty"` // how long after a file was read its unread changes are kept; 0 means DefaultUnreadDays
 }
 
 const (
 	DefaultActiveDays = 14
 	MaxActiveDays     = 365
+	DefaultUnreadDays = 30
+	MaxUnreadDays     = 365
 )
 
 // Active returns how many days back activity makes a file active.
@@ -37,6 +40,15 @@ func (c Config) Active() int {
 		return DefaultActiveDays
 	}
 	return c.ActiveDays
+}
+
+// Unread returns for how many days after a file was last read its unread
+// changes are kept.
+func (c Config) Unread() int {
+	if c.UnreadDays == 0 {
+		return DefaultUnreadDays
+	}
+	return c.UnreadDays
 }
 
 // File returns where the config lives: $XDG_CONFIG_HOME/margin/config.json,
@@ -79,7 +91,7 @@ func Load(path string) (Config, error) {
 }
 
 // Normalize trims the exclude patterns, drops blank ones, and leaves the
-// default active window implicit.
+// default windows implicit.
 func (c Config) Normalize() Config {
 	exclude := []string{}
 	for _, pattern := range c.Exclude {
@@ -93,6 +105,9 @@ func (c Config) Normalize() Config {
 	}
 	if c.ActiveDays == DefaultActiveDays {
 		c.ActiveDays = 0 // the default is not written out
+	}
+	if c.UnreadDays == DefaultUnreadDays {
+		c.UnreadDays = 0
 	}
 	return c
 }
@@ -120,10 +135,13 @@ var validName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // Validate checks that every root has a usable, unique name and an existing
 // directory, that no root contains another, that the exclude patterns are
-// valid and that the active window is in range.
+// valid and that the windows are in range.
 func (c Config) Validate() error {
 	if c.ActiveDays < 0 || c.ActiveDays > MaxActiveDays {
 		return fmt.Errorf("active days must be between 1 and %d", MaxActiveDays)
+	}
+	if c.UnreadDays < 0 || c.UnreadDays > MaxUnreadDays {
+		return fmt.Errorf("unread days must be between 1 and %d", MaxUnreadDays)
 	}
 	for _, pattern := range c.Exclude {
 		if _, err := path.Match(strings.ToLower(pattern), ""); err != nil {
@@ -243,7 +261,7 @@ func SameIndex(a, b Config) bool {
 
 // Equal reports whether two configs are the same.
 func Equal(a, b Config) bool {
-	return SameIndex(a, b) && a.Active() == b.Active()
+	return SameIndex(a, b) && a.Active() == b.Active() && a.Unread() == b.Unread()
 }
 
 func within(dir, parent string) bool {

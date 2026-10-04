@@ -53,7 +53,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 - **`index`** — walks a root and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
 - **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
 - **`recent`** — records views and modifications and persists them to `~/.local/state/margin/recent.json`. The lists are capped.
-- **`seen`** — keeps a copy of every file as last read in margin, in `~/.local/state/margin/seen/`. margin only learns of a change after it is made, so a file's first version found by the index counts as read. Marking a file read replaces the copy; a save made in margin advances it too, unless the copy holds unread changes.
+- **`seen`** — keeps a copy of every file as last read in margin, in `~/.local/state/margin/seen/`. margin only learns of a change after it is made, so a file's first version found by the index counts as read. Marking a file read replaces the copy; a save made in margin advances it too, unless the copy holds unread changes. A copy is kept for `unreadDays` (30 by default) after it was last written, even while the file is gone, as after a branch switch; a sweep at startup, daily and on settings changes deletes older copies and stores the current version of files left without one.
 - **`events`** — fans index events out to the SSE subscribers.
 - **`api`** — handlers only, wiring the packages together.
 

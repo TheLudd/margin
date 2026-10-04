@@ -4,25 +4,38 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
 	"margin/internal/files"
 	"margin/internal/index"
 	"margin/internal/workspace"
 )
 
-// Track records the first version of every file in the workspace as read,
-// from the files indexed now and from index events, until ctx is done.
-// subscribe is called again whenever the event stream ends.
-func Track(ctx context.Context, s *Store, current func() *workspace.Workspace, subscribe func() (<-chan index.Event, func())) {
+const sweepInterval = 24 * time.Hour
+
+// Tracker records the first version of every file in the workspace as read
+// and forgets versions read too long ago.
+type Tracker struct {
+	Store     *Store
+	Workspace func() *workspace.Workspace
+	Keep      func() time.Duration // how long a version read is kept
+}
+
+// Run tracks the files indexed now and index events until ctx is done,
+// sweeping old versions away daily. subscribe is called again whenever the
+// event stream ends.
+func (t *Tracker) Run(ctx context.Context, subscribe func() (<-chan index.Event, func())) {
 	for ctx.Err() == nil {
 		events, unsubscribe := subscribe()
-		seedAll(s, current()) // after subscribing, so no file is missed
-		follow(ctx, s, current, events)
+		t.sweep() // after subscribing, so no file is missed
+		t.follow(ctx, events)
 		unsubscribe()
 	}
 }
 
-func follow(ctx context.Context, s *Store, current func() *workspace.Workspace, events <-chan index.Event) {
+func (t *Tracker) follow(ctx context.Context, events <-chan index.Event) {
+	daily := time.NewTicker(sweepInterval)
+	defer daily.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -33,18 +46,26 @@ func follow(ctx context.Context, s *Store, current func() *workspace.Workspace, 
 			}
 			switch ev.Kind {
 			case index.Added, index.Changed:
-				seed(s, current(), ev.Path)
-			case workspace.TreeChanged: // roots may have been added
-				seedAll(s, current())
+				seed(t.Store, t.Workspace(), ev.Path)
+			case workspace.TreeChanged: // roots or settings may have changed
+				t.sweep()
 			}
+		case <-daily.C:
+			t.sweep()
 		}
 	}
 }
 
-func seedAll(s *Store, ws *workspace.Workspace) {
+// sweep forgets old versions, then records the files without one, so a
+// file not read for a long time starts over from its current version.
+func (t *Tracker) sweep() {
+	if err := t.Store.Prune(t.Keep()); err != nil {
+		log.Printf("seen: %v", err)
+	}
+	ws := t.Workspace()
 	for _, root := range ws.Roots() {
 		for _, f := range root.Index.Files() {
-			seed(s, ws, root.Join(f.Path))
+			seed(t.Store, ws, root.Join(f.Path))
 		}
 	}
 }

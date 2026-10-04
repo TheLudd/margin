@@ -33,7 +33,7 @@ import { Toc } from './ui/toc'
 
 const pollInterval = 15_000
 
-let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14 }
+let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14, unreadDays: 30 }
 let files: LogicalFile[] = []
 let recent: Activity[] = []
 let session: DocumentSession | undefined

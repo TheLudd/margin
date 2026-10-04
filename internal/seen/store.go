@@ -2,6 +2,10 @@
 // so the changes made since can be shown. margin only learns of a change
 // after it is made, so the version a file has when margin first finds it
 // counts as read.
+//
+// A copy is kept for a while after the file was last read, even when the
+// file is gone, as it is after switching branches. After that, the file's
+// current version counts as read again.
 package seen
 
 import (
@@ -11,7 +15,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"margin/internal/files"
 )
@@ -71,6 +77,28 @@ func (s *Store) Advance(path, from string, content []byte) error {
 		return err
 	}
 	return s.write(path, content)
+}
+
+// Prune forgets the versions read longer ago than keep. Every write
+// replaces a copy, so its modification time is when it was read.
+func (s *Store) Prune(keep time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return err
+	}
+	cutoff := time.Now().Add(-keep)
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil || strings.HasPrefix(entry.Name(), ".") || !info.ModTime().Before(cutoff) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(s.dir, entry.Name())); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 // file names the copy of path by its hash, which is flat and safe whatever

@@ -1,7 +1,9 @@
 package seen
 
 import (
+	"os"
 	"testing"
+	"time"
 
 	"margin/internal/files"
 )
@@ -93,5 +95,48 @@ func TestKeepsPathsApart(t *testing.T) {
 
 	if get(s, "code/a.md") != "a" || get(s, "code/b.md") != "b" {
 		t.Fatal("paths share a copy")
+	}
+}
+
+// age makes the version of path read that long ago.
+func age(s *Store, path string, by time.Duration) {
+	at := time.Now().Add(-by)
+	os.Chtimes(s.file(path), at, at)
+}
+
+func TestPruneForgetsOldVersions(t *testing.T) {
+	s := open(t)
+	s.Put("code/old.md", []byte("old"))
+	age(s, "code/old.md", 31*24*time.Hour)
+
+	s.Prune(30 * 24 * time.Hour)
+
+	if _, ok, _ := s.Get("code/old.md"); ok {
+		t.Fatal("old version kept")
+	}
+}
+
+func TestPruneKeepsRecentVersions(t *testing.T) {
+	s := open(t)
+	s.Put("code/recent.md", []byte("recent"))
+	age(s, "code/recent.md", 29*24*time.Hour)
+
+	s.Prune(30 * 24 * time.Hour)
+
+	if got := get(s, "code/recent.md"); got != "recent" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestPutRenewsAVersion(t *testing.T) {
+	s := open(t)
+	s.Put("code/a.md", []byte("v1"))
+	age(s, "code/a.md", 31*24*time.Hour)
+	s.Put("code/a.md", []byte("v2"))
+
+	s.Prune(30 * 24 * time.Hour)
+
+	if got := get(s, "code/a.md"); got != "v2" {
+		t.Fatalf("got %q", got)
 	}
 }

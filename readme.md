@@ -57,13 +57,15 @@ Settings are edited on the settings screen (the gear in the sidebar) and stored 
 {
   "roots": [{ "name": "code", "path": "~/code" }, { "name": "notes", "path": "~/notes" }],
   "exclude": ["CHANGELOG.md", "generated/*.md"],
-  "activeDays": 14
+  "activeDays": 14,
+  "unreadDays": 30
 }
 ```
 
 - **`roots`** are the folders served. Each name is the first part of every path in it, as in `/code/margin/plan.md`. Folders must exist, names must be unique and roots must not overlap.
 - **`exclude`** leaves files out of the sidebar, search and recent activity. A pattern without a slash matches file names anywhere; one with a slash matches the end of a path. Case is ignored.
 - **`activeDays`** (1–365) is the window that divides Recent from Older.
+- **`unreadDays`** (1–365) is how long after you last read a file its unread changes are kept, even while the file is gone, as after switching branches. After that, its current version counts as read.
 
 Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`, and the copies of files as last read in `seen/` next to it.
 
