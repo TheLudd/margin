@@ -944,31 +944,6 @@ article:has(.ProseMirror:focus) {
   cursor: default;
 }
 
-.doc-header .changes .baselines {
-  display: flex;
-}
-
-.doc-header .changes .baselines button {
-  border-radius: 0;
-}
-
-.doc-header .changes .baselines button:first-child {
-  border-radius: 3px 0 0 3px;
-}
-
-.doc-header .changes .baselines button:last-child {
-  border-radius: 0 3px 3px 0;
-}
-
-.doc-header .changes .baselines button + button {
-  border-left: none;
-}
-
-.doc-header .changes .baselines button.active {
-  border-color: var(--change-added);
-  color: var(--change-added);
-}
-
 .doc-header .changes button.count {
   padding: 0;
   border: none;
@@ -981,12 +956,36 @@ article:has(.ProseMirror:focus) {
   text-decoration: underline;
 }
 
-.doc-header .changes button.count:disabled {
-  opacity: 1;
-}
-
 .doc-header .changes .mark-read {
   color: var(--change-added);
+}
+
+.doc-header .commit {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+  font: inherit;
+}
+
+.doc-header .commit[hidden] {
+  display: none;
+}
+
+.doc-header .commit:not(:disabled) {
+  color: var(--cp-warn);
+  cursor: pointer;
+}
+
+.doc-header .commit:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+.doc-header .commit.active {
+  text-decoration: underline;
+  text-decoration-color: var(--cp-warn);
+  text-underline-offset: 3px;
 }
 
 .milkdown .ProseMirror .change-block {

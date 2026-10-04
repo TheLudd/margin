@@ -3,7 +3,7 @@
 //
 // Until the reader picks a baseline, the one shown is the first the file
 // differs from, preferring unread changes, and new unread changes switch
-// to them.
+// to them. Once uncommitted changes are committed, unread ones show again.
 
 import { splitFrontmatter } from '../markdown/frontmatter'
 
@@ -16,8 +16,9 @@ export type Fetch = (path: string) => Promise<string | undefined>
 export interface ComparisonListener {
   // The body to show changes against; undefined shows none.
   compare(body: string | undefined): void
-  // Which baselines exist for the file, and which one is in use.
-  baselines(available: Baseline[], current: Baseline): void
+  // The baseline in use, and whether the file is as committed; undefined
+  // when it has no committed version.
+  state(current: Baseline, committed: boolean | undefined): void
 }
 
 export class Comparison {
@@ -25,6 +26,7 @@ export class Comparison {
   private chosen?: Baseline
   private picked = false // by the reader
   private loading = 0
+  private content = '' // the file as shown
 
   constructor(
     readonly path: string,
@@ -48,8 +50,14 @@ export class Comparison {
     }
     if (token !== this.loading) return
     this.versions = Object.fromEntries(baselines.map((b, i) => [b, fetched[i]]))
+    this.content = content
     const differs = (b: Baseline) => this.versions[b] !== undefined && this.versions[b] !== content
-    if (!this.picked && (this.chosen === undefined || differs('seen'))) this.chosen = baselines.find(differs)
+    if (this.chosen === 'committed' && !differs('committed')) {
+      this.chosen = 'seen'
+      this.picked = false
+    } else if (!this.picked && (this.chosen === undefined || differs('seen'))) {
+      this.chosen = baselines.find(differs)
+    }
     this.emit()
   }
 
@@ -62,9 +70,7 @@ export class Comparison {
   private emit() {
     const version = this.versions[this.baseline]
     this.listener.compare(version === undefined ? undefined : splitFrontmatter(version).body)
-    this.listener.baselines(
-      baselines.filter((b) => this.versions[b] !== undefined),
-      this.baseline,
-    )
+    const committed = this.versions.committed
+    this.listener.state(this.baseline, committed === undefined ? undefined : committed === this.content)
   }
 }

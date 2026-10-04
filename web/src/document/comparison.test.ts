@@ -4,21 +4,21 @@ import { type Baseline, Comparison } from './comparison'
 let comparison: Comparison
 let versions: Partial<Record<Baseline, string>>
 let compared: (string | undefined)[]
-let available: Baseline[]
 let current: Baseline
+let committed: boolean | undefined
 
 // A comparison whose baselines are whatever `versions` holds when loading.
-function setup(seen: string | undefined, committed: string | undefined) {
-  versions = { seen, committed }
+function setup(seen: string | undefined, head: string | undefined) {
+  versions = { seen, committed: head }
   compared = []
   comparison = new Comparison(
     'code/plan.md',
     { seen: async () => versions.seen, committed: async () => versions.committed },
     {
       compare: (body) => compared.push(body),
-      baselines: (a, c) => {
-        available = a
-        current = c
+      state: (b, c) => {
+        current = b
+        committed = c
       },
     },
   )
@@ -32,7 +32,7 @@ describe('Comparison when there are unread changes', () => {
 
   it('compares with the version read', () => expect(compared).toEqual(['v1']))
   it('reports it in use', () => expect(current).toBe('seen'))
-  it('offers both baselines', () => expect(available).toEqual(['seen', 'committed']))
+  it('reports the file uncommitted', () => expect(committed).toBe(false))
 })
 
 describe('Comparison when only uncommitted changes are left', () => {
@@ -73,6 +73,20 @@ describe('Comparison when nothing changed', () => {
   })
 
   it('compares with the version read', () => expect(current).toBe('seen'))
+  it('reports the file committed', () => expect(committed).toBe(true))
+})
+
+describe('Comparison when the uncommitted changes shown get committed', () => {
+  beforeEach(async () => {
+    setup('v2', 'v0')
+    await comparison.load('v2')
+    comparison.use('committed')
+    versions.committed = 'v2'
+    await comparison.load('v2')
+  })
+
+  it('goes back to the version read', () => expect(current).toBe('seen'))
+  it('reports the file committed', () => expect(committed).toBe(true))
 })
 
 describe('Comparison when the file is not committed', () => {
@@ -81,7 +95,7 @@ describe('Comparison when the file is not committed', () => {
     await comparison.load('v1')
   })
 
-  it('offers only the version read', () => expect(available).toEqual(['seen']))
+  it('reports no commit', () => expect(committed).toBeUndefined())
 })
 
 describe('Comparison when the reader picks a baseline', () => {
@@ -111,5 +125,5 @@ describe('Comparison without a baseline', () => {
   })
 
   it('shows no changes', () => expect(compared).toEqual([undefined]))
-  it('offers none', () => expect(available).toEqual([]))
+  it('reports no commit', () => expect(committed).toBeUndefined())
 })

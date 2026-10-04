@@ -3,15 +3,18 @@ import type { Focus } from '../editor/changes'
 import { debounce } from '../sync'
 import { h } from './dom'
 
-const labels: Record<Baseline, string> = { seen: 'unread', committed: 'uncommitted' }
+// What the changes against each baseline are called.
+const kinds: Record<Baseline, string> = { seen: 'unread', committed: 'uncommitted' }
 
 // The changes found by the editor's changes plugin.
 const changeSelector = '.change-block, .change-removed'
 
-// Header controls for the changes shown in the document: which baseline
-// they are against, how many there are, stepping through them, and marking
-// them read. A change jumped to becomes current: it is highlighted and
-// counted in the header until it leaves the screen.
+// Header controls for the changes shown in the document: how many there
+// are, stepping through them and marking them read, hidden when there are
+// none; and, next to the save status, whether the file is committed, which
+// shows the uncommitted changes when clicked. A change jumped to becomes
+// current: it is highlighted and counted in the header until it leaves the
+// screen.
 
 // Leaves room for the sticky header.
 const headerHeight = 40
@@ -27,7 +30,6 @@ export interface ChangesActions {
 }
 
 export class ChangesView {
-  private readonly picker = h('span', { class: 'baselines' })
   private readonly countEl = h('button', { type: 'button', class: 'count', title: 'First change' })
   private readonly previousEl = h('button', { type: 'button', title: 'Previous change (Alt ↑)' }, '↑')
   private readonly nextEl = h('button', { type: 'button', title: 'Next change (Alt ↓)' }, '↓')
@@ -37,7 +39,8 @@ export class ChangesView {
   private jumping?: number // the change being scrolled to
   private pulsing?: number
   private timer?: ReturnType<typeof setTimeout>
-  readonly el = h('span', { class: 'changes', hidden: true }, this.picker, this.countEl, this.previousEl, this.nextEl, this.markEl)
+  readonly el = h('span', { class: 'changes', hidden: true }, this.countEl, this.previousEl, this.nextEl, this.markEl)
+  readonly commitEl = h('button', { type: 'button', class: 'commit', hidden: true })
 
   constructor(
     private readonly scroller: HTMLElement,
@@ -47,6 +50,7 @@ export class ChangesView {
     this.previousEl.onclick = () => this.step(-1)
     this.nextEl.onclick = () => this.step(1)
     this.markEl.onclick = () => actions.markRead()
+    this.commitEl.onclick = () => actions.use(this.current === 'committed' ? 'seen' : 'committed')
     scroller.addEventListener('scroll', debounce(() => this.update(), 50), { passive: true })
     scroller.addEventListener('scrollend', () => this.arrive())
     document.addEventListener('keydown', (event) => {
@@ -56,16 +60,15 @@ export class ChangesView {
     })
   }
 
-  baselines(available: Baseline[], current: Baseline) {
+  // The baseline in use, and whether the file is as committed (undefined
+  // when it has no committed version).
+  state(current: Baseline, committed: boolean | undefined) {
     this.current = current
-    this.el.hidden = available.length === 0
-    this.picker.replaceChildren(
-      ...available.map((baseline) => {
-        const button = h('button', { type: 'button', class: baseline === current ? 'active' : undefined }, labels[baseline])
-        button.onclick = () => this.actions.use(baseline)
-        return button
-      }),
-    )
+    this.commitEl.hidden = committed === undefined
+    this.commitEl.textContent = committed ? 'committed' : 'uncommitted'
+    this.commitEl.disabled = committed !== false
+    this.commitEl.title = current === 'committed' ? 'Show unread changes' : 'Show the changes since the last commit'
+    this.commitEl.classList.toggle('active', current === 'committed')
     this.update()
   }
 
@@ -77,22 +80,21 @@ export class ChangesView {
     const index = this.jumping ?? kept
     const count = changes.length
     this.focus(index === undefined || index >= count ? undefined : index)
+    const kind = kinds[this.current]
     this.countEl.textContent =
       this.focused !== undefined
         ? `Change ${this.focused.index + 1} of ${count}`
-        : count === 0
-          ? 'no changes'
-          : count === 1
-            ? '1 change'
-            : `${count} changes`
-    this.countEl.disabled = this.previousEl.disabled = this.nextEl.disabled = count === 0
-    this.markEl.hidden = this.current !== 'seen' || count === 0
+        : `${count} ${kind} ${count === 1 ? 'change' : 'changes'}`
+    this.el.hidden = count === 0
+    this.markEl.hidden = this.current !== 'seen'
   }
 
-  // A new document starts without a jump in progress.
+  // A new document starts without a jump in progress, or a commit status
+  // until its baselines load.
   reset() {
     clearTimeout(this.timer)
     this.jumping = this.pulsing = this.focused = undefined
+    this.commitEl.hidden = true
   }
 
   private onScreen(change: HTMLElement | undefined): boolean {

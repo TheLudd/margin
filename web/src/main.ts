@@ -61,6 +61,7 @@ const view = new DocumentView(
   (value) => session?.editFrontmatter(value),
   (path) => open(path),
   changes.el,
+  changes.commitEl,
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
 const settingsView = new SettingsView(main, (saved) => {
@@ -142,7 +143,7 @@ function compare(current: DocumentSession, shown: Editor) {
     { seen: readSeen, committed: readCommitted },
     {
       compare: (body) => live() && shown.compare(body),
-      baselines: (available, baseline) => live() && changes.baselines(available, baseline),
+      state: (baseline, committed) => live() && changes.state(baseline, committed),
     },
   )
   comparison = comparing
