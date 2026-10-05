@@ -291,14 +291,25 @@ func modified(root *workspace.Root, f index.File) (time.Time, bool) {
 	return root.Trees.Changed(f.Repo, inRepo(f))
 }
 
+// addRecent records a view of a file. A file viewed for the first time has
+// its version recorded as read, so changes show from then on.
 func (s *Server) addRecent(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	if !s.Workspaces.Workspace().Has(path) {
+	store, rel, err := s.file(path)
+	if err != nil || !s.Workspaces.Workspace().Has(path) {
 		http.Error(w, "unknown file", http.StatusNotFound)
 		return
 	}
 	if err := s.Recent.Add(path); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = s.Seen.Seed(path, func() ([]byte, error) {
+		doc, err := store.Read(rel)
+		return doc.Content, err
+	})
+	if err != nil {
+		writeError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

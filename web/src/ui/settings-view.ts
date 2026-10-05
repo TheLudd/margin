@@ -61,7 +61,7 @@ export class SettingsView {
         { class: 'inline' },
         'Show the changes made since a file was last read for ',
         this.unreadDays,
-        " days after reading it, even when the file is gone for a while, as after switching branches. After that, its current version counts as read.",
+        " days after reading it, even when the file is gone for a while, as after switching branches. After that, it counts as never opened.",
       ),
       h('div', { class: 'actions save' }, this.saveButton),
       this.errorEl,

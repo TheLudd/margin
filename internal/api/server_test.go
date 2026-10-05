@@ -455,3 +455,24 @@ func expectEvent(t *testing.T, lines *bufio.Scanner, want string) {
 		t.Fatalf("no event %s", want)
 	}
 }
+
+func TestViewRecordsTheFirstVersionRead(t *testing.T) {
+	f := setup(t)
+
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); string(got) != "v1" {
+		t.Fatalf("seen %q", got)
+	}
+}
+
+func TestViewKeepsUnreadChanges(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); string(got) != "v0" {
+		t.Fatalf("seen %q", got)
+	}
+}

@@ -61,15 +61,14 @@ func run(configFile string, port int, state string, hosts []string) error {
 	if err != nil {
 		return err
 	}
-	tracker := &seen.Tracker{
-		Store:     read,
-		Workspace: workspaces.Workspace,
+	pruner := &seen.Pruner{
+		Store: read,
 		Keep: func() time.Duration {
 			c, _ := workspaces.Config()
 			return time.Duration(c.Unread()) * 24 * time.Hour
 		},
 	}
-	go tracker.Run(ctx, hub.Subscribe)
+	go pruner.Run(ctx, hub.Subscribe)
 
 	dist, err := fs.Sub(web.Dist, "dist")
 	if err != nil {

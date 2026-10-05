@@ -1,11 +1,12 @@
 // Package seen keeps the version of every markdown file last read in margin,
-// so the changes made since can be shown. margin only learns of a change
-// after it is made, so the version a file has when margin first finds it
-// counts as read.
+// so the changes made since can be shown. Changes are only ever relative to
+// what was read: a file never opened in margin has no copy, and so no
+// unread changes. The version a file has when it is first opened counts as
+// read.
 //
 // A copy is kept for a while after the file was last read, even when the
-// file is gone, as it is after switching branches. After that, the file's
-// current version counts as read again.
+// file is gone, as it is after switching branches. After that, the file
+// counts as never opened again.
 package seen
 
 import (
