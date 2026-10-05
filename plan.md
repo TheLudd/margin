@@ -74,12 +74,13 @@ Each package does gsone job and can be tested without the HTTP layer.
 
 ## Never stale
 
-Several independent mechanisms; any one of them is enough to catch a change.
+Several independent mechanisms; any one of them is enough to catch a change. There is no polling.
 
 1. **Push.** The watcher sees a change to the open file, the server sends an SSE event, and the client reloads.
 2. **Revalidate on focus.** On `visibilitychange` or focus, the client sends a conditional GET with its etag and gets either `304` or the new content. This works even if inotify missed something.
 3. **Revalidate on reconnect.** When the SSE stream reconnects (after sleep or a service restart), the client revalidates the open file, because events sent while it was down are lost.
-4. **No HTTP caching.** File responses are `Cache-Control: no-cache` with an etag.
+4. **Push commits.** A commit, checkout or pull moves `HEAD` without touching the file, so the index never sees it. The git directory of every checkout is watched (`HEAD`, `logs/HEAD`, `packed-refs`); when `HEAD` moves, the server recomputes what the repository changed and sends a `head` event, and the client refetches the committed version of an open file in it.
+5. **No HTTP caching.** File responses are `Cache-Control: no-cache` with an etag.
 
 Details:
 

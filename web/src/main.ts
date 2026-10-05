@@ -32,8 +32,6 @@ import { SettingsView } from './ui/settings-view'
 import { Sidebar } from './ui/sidebar'
 import { Toc } from './ui/toc'
 
-const pollInterval = 15_000
-
 let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14, unreadDays: 30 }
 let files: LogicalFile[] = []
 let recent: Activity[] = []
@@ -234,8 +232,8 @@ const revalidate = debounce(() => {
   if (session) comparison?.load(session.version.content)
 }, 50)
 
-// Never stale: changes are pushed, and the document is also revalidated on
-// every reconnect, whenever the tab comes back, and periodically.
+// Never stale: changes and commits are pushed, and the document is also
+// revalidated on every reconnect and whenever the tab comes back.
 connect({
   connected() {
     revalidate()
@@ -244,7 +242,8 @@ connect({
     refreshUnread()
   },
   event(event) {
-    if (event.path === session?.path) revalidate()
+    const inRepo = event.kind === 'head' && session?.path.startsWith(`${event.path}/`)
+    if (event.path === session?.path || inRepo) revalidate()
     if (event.kind === 'tree') refreshSettings() // roots may have changed
     if (event.kind !== 'changed') refreshTree()
     refreshRecent()
@@ -255,9 +254,6 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') revalidate()
 })
 window.addEventListener('focus', () => revalidate())
-setInterval(() => {
-  if (document.visibilityState === 'visible') revalidate()
-}, pollInterval)
 
 // The active window moves with time, not only with changes.
 setInterval(refreshRecent, 10 * 60_000)

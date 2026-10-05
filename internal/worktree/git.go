@@ -43,32 +43,47 @@ func names(dir string, args ...string) map[string]bool {
 // when .git is a directory, or the checkout a linked worktree's .git file
 // points to.
 func mainCheckout(abs string) (string, bool) {
-	gitPath := filepath.Join(abs, ".git")
-	info, err := os.Stat(gitPath)
-	if err != nil {
+	dir, ok := gitDir(abs)
+	if !ok {
 		return "", false
 	}
-	if info.IsDir() {
+	if dir == filepath.Join(abs, ".git") {
 		return abs, true
 	}
-	data, err := os.ReadFile(gitPath)
-	if err != nil {
-		return "", false
-	}
-	gitdir, found := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir: ")
-	if !found {
-		return "", false
-	}
 	// <main>/.git/worktrees/<name>
-	common := filepath.Dir(filepath.Dir(gitdir))
+	common := filepath.Dir(filepath.Dir(dir))
 	if filepath.Base(common) != ".git" {
 		return "", false
 	}
 	return filepath.Dir(common), true
 }
 
-// uncommitted returns the markdown files with uncommitted changes in the
-// checkout at abs, dated by their modification time.
+// gitDir returns the git directory of the checkout at abs, which holds its
+// HEAD: .git itself, or the directory a linked worktree's .git file points
+// to.
+func gitDir(abs string) (string, bool) {
+	gitPath := filepath.Join(abs, ".git")
+	info, err := os.Stat(gitPath)
+	if err != nil {
+		return "", false
+	}
+	if info.IsDir() {
+		return gitPath, true
+	}
+	data, err := os.ReadFile(gitPath)
+	if err != nil {
+		return "", false
+	}
+	dir, found := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir: ")
+	if !found {
+		return "", false
+	}
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(abs, dir)
+	}
+	return filepath.Clean(dir), true
+}
+
 func uncommitted(abs string) map[string]time.Time {
 	changed := map[string]time.Time{}
 	paths := names(abs, "diff", "--name-only", "-z", "HEAD")

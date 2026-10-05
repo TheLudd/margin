@@ -74,7 +74,7 @@ func setup(t *testing.T) (root string, tracker *Tracker, ix *index.Index) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { ix.Close() })
-	tracker = New(root, ix.Files, nil)
+	tracker = New(root, ix.Files, nil, nil)
 	tracker.Refresh()
 	return root, tracker, ix
 }

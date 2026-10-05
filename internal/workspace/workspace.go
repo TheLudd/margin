@@ -78,7 +78,9 @@ func openRoot(ctx context.Context, rc config.Root, exclude func(string) bool, pu
 		root.Index.Close()
 		return nil, err
 	}
-	root.Trees = worktree.New(dir, root.Index.Files, treeChanged)
+	root.Trees = worktree.New(dir, root.Index.Files, treeChanged, func(repo string) {
+		publish(index.Event{Kind: HeadMoved, Path: root.Join(repo)})
+	})
 	root.Trees.Refresh()
 
 	go root.Index.Run(ctx)

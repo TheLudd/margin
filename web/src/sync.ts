@@ -2,8 +2,10 @@
 // restarts, the machine sleeps or the client falls behind; events sent in the
 // meantime are lost, so every (re)connect is reported to resynchronize.
 
+// A file added, changed or removed; the tree changed; or the HEAD of the
+// repository at path moved, as on a commit.
 export interface FileEvent {
-  kind: 'added' | 'changed' | 'removed' | 'tree'
+  kind: 'added' | 'changed' | 'removed' | 'tree' | 'head'
   path: string
 }
 

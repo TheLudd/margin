@@ -183,3 +183,8 @@ func (m *Manager) switchTo(c config.Config) error {
 // such as which worktree changed a file or which roots are served. Clients
 // refetch the tree.
 const TreeChanged index.Kind = "tree"
+
+// HeadMoved is published with a repository whose HEAD moved, as on a
+// commit or checkout, so what is committed may differ. Clients refetch the
+// committed version of its open file.
+const HeadMoved index.Kind = "head"

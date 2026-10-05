@@ -5,6 +5,7 @@ package worktree
 
 import (
 	"context"
+	"log"
 	"maps"
 	"path"
 	"path/filepath"
@@ -28,19 +29,21 @@ type Tracker struct {
 	root     string
 	files    func() []index.File
 	onChange func()
+	onHead   func(repo string)
 
 	mu    sync.RWMutex
 	repos map[string]repo // by root-relative repo path
 }
 
 // New returns a tracker for the repositories of files under root. onChange
-// is called whenever what it reports changes.
-func New(root string, files func() []index.File, onChange func()) *Tracker {
+// is called whenever what it reports changes, and onHead with a repository
+// whose HEAD moved, once the tracker is current.
+func New(root string, files func() []index.File, onChange func(), onHead func(repo string)) *Tracker {
 	resolved, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		resolved = root
 	}
-	return &Tracker{root: resolved, files: files, onChange: onChange, repos: map[string]repo{}}
+	return &Tracker{root: resolved, files: files, onChange: onChange, onHead: onHead, repos: map[string]repo{}}
 }
 
 // Project names the repository repo belongs to: for a worktree family laid
@@ -85,19 +88,23 @@ func (t *Tracker) Refresh() {
 	t.update(nil)
 }
 
-// Run keeps the tracker current from index events until ctx is done.
-// subscribe is called again whenever the event stream ends.
+// Run keeps the tracker current from index events and moves of HEAD until
+// ctx is done. subscribe is called again whenever the event stream ends.
 func (t *Tracker) Run(ctx context.Context, subscribe func() (<-chan index.Event, func())) {
+	h := newHeads()
+	defer h.close()
 	for ctx.Err() == nil {
+		h.watch(t.root, t.gitRepos())
 		events, unsubscribe := subscribe()
-		t.follow(ctx, events)
+		t.follow(ctx, events, h)
 		unsubscribe()
 		t.Refresh() // events may have been missed
 	}
 }
 
-func (t *Tracker) follow(ctx context.Context, events <-chan index.Event) {
-	pending := map[string]bool{}
+func (t *Tracker) follow(ctx context.Context, events <-chan index.Event, h *heads) {
+	pending := map[string]bool{} // paths changed
+	moved := map[string]bool{}   // repos whose HEAD moved
 	timer := time.NewTimer(debounce)
 	timer.Stop()
 	for {
@@ -112,11 +119,39 @@ func (t *Tracker) follow(ctx context.Context, events <-chan index.Event) {
 				pending[ev.Path] = true
 				timer.Reset(debounce)
 			}
+		case ev := <-h.events():
+			if r, ok := h.moved(ev); ok {
+				moved[r] = true
+				pending[path.Join(r, ".git")] = true // touches r
+				timer.Reset(debounce)
+			}
+		case err := <-h.errors():
+			log.Printf("worktree: %v", err)
 		case <-timer.C:
 			t.update(slices.Collect(maps.Keys(pending)))
 			clear(pending)
+			h.watch(t.root, t.gitRepos())
+			for r := range moved {
+				if t.onHead != nil {
+					t.onHead(r)
+				}
+			}
+			clear(moved)
 		}
 	}
+}
+
+// gitRepos lists the repositories that are git checkouts.
+func (t *Tracker) gitRepos() []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	var repos []string
+	for r, info := range t.repos {
+		if info.git {
+			repos = append(repos, r)
+		}
+	}
+	return repos
 }
 
 // update recomputes the families touched by paths, or all of them when
