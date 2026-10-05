@@ -159,3 +159,23 @@ describe('a changed block shown as it was, then as a diff', () => {
   it('shows the changes again', () => expect(texts('.change-inserted')).toEqual(['four']))
   it('shows the document block again', () => expect(root.querySelectorAll('.change-hidden, .change-old').length).toBe(0))
 })
+
+describe('a changed block shown as it is now, compared again with the same base', () => {
+  beforeEach(async () => {
+    await compare('one four three\n', 'one two three\n')
+    show(0, '+')
+    editor.compare('one two three\n')
+  })
+
+  it('stays as it is now', () => expect(texts('.change-inserted')).toEqual([]))
+})
+
+describe('a changed block shown as it is now, compared with a new base', () => {
+  beforeEach(async () => {
+    await compare('one four three\n', 'one two three\n')
+    show(0, '+')
+    editor.compare('one five three\n')
+  })
+
+  it('shows the changes again', () => expect(texts('.change-inserted')).toEqual(['four']))
+})

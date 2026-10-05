@@ -1056,13 +1056,19 @@ article:has(.ProseMirror:focus) {
   gap: 2px;
   padding-right: 14px;
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
+  visibility: hidden;
+  /* Hidden only after a while, so the pointer can cross the gutter to it */
+  transition:
+    opacity 0.15s 0.4s,
+    visibility 0s 0.55s;
 }
 
 .milkdown .ProseMirror .change-controls:is(.current, :hover, :has(+ :is(.change-block, .change-removed):hover)) > span {
   opacity: 1;
-  pointer-events: auto;
+  visibility: visible;
+  transition:
+    opacity 0.15s,
+    visibility 0s;
 }
 
 .milkdown .ProseMirror .change-controls button {

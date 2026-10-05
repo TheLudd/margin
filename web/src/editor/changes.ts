@@ -66,7 +66,8 @@ export function changesPlugin(onUpdate: () => void): Plugin<ChangesState> {
         } else if (meta && 'view' in meta) {
           views = new Map(views).set(meta.view.index, meta.view.view)
         } else {
-          if (meta && 'base' in meta) {
+          // Comparing again with the same base keeps how changes are shown.
+          if (meta && 'base' in meta && !sameBase(base, meta.base)) {
             base = meta.base
             views = new Map()
           }
@@ -84,6 +85,10 @@ export function changesPlugin(onUpdate: () => void): Plugin<ChangesState> {
       },
     }),
   })
+}
+
+function sameBase(a: Node | undefined, b: Node | undefined): boolean {
+  return a === b || (a !== undefined && b !== undefined && a.eq(b))
 }
 
 // Heading ids are derived from their text, so they only add noise.
