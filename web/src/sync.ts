@@ -16,12 +16,38 @@ export interface SyncHandlers {
   event(event: FileEvent): void
 }
 
+// How long to wait before connecting again after the browser gave up,
+// doubling while the service stays unreachable.
+const firstRetry = 1000
+const lastRetry = 10_000
+
 export function connect(handlers: SyncHandlers): () => void {
-  const source = new EventSource('/api/events')
-  source.addEventListener('open', () => handlers.connected())
-  source.addEventListener('build', (message) => handlers.build(message.data))
-  source.addEventListener('message', (message) => handlers.event(JSON.parse(message.data)))
-  return () => source.close()
+  let source: EventSource
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let retry = firstRetry
+  let stopped = false
+  const open = () => {
+    source = new EventSource('/api/events')
+    source.addEventListener('open', () => {
+      retry = firstRetry
+      handlers.connected()
+    })
+    source.addEventListener('build', (message) => handlers.build(message.data))
+    source.addEventListener('message', (message) => handlers.event(JSON.parse(message.data)))
+    // The browser reconnects a dropped stream itself, but gives up on an
+    // error response, which a proxy sends while the service restarts.
+    source.addEventListener('error', () => {
+      if (stopped || source.readyState !== EventSource.CLOSED) return
+      timer = setTimeout(open, retry)
+      retry = Math.min(retry * 2, lastRetry)
+    })
+  }
+  open()
+  return () => {
+    stopped = true
+    clearTimeout(timer)
+    source.close()
+  }
 }
 
 // Calls fn once after calls stop for `wait` ms.
