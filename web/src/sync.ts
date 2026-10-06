@@ -11,12 +11,15 @@ export interface FileEvent {
 
 export interface SyncHandlers {
   connected(): void
+  // The frontend the service serves, sent first on every connect.
+  build(id: string): void
   event(event: FileEvent): void
 }
 
 export function connect(handlers: SyncHandlers): () => void {
   const source = new EventSource('/api/events')
   source.addEventListener('open', () => handlers.connected())
+  source.addEventListener('build', (message) => handlers.build(message.data))
   source.addEventListener('message', (message) => handlers.event(JSON.parse(message.data)))
   return () => source.close()
 }

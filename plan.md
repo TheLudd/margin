@@ -85,6 +85,7 @@ Several independent mechanisms; any one of them is enough to catch a change. The
 Details:
 
 - The etag is a content hash, not mtime, because mtime granularity can hide rapid writes.
+- The event stream starts with a build id, a hash of `index.html`. After a restart, a client that connected to an older build saves its edits and reloads, so `make install` and a restart reach every open tab.
 - The client ignores a change event whose etag matches its own last save, which is the echo of its own autosave.
 - If the client has unsaved edits when an outside change arrives, it shows a banner (keep mine / take theirs) and never silently overwrites. This is rare given the workflow, but it is handled.
 

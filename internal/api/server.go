@@ -3,6 +3,8 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,9 +40,12 @@ type Server struct {
 	Web        fs.FS // the built frontend: index.html and assets/
 	Port       int
 	Hosts      []string // other names margin is reached by, such as margin.local
+
+	build string // identifies the frontend served, see buildID
 }
 
 func (s *Server) Handler() http.Handler {
+	s.build = buildID(s.Web)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/tree", s.tree)
 	mux.HandleFunc("GET /api/file", s.readFile)
@@ -327,8 +332,21 @@ func (s *Server) forgetRecent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// events streams index events as server-sent events. The stream ends when
-// the client falls behind; the client then reconnects and revalidates.
+// buildID hashes index.html, which names every asset by a hash of its
+// content, so it changes exactly when the frontend does.
+func buildID(web fs.FS) string {
+	index, err := fs.ReadFile(web, "index.html")
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(index)
+	return hex.EncodeToString(sum[:8])
+}
+
+// events streams index events as server-sent events, after a build event
+// naming the frontend served, so a client from an older build reloads. The
+// stream ends when the client falls behind; the client then reconnects and
+// revalidates.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	ch, unsubscribe := s.Events.Subscribe()
 	defer unsubscribe()
@@ -336,7 +354,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	rc := http.NewResponseController(w)
-	fmt.Fprint(w, "retry: 1000\n\n")
+	fmt.Fprintf(w, "retry: 1000\nevent: build\ndata: %s\n\n", s.build)
 	rc.Flush()
 
 	ping := time.NewTicker(pingInterval)

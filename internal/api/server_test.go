@@ -476,3 +476,19 @@ func TestViewKeepsUnreadChanges(t *testing.T) {
 		t.Fatalf("seen %q", got)
 	}
 }
+
+func TestEventsStartWithTheBuild(t *testing.T) {
+	f := setup(t)
+	stream := do(t, "GET", f.url+"/api/events", "", nil)
+	lines := bufio.NewScanner(stream.Body)
+
+	want := buildID(fstest.MapFS{"index.html": {Data: []byte("<app>")}})
+	for lines.Scan() {
+		if line := lines.Text(); line == "data: "+want {
+			return
+		} else if strings.HasPrefix(line, "data:") {
+			t.Fatalf("got %q", line)
+		}
+	}
+	t.Fatal("no build")
+}

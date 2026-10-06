@@ -105,6 +105,7 @@ async function open(path: string, push = true) {
   const current: DocumentSession = new DocumentSession(path, result.doc, remote, {
     state: (state) => {
       view.state(state, current)
+      reloadWhenSaved()
       // Saved or reloaded: the baselines may have moved.
       if (state === 'clean' && session === current) {
         comparison?.load(current.version.content)
@@ -239,9 +240,24 @@ const revalidate = debounce(() => {
   if (session) comparison?.load(session.version.content)
 }, 50)
 
+let build: string | undefined // the frontend this page runs
+let outdated = false // the service serves a newer one
+
+// Loads the newer frontend once no edits are left unsaved.
+function reloadWhenSaved() {
+  if (outdated && !session?.dirty) location.reload()
+}
+
 // Never stale: changes and commits are pushed, and the document is also
 // revalidated on every reconnect and whenever the tab comes back.
 connect({
+  build(id) {
+    build ??= id
+    if (id === build) return
+    outdated = true
+    session?.flush()
+    reloadWhenSaved()
+  },
   connected() {
     revalidate()
     refreshTree()
