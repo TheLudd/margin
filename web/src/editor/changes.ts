@@ -5,15 +5,16 @@
 
 import { computeDocDiff } from '@milkdown/kit/plugin/diff'
 import { simplifyChanges } from '@milkdown/kit/prose/changeset'
-import { DOMSerializer, type Fragment, type Node } from '@milkdown/kit/prose/model'
+import { DOMSerializer, type Fragment, type Node, type Schema } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 
 // A changed block, with what it was (empty for a new block), or the blocks
 // removed at a position. Changes close together form one group, which is
-// what the reader counts and steps through.
+// what the reader counts and steps through. A rewritten block is shown as
+// it was and as it is rather than word by word.
 type Change = { group: number } & (
-  | { kind: 'block'; from: number; to: number; depth: number; old: Fragment }
+  | { kind: 'block'; from: number; to: number; depth: number; old: Fragment; rewritten: boolean }
   | { kind: 'removed'; at: number; content: Fragment; key: string }
 )
 
@@ -21,6 +22,11 @@ type Change = { group: number } & (
 // tend to touch a few neighbouring blocks, such as a new section and the
 // one after it, which read as one change.
 export const maxGap = 1
+
+// The share of a block's text that must be unchanged for its changes to be
+// shown word by word. Below it, the struck-through and highlighted words
+// alternate so much that neither version can be read.
+export const minKept = 0.5
 
 interface Diff {
   marks: Decoration[] // inserted text and deleted words, within the changes
@@ -102,15 +108,16 @@ function sameBase(a: Node | undefined, b: Node | undefined): boolean {
 const ignoreAttrs = { heading: ['id'] }
 
 export function compare(base: Node, doc: Node): Diff {
-  let steps
+  let steps: Step[]
   try {
     // Widened to whole words, which read better than single characters.
-    steps = simplifyChanges(computeDocDiff(base, doc, { ignoreAttrs }), doc)
+    const words = simplifyChanges(computeDocDiff(base, doc, { ignoreAttrs }), doc)
+    steps = merge(base, doc, words.filter((step) => !whitespaceOnly(base, doc, step)))
   } catch {
     return noDiff
   }
-  const marks: Decoration[] = []
-  const changes: Change[] = []
+  let marks: Decoration[] = []
+  let changes: Change[] = []
   const blocks = new Set<number>()
   for (const step of steps) {
     if (step.toB > step.fromB) {
@@ -118,8 +125,9 @@ export function compare(base: Node, doc: Node): Diff {
     }
     if (step.toA > step.fromA && !blank(base.slice(step.fromA, step.toA).content)) {
       const $from = base.resolve(step.fromA)
-      if ($from.sameParent(base.resolve(step.toA)) && $from.parent.isTextblock) {
-        marks.push(deletedText(base.textBetween(step.fromA, step.toA), step.fromB))
+      if (inTextblock(base, step.fromA, step.toA)) {
+        const content = $from.parent.content.cut($from.parentOffset, $from.parentOffset + step.toA - step.fromA)
+        marks.push(deletedText(content, base.type.schema, step.fromB))
       } else {
         const content = base.slice(step.fromA, step.toA).content
         changes.push({ kind: 'removed', at: step.fromB, content, key: `${step.fromA}:${step.toA}`, group: 0 })
@@ -128,15 +136,76 @@ export function compare(base: Node, doc: Node): Diff {
     changedBlocks(doc, step.fromB, step.toB).forEach((pos) => blocks.add(pos))
   }
   for (const from of blocks) {
-    const to = from + doc.nodeAt(from)!.nodeSize
+    const node = doc.nodeAt(from)!
+    const to = from + node.nodeSize
     const old = base.slice(toBase(steps, from, -1), toBase(steps, to, 1)).content
-    changes.push({ kind: 'block', from, to, depth: listDepth(doc, from), old, group: 0 })
+    const inserted = steps.reduce((n, s) => n + Math.max(0, Math.min(s.toB, to) - Math.max(s.fromB, from)), 0)
+    changes.push({ kind: 'block', from, to, depth: listDepth(doc, from), old, rewritten: rewritten(node, old, inserted), group: 0 })
+  }
+  // A rewritten block is highlighted whole, and drawn as it was before it.
+  for (const change of changes) {
+    if (change.kind !== 'block' || !change.rewritten) continue
+    const { from, to } = change
+    marks = marks.filter((d) => d.from < from || d.to > to)
+    changes = changes.filter((c) => c.kind !== 'removed' || c.at <= from || c.at >= to)
+    marks.push(Decoration.inline(from + 1, to - 1, { class: 'change-inserted' }))
   }
   // Removed blocks are drawn before a block starting at the same position.
   const position = (c: Change) => (c.kind === 'block' ? c.from + 0.5 : c.at)
   changes.sort((a, b) => position(a) - position(b))
   group(doc, changes)
   return { marks, changes }
+}
+
+// Joins changes within a block that only a little unchanged text separates,
+// such as one word between two replaced ones, so the reader sees one
+// deletion and one insertion rather than a patchwork. As in
+// diff-match-patch's semantic cleanup, the unchanged text is absorbed when
+// it is no longer than the changes on either side of it.
+function merge(base: Node, doc: Node, steps: readonly Step[]): Step[] {
+  const merged: Step[] = []
+  for (const step of steps) {
+    const previous = merged[merged.length - 1]
+    if (previous && absorbs(base, doc, previous, step)) {
+      merged[merged.length - 1] = { fromA: previous.fromA, toA: step.toA, fromB: previous.fromB, toB: step.toB }
+    } else {
+      merged.push(step)
+    }
+  }
+  return merged
+}
+
+function absorbs(base: Node, doc: Node, a: Step, b: Step): boolean {
+  if (!inTextblock(doc, a.toB, b.fromB) || !inTextblock(base, a.toA, b.fromA)) return false
+  const gap = doc.textBetween(a.toB, b.fromB).trim().length
+  const size = (s: Step) => Math.max(s.toA - s.fromA, s.toB - s.fromB)
+  return gap <= size(a) && gap <= size(b)
+}
+
+// Whitespace that comes or goes within a block, such as a space moved out
+// of inline code, changes nothing the reader sees.
+function whitespaceOnly(base: Node, doc: Node, step: Step): boolean {
+  return (
+    inTextblock(base, step.fromA, step.toA) &&
+    inTextblock(doc, step.fromB, step.toB) &&
+    blank(base.slice(step.fromA, step.toA).content) &&
+    blank(doc.slice(step.fromB, step.toB).content)
+  )
+}
+
+function inTextblock(node: Node, from: number, to: number): boolean {
+  const $from = node.resolve(from)
+  return $from.parent.isTextblock && $from.sameParent(node.resolve(to))
+}
+
+// Whether too little of a textblock's text is unchanged to show its changes
+// word by word; inserted is how much of it is new.
+function rewritten(node: Node, old: Fragment, inserted: number): boolean {
+  if (!node.isTextblock || old.size === 0) return false
+  const before = old.textBetween(0, old.size).length
+  const after = node.content.size
+  const kept = Math.max(0, after - inserted)
+  return 2 * kept < minKept * (before + after)
 }
 
 // Numbers the groups of changes, in document order: a change joins the
@@ -215,6 +284,10 @@ function draw(doc: Node, diff: Diff, focus: Focus | undefined, shown: Map<number
       decorations.push(block(at, side + 1, index, classes, change.depth, content, serializer, `old:${change.from}`))
       return
     }
+    if (change.rewritten && view === 'diff') {
+      const old = ['change-removed', ...classes.slice(1)]
+      decorations.push(block(at, side + 1, index, old, change.depth, change.old, serializer, `rewritten:${change.from}`))
+    }
     const attrs = { class: classes.join(' '), style: `--list-depth: ${change.depth}`, 'data-change': String(index) }
     decorations.push(Decoration.node(change.from, change.to, attrs))
   })
@@ -277,10 +350,15 @@ function controls(at: number, side: number, index: number, view: View, current: 
   })
 }
 
-// Deleted text within a block, shown struck through at `at`.
-function deletedText(text: string, at: number): Decoration {
-  const render = () => Object.assign(document.createElement('del'), { className: 'change-deleted', textContent: text })
-  return Decoration.widget(at, render, { side: -1, ignoreSelection: true, key: `del:${text}` })
+// Deleted inline content, shown struck through at `at` with its marks, so
+// deleted code still reads as code.
+function deletedText(content: Fragment, schema: Schema, at: number): Decoration {
+  const render = () => {
+    const el = Object.assign(document.createElement('del'), { className: 'change-deleted' })
+    el.append(DOMSerializer.fromSchema(schema).serializeFragment(content))
+    return el
+  }
+  return Decoration.widget(at, render, { side: -1, ignoreSelection: true, key: `del:${content.toString()}` })
 }
 
 // The positions of the blocks holding from..to: textblocks and leaf blocks

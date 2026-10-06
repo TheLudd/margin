@@ -37,9 +37,52 @@ describe('compare when a block is added', () => {
 })
 
 describe('compare when a list item changes', () => {
-  beforeEach(() => compare('- a\n- x\n- c\n', '- a\n- b\n- c\n'))
+  beforeEach(() => compare('- a\n- one two six\n- c\n', '- a\n- one two three\n- c\n'))
 
-  it('marks only that item', () => expect(texts('.change-block')).toEqual(['bx']))
+  it('marks only that item', () => expect(texts('.change-block')).toEqual(['one two threesix']))
+})
+
+describe('compare when most of a block is rewritten', () => {
+  beforeEach(() => compare('a\n\nfour five six\n', 'a\n\none two three\n'))
+
+  it('shows the old block whole', () => expect(texts('.change-removed')).toEqual(['one two three']))
+  it('highlights the new block whole', () => expect(texts('.change-inserted')).toEqual(['four five six']))
+  it('strikes through no words', () => expect(texts('.change-deleted')).toEqual([]))
+  it('numbers both as one change', () => expect(numbered()).toEqual([['0', 'one two three'], ['0', 'four five six']]))
+})
+
+describe('a rewritten block shown as it is now', () => {
+  beforeEach(async () => {
+    await compare('a\n\nfour five six\n', 'a\n\none two three\n')
+    show(0, '+')
+  })
+
+  it('leaves out the old block', () => expect(texts('.change-removed')).toEqual([]))
+})
+
+describe('compare when one short word separates changes', () => {
+  beforeEach(() => compare('gamma a delta and the rest stays\n', 'alpha a beta and the rest stays\n'))
+
+  it('highlights them as one', () => expect(texts('.change-inserted')).toEqual(['gamma a delta']))
+  it('strikes them through as one', () => expect(texts('.change-deleted')).toEqual(['alpha a beta']))
+})
+
+describe('compare when a longer word separates changes', () => {
+  beforeEach(() => compare('one X three Y and the rest stays\n', 'one two three four and the rest stays\n'))
+
+  it('keeps them apart', () => expect(texts('.change-inserted')).toEqual(['X', 'Y']))
+})
+
+describe('compare when only whitespace moves', () => {
+  beforeEach(() => compare('a `b` c\n', 'a `b `c\n'))
+
+  it('shows no changes', () => expect(root.querySelectorAll('[class*="change-"]').length).toBe(0))
+})
+
+describe('compare when inline code is deleted', () => {
+  beforeEach(() => compare('one three\n', 'one `two` three\n'))
+
+  it('strikes it through as code', () => expect(texts('del.change-deleted code')).toEqual(['two']))
 })
 
 describe('compare with the same document', () => {
