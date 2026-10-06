@@ -197,11 +197,13 @@ body.setup #sidebar > :not(.brand-row) {
   border-left-color: var(--cp-magenta);
 }
 
-/* The label (folder and file name) gives way to the time and copy count.
+/* The label (file name, then folder) gives way to the time and copy count.
    Inside it the folder shrinks first; the name is cut only when it alone
    doesn't fit. */
 #sidebar .label {
   display: flex;
+  gap: 8px;
+  align-items: baseline;
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -213,6 +215,7 @@ body.setup #sidebar > :not(.brand-row) {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--cp-muted);
+  font-size: 0.9em;
 }
 
 #sidebar .name {
