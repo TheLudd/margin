@@ -475,6 +475,14 @@ body.setup #sidebar > :not(.brand-row) {
   cursor: pointer;
 }
 
+/* Never committed: nothing to compare with */
+.doc-header .commit.untracked {
+  --tint: var(--cp-warn);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
 .doc-header .commit.unstable:hover,
 .doc-header .commit.active {
   background: color-mix(in srgb, var(--tint), transparent 70%);

@@ -23,6 +23,10 @@ const pulseTime = 1200
 // When a jump turns out to need no scrolling, so no scrollend comes.
 const stillTime = 100
 
+// Where the file stands in git: as committed, changed since, or never
+// committed.
+export type CommitState = 'committed' | 'uncommitted' | 'untracked'
+
 export interface ChangesActions {
   use(baseline: Baseline): void
   markRead(): void
@@ -60,14 +64,15 @@ export class ChangesView {
     })
   }
 
-  // The baseline in use, and whether the file is as committed (undefined
-  // when it has no committed version).
-  state(current: Baseline, committed: boolean | undefined) {
+  // The baseline in use, and where the file stands in git (undefined when
+  // it is not in git).
+  state(current: Baseline, commit: CommitState | undefined) {
     this.current = current
-    this.commitEl.hidden = committed === undefined
-    this.commitEl.textContent = committed ? 'committed' : 'uncommitted'
-    this.commitEl.disabled = committed !== false
-    this.commitEl.classList.toggle('unstable', committed === false)
+    this.commitEl.hidden = commit === undefined
+    this.commitEl.textContent = commit ?? ''
+    this.commitEl.disabled = commit !== 'uncommitted'
+    this.commitEl.classList.toggle('unstable', commit === 'uncommitted')
+    this.commitEl.classList.toggle('untracked', commit === 'untracked')
     this.commitEl.title = current === 'committed' ? 'Show unread changes' : 'Show the changes since the last commit'
     this.commitEl.classList.toggle('active', current === 'committed')
     this.update()

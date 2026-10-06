@@ -7,6 +7,7 @@ const entry = (repo: string, rel: string, extra: Partial<FileEntry> = {}): FileE
   repo,
   project: repo.startsWith('gaius/') ? 'gaius' : repo,
   main: repo !== 'gaius/claims' && repo !== 'gaius/views',
+  git: true,
   ...extra,
 })
 

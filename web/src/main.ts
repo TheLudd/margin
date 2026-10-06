@@ -22,7 +22,7 @@ import { DocumentSession } from './document/session'
 import { createEditor, type Editor } from './editor/editor'
 import { renderMermaid } from './editor/mermaid'
 import { connect, debounce } from './sync'
-import { ChangesView } from './ui/changes-view'
+import { type CommitState, ChangesView } from './ui/changes-view'
 import { groupCopies, isActive, type LogicalFile } from './ui/copies'
 import { display, setRoots } from './ui/display'
 import { byId, fileUrl } from './ui/dom'
@@ -145,11 +145,18 @@ function compare(current: DocumentSession, shown: Editor) {
     { seen: readSeen, committed: readCommitted },
     {
       compare: (body) => live() && shown.compare(body),
-      state: (baseline, committed) => live() && changes.state(baseline, committed),
+      state: (baseline, committed) => live() && changes.state(baseline, commitState(current.path, committed)),
     },
   )
   comparison = comparing
   comparing.load(current.version.content)
+}
+
+// A file without a committed version is untracked in a git checkout, and
+// not in git otherwise.
+function commitState(path: string, committed: boolean | undefined): CommitState | undefined {
+  if (committed !== undefined) return committed ? 'committed' : 'uncommitted'
+  return copiesOf(path)?.copies.find((c) => c.path === path)?.git ? 'untracked' : undefined
 }
 
 // Records the version on screen as read, which clears its unread changes.

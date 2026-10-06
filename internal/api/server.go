@@ -67,6 +67,7 @@ type treeEntry struct {
 	Repo     string     `json:"repo"`
 	Project  string     `json:"project"`
 	Main     bool       `json:"main"`               // the repo is its project's main checkout
+	Git      bool       `json:"git"`                // the repo is a git checkout
 	Changed  *time.Time `json:"changed,omitempty"`  // when the repo changed the file relative to main
 	Modified *time.Time `json:"modified,omitempty"` // when the file was last modified, see modified
 	Viewed   *time.Time `json:"viewed,omitempty"`   // when the file was last viewed in margin
@@ -81,6 +82,7 @@ func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
 				Repo:    root.Join(f.Repo),
 				Project: root.Join(root.Trees.Project(f.Repo)),
 				Main:    root.Trees.IsMain(f.Repo),
+				Git:     root.Trees.IsGit(f.Repo),
 			}
 			if at, ok := root.Trees.Changed(f.Repo, inRepo(f)); ok {
 				e.Changed = &at

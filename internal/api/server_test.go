@@ -92,7 +92,7 @@ func TestTree(t *testing.T) {
 	var got []treeEntry
 	json.NewDecoder(do(t, "GET", f.url+"/api/tree", "", nil).Body).Decode(&got)
 
-	if len(got) != 1 || got[0].Path != "code/repo/plan.md" || got[0].Repo != "code/repo" || got[0].Project != "code/repo" || !got[0].Main || got[0].Viewed != nil {
+	if len(got) != 1 || got[0].Path != "code/repo/plan.md" || got[0].Repo != "code/repo" || got[0].Project != "code/repo" || !got[0].Main || got[0].Git || got[0].Viewed != nil {
 		t.Fatalf("got %+v", got)
 	}
 }
