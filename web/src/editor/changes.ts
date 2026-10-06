@@ -9,18 +9,25 @@ import { DOMSerializer, type Fragment, type Node } from '@milkdown/kit/prose/mod
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 
-// A change the reader steps through: a changed block, with what it was
-// (empty for a new block), or the blocks removed at a position.
-type Change =
+// A changed block, with what it was (empty for a new block), or the blocks
+// removed at a position. Changes close together form one group, which is
+// what the reader counts and steps through.
+type Change = { group: number } & (
   | { kind: 'block'; from: number; to: number; depth: number; old: Fragment }
   | { kind: 'removed'; at: number; content: Fragment; key: string }
+)
+
+// How many unchanged blocks may separate two changes of one group. Edits
+// tend to touch a few neighbouring blocks, such as a new section and the
+// one after it, which read as one change.
+export const maxGap = 1
 
 interface Diff {
   marks: Decoration[] // inserted text and deleted words, within the changes
   changes: Change[] // in document order
 }
 
-// Which change is current, and whether it pulses after a jump.
+// Which group of changes is current, and whether it pulses after a jump.
 export interface Focus {
   index: number
   pulse: boolean
@@ -39,12 +46,12 @@ interface ChangesState {
   base?: Node
   diff: Diff
   focus?: Focus
-  views: Map<number, View> // by change index; unlisted changes show as a diff
+  views: Map<number, View> // by group; unlisted groups show as a diff
   decorations: DecorationSet
 }
 
 // The transaction meta: a new base (undefined stops comparing), a new
-// current change, or how one change is shown.
+// current group, or how one group is shown.
 export type ChangesMeta = { base?: Node } | { focus?: Focus } | { view: { index: number; view: View } }
 
 export const changesKey = new PluginKey<ChangesState>('changes')
@@ -115,7 +122,7 @@ export function compare(base: Node, doc: Node): Diff {
         marks.push(deletedText(base.textBetween(step.fromA, step.toA), step.fromB))
       } else {
         const content = base.slice(step.fromA, step.toA).content
-        changes.push({ kind: 'removed', at: step.fromB, content, key: `${step.fromA}:${step.toA}` })
+        changes.push({ kind: 'removed', at: step.fromB, content, key: `${step.fromA}:${step.toA}`, group: 0 })
       }
     }
     changedBlocks(doc, step.fromB, step.toB).forEach((pos) => blocks.add(pos))
@@ -123,12 +130,37 @@ export function compare(base: Node, doc: Node): Diff {
   for (const from of blocks) {
     const to = from + doc.nodeAt(from)!.nodeSize
     const old = base.slice(toBase(steps, from, -1), toBase(steps, to, 1)).content
-    changes.push({ kind: 'block', from, to, depth: listDepth(doc, from), old })
+    changes.push({ kind: 'block', from, to, depth: listDepth(doc, from), old, group: 0 })
   }
   // Removed blocks are drawn before a block starting at the same position.
   const position = (c: Change) => (c.kind === 'block' ? c.from + 0.5 : c.at)
   changes.sort((a, b) => position(a) - position(b))
+  group(doc, changes)
   return { marks, changes }
+}
+
+// Numbers the groups of changes, in document order: a change joins the
+// group before it unless more than maxGap unchanged blocks lie between.
+function group(doc: Node, changes: Change[]) {
+  const start = (c: Change) => (c.kind === 'block' ? c.from : c.at)
+  const end = (c: Change) => (c.kind === 'block' ? c.to : c.at)
+  changes.forEach((change, i) => {
+    const previous = changes[i - 1]
+    if (!previous) return
+    const apart = start(change) > end(previous) && blocksBetween(doc, end(previous), start(change)) > maxGap
+    change.group = previous.group + (apart ? 1 : 0)
+  })
+}
+
+// How many blocks lie within from..to, counted as changedBlocks does.
+function blocksBetween(doc: Node, from: number, to: number): number {
+  let count = 0
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (pos < from || pos + node.nodeSize > to) return !node.isTextblock // partly outside
+    if ((node.isBlock && node.isLeaf) || (node.isTextblock && !blank(node.content))) count++
+    return !node.isTextblock
+  })
+  return count
 }
 
 // Maps a position in the document to the base. A position inside a step
@@ -146,15 +178,18 @@ function toBase(steps: readonly Step[], pos: number, side: -1 | 1): number {
 
 type Step = { fromA: number; toA: number; fromB: number; toB: number }
 
-// Each change carries its index in data-change, for the header to refer to,
-// and gets buttons in the gutter to show it as it is, as a diff or as it was.
+// Each change carries its group in data-change, for the header to refer to,
+// and gets buttons in the gutter to show its group as it is, as a diff or as
+// it was.
 function draw(doc: Node, diff: Diff, focus: Focus | undefined, shown: Map<number, View>): DecorationSet {
   const serializer = DOMSerializer.fromSchema(doc.type.schema)
   const decorations: Decoration[] = []
   const plain: { from: number; to: number }[] = [] // blocks not shown as a diff
-  diff.changes.forEach((change, index) => {
+  diff.changes.forEach((change, i) => {
+    const index = change.group
     const view = shown.get(index) ?? 'diff'
     const current = focus?.index === index
+    const first = diff.changes[i - 1]?.group !== index
     const classes = [`change-${change.kind}`]
     if (current) classes.push('change-current')
     if (current && focus.pulse) classes.push('change-pulse')
@@ -162,7 +197,8 @@ function draw(doc: Node, diff: Diff, focus: Focus | undefined, shown: Map<number
     // Removed blocks come before a block at the same position: controls,
     // then what they control.
     const side = change.kind === 'block' ? -2 : -4
-    decorations.push(controls(at, side, index, view, current, change.kind === 'block' ? change.depth : 0))
+    // The buttons of the current group show by its first change only.
+    decorations.push(controls(at, side, index, view, current && first, change.kind === 'block' ? change.depth : 0))
 
     if (change.kind === 'removed') {
       if (view === 'new') classes.push('change-collapsed')
@@ -237,7 +273,7 @@ function controls(at: number, side: number, index: number, view: View, current: 
     side,
     ignoreSelection: true,
     stopEvent: () => true,
-    key: `controls:${index}:${view}:${current}:${depth}`,
+    key: `controls:${at}:${index}:${view}:${current}:${depth}`,
   })
 }
 

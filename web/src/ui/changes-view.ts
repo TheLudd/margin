@@ -103,11 +103,10 @@ export class ChangesView {
     this.commitEl.hidden = true
   }
 
-  private onScreen(change: HTMLElement | undefined): boolean {
+  private onScreen(change: Group | undefined): boolean {
     if (!change) return false
     const view = this.scroller.getBoundingClientRect()
-    const box = change.getBoundingClientRect()
-    return box.bottom > view.top + headerHeight && box.top < view.bottom
+    return bottom(change) > view.top + headerHeight && top(change) < view.bottom
   }
 
   private focus(index: number | undefined) {
@@ -127,7 +126,7 @@ export class ChangesView {
     } else {
       const view = this.scroller.getBoundingClientRect()
       const middle = view.top + view.height / 2
-      const above = (el: HTMLElement) => el.getBoundingClientRect().top < middle
+      const above = (change: Group) => top(change) < middle
       target = direction === 1 ? changes.findIndex((el) => !above(el)) : changes.findLastIndex(above)
     }
     if (target >= 0 && target < changes.length) this.jump(target)
@@ -142,7 +141,7 @@ export class ChangesView {
     this.jumping = index
     this.pulsing = undefined
     const before = this.scroller.scrollTop
-    change.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    change[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
     this.update()
     this.timer = setTimeout(() => {
       if (this.scroller.scrollTop === before) this.arrive()
@@ -163,7 +162,17 @@ export class ChangesView {
   }
 
   // In document order, which is the order of their data-change indexes.
-  private changes(): HTMLElement[] {
-    return [...this.scroller.querySelectorAll<HTMLElement>(changeSelector)]
+  private changes(): Group[] {
+    const groups: Group[] = []
+    for (const el of this.scroller.querySelectorAll<HTMLElement>(changeSelector)) {
+      ;(groups[Number(el.dataset.change)] ??= []).push(el)
+    }
+    return groups
   }
 }
+
+// The elements of a group of changes, in document order.
+type Group = HTMLElement[]
+
+const top = (change: Group) => change[0].getBoundingClientRect().top
+const bottom = (change: Group) => change[change.length - 1].getBoundingClientRect().bottom

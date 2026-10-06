@@ -70,14 +70,38 @@ describe('compare when the document is replaced', () => {
 const numbered = () => [...root.querySelectorAll<HTMLElement>('[data-change]')].map((e) => [e.dataset.change, e.textContent])
 
 describe('compare when blocks are removed and changed', () => {
-  beforeEach(() => compare('a\n\nc\n\nd2\n', 'a\n\nb\n\nc\n\nd\n'))
+  beforeEach(() => compare('a\n\nc\n\nx\n\nd2\n', 'a\n\nb\n\nc\n\nx\n\nd\n'))
 
   it('numbers the changes in document order', () => expect(numbered()).toEqual([['0', 'b'], ['1', 'd2']]))
 })
 
+describe('compare when changed blocks are next to each other', () => {
+  beforeEach(() => compare('a2\n\nb2\n', 'a\n\nb\n'))
+
+  it('groups them', () => expect(numbered()).toEqual([['0', 'a2'], ['0', 'b2']]))
+})
+
+describe('compare when one unchanged block separates changes', () => {
+  beforeEach(() => compare('a2\n\nx\n\nb2\n', 'a\n\nx\n\nb\n'))
+
+  it('groups them', () => expect(numbered()).toEqual([['0', 'a2'], ['0', 'b2']]))
+})
+
+describe('compare when two unchanged blocks separate changes', () => {
+  beforeEach(() => compare('a2\n\nx\n\ny\n\nb2\n', 'a\n\nx\n\ny\n\nb\n'))
+
+  it('keeps them apart', () => expect(numbered()).toEqual([['0', 'a2'], ['1', 'b2']]))
+})
+
+describe('compare when a new section comes before a changed block', () => {
+  beforeEach(() => compare('# A\n\n# B\n\nnew\n\n# C\n\nc2\n', '# A\n\n# C\n\nc\n'))
+
+  it('groups them across the heading', () => expect(new Set(numbered().map(([group]) => group))).toEqual(new Set(['0'])))
+})
+
 describe('focusChange on a changed block', () => {
   beforeEach(async () => {
-    await compare('a2\n\nb2\n', 'a\n\nb\n')
+    await compare('a2\n\nx\n\ny\n\nb2\n', 'a\n\nx\n\ny\n\nb\n')
     editor.focusChange({ index: 1, pulse: true })
   })
 
@@ -178,4 +202,13 @@ describe('a changed block shown as it is now, compared with a new base', () => {
   })
 
   it('shows the changes again', () => expect(texts('.change-inserted')).toEqual(['four']))
+})
+
+describe('a group shown as it is now', () => {
+  beforeEach(async () => {
+    await compare('one four\n\nfive six\n', 'one two\n\nthree six\n')
+    show(0, '+')
+  })
+
+  it('shows all of it as it is now', () => expect(texts('.change-inserted')).toEqual([]))
 })

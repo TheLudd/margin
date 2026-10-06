@@ -147,7 +147,7 @@ The sidebar lists only files viewed in margin or modified within the active wind
 
 ## Changes
 
-The open file is compared with a baseline: the version last read (unread changes) or the one last committed (uncommitted changes). Until the reader picks one, unread changes are preferred and new ones switch to them. Several writes add up into one diff until the file is marked read.
+The open file is compared with a baseline: the version last read (unread changes) or the one last committed (uncommitted changes). Until the reader picks one, unread changes are preferred and new ones switch to them. Several writes add up into one diff until the file is marked read. Changes are counted and stepped through in groups: changed or removed blocks separated by at most one unchanged block (`maxGap`) are one change, as an edit tends to touch neighbouring blocks, such as a new section and the one after it.
 
 The diff is Milkdown's `computeDocDiff` (block LCS, recursing into lists and tables) widened to whole words, drawn as ProseMirror decorations: inserted text highlighted, deleted text as struck-through widgets, removed blocks rendered where they were, and a gutter bar on every changed textblock. The document itself is untouched, so it stays editable and the changes follow edits.
 
