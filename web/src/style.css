@@ -346,10 +346,6 @@ body.setup #sidebar > :not(.brand-row) {
   color: var(--cp-cyan);
 }
 
-#sidebar time.modified::before {
-  content: '✎ ';
-}
-
 #sidebar details ul {
   margin-left: 14px;
 }

@@ -140,7 +140,7 @@ The sidebar lists only files viewed in margin or modified within the active wind
 - **Viewed** means opened in margin; other apps are not considered. Views are kept with their time for 365 days (the longest window) in `~/.local/state/margin/recent.json`.
 - **Modified** counts only changes git reports in a git checkout: uncommitted changes in the main checkout, and for a worktree its changes since it forked, committed or not. Checkouts, rebases and pulls rewrite files nobody edited, so their modification times don't count. In a folder outside git it is the modification time.
 - The window moves with time: the sidebar re-renders every 10 minutes even without changes.
-- **Recent activity** at the top of the sidebar merges views and modifications within the active window: up to the 8 most recent files, each marked by whichever happened last (✎ for modified).
+- **Recent activity** at the top of the sidebar merges views and modifications within the active window: up to the 8 most recent files, each timed by whichever happened last (a modification in cyan).
 - Changing only the active window applies at once; changing folders or hidden files re-indexes.
 - **Removing from recent activity:** the × on an entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals are kept with the views.
 - Both sidebar sections fold, and fold state is kept per browser across reloads.
