@@ -1269,6 +1269,13 @@ article:has(.ProseMirror:focus) {
   background: var(--cp-raised);
 }
 
+/* Crepe makes inline code an inline-block, which wraps as a box of its own:
+   a long span, or one holding a change, rises above the line it is on */
+.milkdown .ProseMirror :not(pre) > code {
+  display: inline;
+  box-decoration-break: clone;
+}
+
 .milkdown .milkdown-code-block {
   border: 1px solid var(--cp-line);
   border-left: 3px solid var(--cp-cyan);
