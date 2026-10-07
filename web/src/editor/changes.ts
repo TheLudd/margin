@@ -119,10 +119,8 @@ export function compare(base: Node, doc: Node): Diff {
   let marks: Decoration[] = []
   let changes: Change[] = []
   const blocks = new Set<number>()
+  const whole: { from: number; to: number }[] = [] // blocks new or rewritten
   for (const step of steps) {
-    if (step.toB > step.fromB) {
-      marks.push(Decoration.inline(step.fromB, step.toB, { class: 'change-inserted' }))
-    }
     if (step.toA > step.fromA && !blank(base.slice(step.fromA, step.toA).content)) {
       const $from = base.resolve(step.fromA)
       if (inTextblock(base, step.fromA, step.toA)) {
@@ -146,20 +144,43 @@ export function compare(base: Node, doc: Node): Diff {
     const own = touching.every((s) => s.fromB >= from && s.toB <= to)
     const depth = listDepth(doc, from)
     changes.push({ kind: 'block', from, to, depth, old, rewritten: own && rewritten(node, old, inserted), group: 0 })
+    if (node.isTextblock && inserted >= node.content.size) whole.push({ from, to })
   }
-  // A rewritten block is highlighted whole, and drawn as it was before it.
+  // A rewritten block is drawn as it was before it, instead of its words.
   for (const change of changes) {
     if (change.kind !== 'block' || !change.rewritten) continue
     const { from, to } = change
     marks = marks.filter((d) => d.from < from || d.to > to)
     changes = changes.filter((c) => c.kind !== 'removed' || c.at <= from || c.at >= to)
-    marks.push(Decoration.inline(from + 1, to - 1, { class: 'change-inserted' }))
+    whole.push({ from, to })
+  }
+  // Inserted text is highlighted, except in blocks that are new or
+  // rewritten: their bar says as much, and highlighting all of their text
+  // drowns the blocks where only some words changed.
+  for (const step of steps) {
+    for (const { from, to } of subtract(step.fromB, step.toB, whole)) {
+      marks.push(Decoration.inline(from, to, { class: 'change-inserted' }))
+    }
   }
   // Removed blocks are drawn before a block starting at the same position.
   const position = (c: Change) => (c.kind === 'block' ? c.from + 0.5 : c.at)
   changes.sort((a, b) => position(a) - position(b))
   group(doc, changes)
   return { marks, changes }
+}
+
+// The parts of from..to outside all of ranges.
+function subtract(from: number, to: number, ranges: { from: number; to: number }[]): { from: number; to: number }[] {
+  let parts = from < to ? [{ from, to }] : []
+  for (const range of ranges) {
+    parts = parts.flatMap((p) =>
+      [
+        { from: p.from, to: Math.min(p.to, range.from) },
+        { from: Math.max(p.from, range.to), to: p.to },
+      ].filter((q) => q.from < q.to),
+    )
+  }
+  return parts
 }
 
 // Joins changes within a block that only a little unchanged text separates,

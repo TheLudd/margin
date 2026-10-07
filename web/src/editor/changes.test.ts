@@ -34,6 +34,7 @@ describe('compare when a block is added', () => {
   beforeEach(() => compare('a\n\nb\n\nc\n', 'a\n\nc\n'))
 
   it('marks the new block', () => expect(texts('.change-block')).toEqual(['b']))
+  it('leaves it to its bar', () => expect(texts('.change-inserted')).toEqual([]))
 })
 
 describe('compare when a list item changes', () => {
@@ -46,7 +47,7 @@ describe('compare when most of a block is rewritten', () => {
   beforeEach(() => compare('a\n\nfour five six\n', 'a\n\none two three\n'))
 
   it('shows the old block whole', () => expect(texts('.change-removed')).toEqual(['one two three']))
-  it('highlights the new block whole', () => expect(texts('.change-inserted')).toEqual(['four five six']))
+  it('leaves the new block to its bar', () => expect(texts('.change-inserted')).toEqual([]))
   it('strikes through no words', () => expect(texts('.change-deleted')).toEqual([]))
   it('numbers both as one change', () => expect(numbered()).toEqual([['0', 'one two three'], ['0', 'four five six']]))
 })
@@ -55,6 +56,12 @@ describe('compare when new blocks replace an old one', () => {
   beforeEach(() => compare('# A\n\n## B\n\n- one\n- two\n\nthree\n\n# C\n', '# A\n\nold text\n\n# C\n'))
 
   it('shows the old block once', () => expect(texts('.change-removed')).toEqual(['old text']))
+})
+
+describe('compare when a block is added after a changed one', () => {
+  beforeEach(() => compare('one four three\n\nnew block\n', 'one two three\n'))
+
+  it('highlights only the changed words', () => expect(texts('.change-inserted')).toEqual(['four']))
 })
 
 describe('a rewritten block shown as it is now', () => {
