@@ -139,8 +139,13 @@ export function compare(base: Node, doc: Node): Diff {
     const node = doc.nodeAt(from)!
     const to = from + node.nodeSize
     const old = base.slice(toBase(steps, from, -1), toBase(steps, to, 1)).content
-    const inserted = steps.reduce((n, s) => n + Math.max(0, Math.min(s.toB, to) - Math.max(s.fromB, from)), 0)
-    changes.push({ kind: 'block', from, to, depth: listDepth(doc, from), old, rewritten: rewritten(node, old, inserted), group: 0 })
+    const touching = steps.filter((s) => s.toB > from && s.fromB < to)
+    const inserted = touching.reduce((n, s) => n + Math.min(s.toB, to) - Math.max(s.fromB, from), 0)
+    // A change reaching past the block, such as new blocks replacing an old
+    // one, is shown where it starts, not as each block's rewrite.
+    const own = touching.every((s) => s.fromB >= from && s.toB <= to)
+    const depth = listDepth(doc, from)
+    changes.push({ kind: 'block', from, to, depth, old, rewritten: own && rewritten(node, old, inserted), group: 0 })
   }
   // A rewritten block is highlighted whole, and drawn as it was before it.
   for (const change of changes) {

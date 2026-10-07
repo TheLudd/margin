@@ -51,6 +51,12 @@ describe('compare when most of a block is rewritten', () => {
   it('numbers both as one change', () => expect(numbered()).toEqual([['0', 'one two three'], ['0', 'four five six']]))
 })
 
+describe('compare when new blocks replace an old one', () => {
+  beforeEach(() => compare('# A\n\n## B\n\n- one\n- two\n\nthree\n\n# C\n', '# A\n\nold text\n\n# C\n'))
+
+  it('shows the old block once', () => expect(texts('.change-removed')).toEqual(['old text']))
+})
+
 describe('a rewritten block shown as it is now', () => {
   beforeEach(async () => {
     await compare('a\n\nfour five six\n', 'a\n\none two three\n')
