@@ -411,6 +411,7 @@ body.setup #sidebar > :not(.brand-row) {
 
 /* Main */
 #main {
+  container-type: inline-size; /* wide blocks size against it */
   overflow-y: auto;
   scroll-padding-top: 60px;
 }
@@ -587,7 +588,8 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 article {
-  max-width: 920px;
+  --article-width: 920px;
+  max-width: var(--article-width);
   margin: 24px auto 30vh;
   padding: 0 16px;
 }
@@ -999,8 +1001,23 @@ dialog.busy p {
 }
 
 .milkdown .ProseMirror {
-  padding: 8px 48px 60px 64px;
+  --text-inset: 64px;
+  padding: 8px 48px 60px var(--text-inset);
   caret-color: var(--cp-magenta);
+}
+
+/* Code blocks and tables keep to the text's width unless their lines are
+   longer: then they grow into the room right of the text, up to a gutter from
+   the edge, and only scroll beyond that. The text starts at the centered
+   article's edge, plus its border and padding, plus the editor's inset. */
+.milkdown .ProseMirror > :is(.milkdown-code-block, .milkdown-table-block) {
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100cqw - (100cqw - min(var(--article-width), 100cqw)) / 2 - 18px - var(--text-inset) - 24px);
+}
+
+.milkdown .milkdown-table-block .table-wrapper {
+  overflow-x: auto;
 }
 
 /* Editing: while the cursor is in the document, the page says so */
@@ -1560,6 +1577,7 @@ article:has(.ProseMirror:focus) {
   }
 
   .milkdown .ProseMirror {
+    --text-inset: 16px;
     padding: 8px 16px 60px;
   }
 }
