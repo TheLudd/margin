@@ -87,6 +87,10 @@ export class DocumentView {
     this.fit()
   }
 
+  setReadonly(readonly: boolean) {
+    this.textarea.readOnly = readonly
+  }
+
   state(state: State, actions?: ConflictActions) {
     this.statusEl.textContent = statusText[state]
     this.statusEl.dataset.state = state

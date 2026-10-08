@@ -7,6 +7,11 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%230a0b17'/><rect x='3' y='2' width='2' height='12' fill='%23ff2bd6'/><rect x='7' y='4' width='6' height='1.5' fill='%2300e5ff'/><rect x='7' y='7.25' width='6' height='1.5' fill='%2300e5ff'/><rect x='7' y='10.5' width='4' height='1.5' fill='%2300e5ff'/></svg>" />
   </head>
   <body>
+    <header id="mobile-bar">
+      <button id="open-sidebar" type="button" aria-label="Files">☰</button>
+      <a class="brand" href="/">margin</a>
+      <button id="open-toc" type="button">Contents</button>
+    </header>
     <aside id="sidebar">
       <div class="brand-row">
         <a class="brand" href="/">margin</a>
@@ -24,6 +29,7 @@
       <section class="not-found"><h1>Not found</h1><p>This file doesn't exist in any of margin's folders.</p></section>
     </main>
     <nav id="toc" hidden></nav>
+    <div id="scrim"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

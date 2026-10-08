@@ -1307,14 +1307,131 @@ article:has(.ProseMirror:focus) {
   }
 }
 
+/* Narrow screens: the document alone, with the sidebar and the contents
+   sliding over it from a bar on top */
+#mobile-bar,
+#scrim {
+  display: none;
+}
+
 @media (max-width: 700px) {
   body,
   body:has(#toc[hidden]) {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  #mobile-bar {
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-top: 2px solid var(--cp-magenta);
+    border-bottom: 1px solid var(--cp-line);
+    background: var(--cp-panel);
+  }
+
+  #mobile-bar button {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--cp-line);
+    border-radius: 6px;
+    background: none;
+    color: var(--cp-text);
+    font-family: var(--cp-mono);
+    font-size: 14px;
+  }
+
+  #mobile-bar #open-sidebar {
+    font-size: 18px;
+  }
+
+  #mobile-bar .brand {
+    flex: 1;
+    font-family: var(--cp-mono);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--cp-magenta);
+    text-shadow: 0 0 8px #ff2bd666;
+  }
+
+  body:has(#toc[hidden]) #open-toc {
+    display: none;
+  }
+
+  #main {
+    grid-row: 2;
+  }
+
+  #sidebar,
+  #toc {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(85vw, 340px);
+    background: var(--cp-panel);
+    transition: transform 0.2s ease;
   }
 
   #sidebar {
+    left: 0;
+    transform: translateX(-100%);
+  }
+
+  #toc {
+    right: 0;
+    padding-top: 18px;
+    transform: translateX(100%);
+  }
+
+  body[data-drawer='sidebar'] #sidebar,
+  body[data-drawer='toc'] #toc {
+    transform: none;
+  }
+
+  body[data-drawer] #scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: #0a0b17b3;
+  }
+
+  /* Fingers, not a mouse: larger targets, nothing that waits for hover */
+  #sidebar {
+    font-size: 15px;
+  }
+
+  #sidebar li a,
+  #sidebar details summary {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #sidebar .forget {
+    visibility: visible;
+    width: 36px;
+  }
+
+  #sidebar .find kbd {
     display: none;
+  }
+
+  #toc a {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .doc-header {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 8px 16px;
+  }
+
+  #main > section {
+    padding: 0 16px;
   }
 
   .milkdown .ProseMirror {

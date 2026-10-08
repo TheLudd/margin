@@ -27,6 +27,7 @@ import { groupCopies, isActive, type LogicalFile } from './ui/copies'
 import { display, setRoots } from './ui/display'
 import { byId, fileUrl } from './ui/dom'
 import { DocumentView } from './ui/document-view'
+import { Drawers } from './ui/drawers'
 import { Finder } from './ui/finder'
 import { SettingsView } from './ui/settings-view'
 import { Sidebar } from './ui/sidebar'
@@ -63,6 +64,21 @@ const view = new DocumentView(
   changes.commitEl,
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
+new Drawers(
+  document.body,
+  {
+    sidebar: { el: byId('sidebar'), toggle: byId('open-sidebar') },
+    toc: { el: byId('toc'), toggle: byId('open-toc') },
+  },
+  byId('scrim'),
+)
+// Phones only read for now: the editor isn't made for touch yet.
+const compact = matchMedia('(max-width: 700px)')
+const applyReadonly = () => {
+  editor?.setReadonly(compact.matches)
+  view.setReadonly(compact.matches)
+}
+compact.addEventListener('change', applyReadonly)
 const settingsView = new SettingsView(main, (saved) => {
   applySettings(saved)
   navigate('/')
@@ -127,6 +143,7 @@ async function open(path: string, push = true) {
   }
   session = current
   editor = created
+  applyReadonly()
   session.attach(editor)
   main.scrollTop = 0
   toc.build()

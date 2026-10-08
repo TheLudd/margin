@@ -42,6 +42,7 @@ export interface Editor {
   compare(base: string | undefined): void
   // Highlights the change with that index, as numbered in data-change.
   focusChange(focus: Focus | undefined): void
+  setReadonly(readonly: boolean): void
   destroy(): Promise<void>
 }
 
@@ -79,6 +80,9 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
     },
     focusChange(focus) {
       setChanges(() => ({ focus }))
+    },
+    setReadonly(readonly) {
+      crepe.setReadonly(readonly)
     },
     async destroy() {
       await crepe.destroy()
