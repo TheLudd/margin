@@ -23,13 +23,17 @@
     <aside id="sidebar">
       <div class="brand-row">
         <a class="brand" href="/">margin</a>
-        <a class="settings-link" href="/settings" title="Settings">⚙</a>
-        <button class="close-drawer" type="button" aria-label="Close" data-close-drawer>×</button>
+        <button id="close-sidebar" class="close-sidebar" type="button" aria-label="Close" title="Close" data-close-drawer>×</button>
       </div>
+      <button id="unfold-sidebar" class="unfold-sidebar" type="button" aria-label="Files" title="Files">
+        <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M3 5h14M3 10h14M3 15h14" />
+        </svg>
+      </button>
       <button class="find" type="button" data-close-drawer onclick="document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))">
         Open file… <kbd>Ctrl K</kbd>
       </button>
-      <a class="settings-link settings-row" href="/settings">⚙ Settings</a>
+      <a id="settings-link" class="settings-row" href="/settings">⚙ Settings</a>
     </aside>
     <main id="main" data-view="home">
       <section class="home">

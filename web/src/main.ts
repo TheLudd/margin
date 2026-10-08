@@ -31,6 +31,7 @@ import { Drawers } from './ui/drawers'
 import { Finder } from './ui/finder'
 import { SettingsView } from './ui/settings-view'
 import { Sidebar } from './ui/sidebar'
+import { SidebarFold } from './ui/sidebar-fold'
 import { Toc } from './ui/toc'
 
 let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14, unreadDays: 30 }
@@ -64,6 +65,8 @@ const view = new DocumentView(
   changes.commitEl,
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
+// Phones only read for now: the editor isn't made for touch yet.
+const compact = matchMedia('(max-width: 700px)')
 new Drawers(
   document.body,
   {
@@ -72,8 +75,7 @@ new Drawers(
   },
   byId('scrim'),
 )
-// Phones only read for now: the editor isn't made for touch yet.
-const compact = matchMedia('(max-width: 700px)')
+new SidebarFold(document.body, byId('close-sidebar'), byId('unfold-sidebar'), compact)
 const applyReadonly = () => {
   editor?.setReadonly(compact.matches)
   view.setReadonly(compact.matches)
@@ -321,12 +323,10 @@ view.editorEl.addEventListener('click', (event) => {
   }
 })
 
-for (const link of document.querySelectorAll('.settings-link')) {
-  link.addEventListener('click', (event) => {
-    event.preventDefault()
-    navigate('/settings')
-  })
-}
+byId('settings-link').addEventListener('click', (event) => {
+  event.preventDefault()
+  navigate('/settings')
+})
 
 fetchSettings().then((loaded) => {
   applySettings(loaded, false)

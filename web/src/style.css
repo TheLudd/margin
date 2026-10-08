@@ -28,8 +28,9 @@ body {
 }
 
 body {
+  --sidebar-width: 290px;
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 300px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 300px;
   background:
     radial-gradient(ellipse at top left, #ff2bd61a, transparent 50%),
     radial-gradient(ellipse at bottom right, #00e5ff14, transparent 50%),
@@ -40,7 +41,7 @@ body {
 }
 
 body:has(#toc[hidden]) {
-  grid-template-columns: 290px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 
 a {
@@ -74,8 +75,10 @@ kbd {
 
 /* Sidebar */
 #sidebar {
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  padding: 14px 10px 40px;
+  padding: 14px 10px 0;
   border-right: 1px solid var(--cp-line);
   border-top: 2px solid var(--cp-magenta);
   background: #0a0b17cc;
@@ -85,22 +88,69 @@ kbd {
 #sidebar .brand-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   padding: 0 8px 12px;
 }
 
-#sidebar .settings-link {
+#sidebar :is(.close-sidebar, .unfold-sidebar) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -6px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
   color: var(--cp-muted);
-  font-size: 16px;
+  font-size: 20px;
+  cursor: pointer;
 }
 
-#sidebar .settings-link:hover {
+#sidebar :is(.close-sidebar, .unfold-sidebar):hover {
   color: var(--cp-cyan);
 }
 
-/* Phones only: the drawer's close button, and settings at its foot */
-#sidebar :is(.close-drawer, .settings-row) {
+#sidebar .unfold-sidebar {
   display: none;
+}
+
+/* Settings at the foot, in view however long the lists get */
+#sidebar .settings-row {
+  order: 1;
+  position: sticky;
+  bottom: 0;
+  margin: auto -10px 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--cp-line);
+  background: var(--cp-bg);
+  color: var(--cp-muted);
+}
+
+#sidebar .settings-row:hover {
+  color: var(--cp-cyan);
+}
+
+/* Folded on wider screens: a strip that unfolds it again */
+@media (min-width: 701px) {
+  body.sidebar-folded {
+    --sidebar-width: 48px;
+  }
+
+  body.sidebar-folded #sidebar {
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  body.sidebar-folded #sidebar > :not(.unfold-sidebar) {
+    display: none;
+  }
+
+  body.sidebar-folded #sidebar .unfold-sidebar {
+    display: inline-flex;
+    margin: 0;
+  }
 }
 
 /* Nothing to browse until a folder is configured */
@@ -1298,7 +1348,8 @@ article:has(.ProseMirror:focus) {
 @media (max-width: 1100px) {
   body,
   body:has(#toc[hidden]) {
-    grid-template-columns: 240px minmax(0, 1fr);
+    --sidebar-width: 240px;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
 
   #toc {
@@ -1401,44 +1452,16 @@ article:has(.ProseMirror:focus) {
     background: #0a0b17b3;
   }
 
-  /* The cog makes way for closing; settings move to the foot */
-  #sidebar {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 0;
-  }
-
-  #sidebar .brand-row {
-    align-items: center;
-  }
-
-  #sidebar .brand-row .settings-link {
-    display: none;
-  }
-
-  #sidebar .close-drawer {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  #sidebar .close-sidebar {
     width: 40px;
     height: 40px;
     margin-right: -8px;
-    border: none;
-    background: none;
-    color: var(--cp-muted);
     font-size: 26px;
   }
 
   #sidebar .settings-row {
-    display: block;
-    order: 1;
-    position: sticky;
-    bottom: 0;
-    margin: auto -10px 0;
     padding: 14px 18px;
-    border-top: 1px solid var(--cp-line);
     background: var(--cp-panel);
-    font-size: 15px;
   }
 
   /* Fingers, not a mouse: larger targets, nothing that waits for hover */
