@@ -1,4 +1,4 @@
-import { dirName, fileName, h } from './dom'
+import { fileLabel, h } from './dom'
 import { fuzzyFilter } from './fuzzy'
 
 const limit = 10
@@ -112,7 +112,7 @@ export class Finder {
 
   private item(result: FinderItem, index: number, older: boolean) {
     const classes = [index === this.selected && 'selected', older && 'older'].filter(Boolean).join(' ')
-    const item = h('li', { class: classes || undefined }, h('span', { class: 'name' }, fileName(result.label)), h('span', { class: 'dir' }, dirName(result.label)))
+    const item = h('li', { class: classes || undefined }, fileLabel(result.label))
     item.addEventListener('mousedown', (event) => {
       event.preventDefault()
       this.choose(result.path)

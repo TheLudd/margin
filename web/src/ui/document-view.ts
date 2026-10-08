@@ -1,7 +1,7 @@
 import type { State } from '../document/session'
 import { type LogicalFile, worktreeName } from './copies'
 import { display } from './display'
-import { h, timeAgo } from './dom'
+import { fileLabel, h, timeAgo } from './dom'
 
 const openMenus = ".milkdown-slash-menu[data-show='true'], .milkdown-link-edit[data-show='true']"
 
@@ -62,7 +62,7 @@ export class DocumentView {
   }
 
   show(path: string, frontmatter: string) {
-    this.pathEl.textContent = display(path)
+    this.pathEl.replaceChildren(fileLabel(display(path)))
     document.title = `${path.slice(path.lastIndexOf('/') + 1)} · margin`
     this.state('clean')
     this.frontmatter(frontmatter)

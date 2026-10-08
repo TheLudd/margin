@@ -27,6 +27,11 @@ export const fileName = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
 export const dirName = (path: string) => path.slice(0, path.lastIndexOf('/') + 1)
 
+// A file as margin shows it everywhere: its name first, then its folder,
+// which gives way first when space runs out.
+export const fileLabel = (path: string) =>
+  h('span', { class: 'file-label' }, h('span', { class: 'name' }, fileName(path)), h('span', { class: 'dir' }, dirName(path)))
+
 // A link to a document that opens in place, but still works with middle
 // click and "open in new tab".
 export function fileLink(path: string, open: (path: string) => void, ...children: Child[]): HTMLAnchorElement {

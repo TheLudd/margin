@@ -197,19 +197,20 @@ body.setup #sidebar > :not(.brand-row) {
   border-left-color: var(--cp-magenta);
 }
 
-/* The label (file name, then folder) gives way to the time and copy count.
-   Inside it the folder shrinks first; the name is cut only when it alone
-   doesn't fit. */
-#sidebar .label {
+/* A file label: name, then folder. The folder shrinks first; the name is cut
+   only when it alone doesn't fit. In the sidebar it gives way to the time and
+   copy count. */
+.file-label {
   display: flex;
   gap: 8px;
   align-items: baseline;
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
 }
 
-#sidebar .dir {
+.file-label .dir {
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
@@ -218,7 +219,7 @@ body.setup #sidebar > :not(.brand-row) {
   font-size: 0.9em;
 }
 
-#sidebar .name {
+.file-label .name {
   flex-shrink: 0;
   max-width: 100%;
   overflow: hidden;
@@ -405,12 +406,13 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 .doc-header .path {
+  display: flex;
   flex: 1;
   min-width: 0;
-  color: var(--cp-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.doc-header .path .name {
+  color: var(--cp-text);
 }
 
 .doc-header .worktree {
@@ -871,14 +873,6 @@ dialog.busy p {
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-}
-
-#finder li .dir {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--cp-muted);
-  font-size: 12px;
 }
 
 #finder li.tier {
