@@ -1319,31 +1319,24 @@ article:has(.ProseMirror:focus) {
     grid-row: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
+    gap: 12px;
+    padding: 6px 12px;
     border-top: 2px solid var(--cp-magenta);
     border-bottom: 1px solid var(--cp-line);
     background: var(--cp-panel);
   }
 
   #mobile-bar button {
-    min-height: 40px;
-    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     border: 1px solid var(--cp-line);
     border-radius: 6px;
     background: none;
     color: var(--cp-text);
-    font-family: var(--cp-mono);
-    font-size: 14px;
-  }
-
-  #mobile-bar #open-sidebar {
-    font-size: 18px;
-  }
-
-  #mobile-bar #open-toc {
-    display: inline-flex;
-    align-items: center;
   }
 
   #mobile-bar .brand {
@@ -1429,9 +1422,9 @@ article:has(.ProseMirror:focus) {
   }
 
   .doc-header {
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    padding: 8px 16px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
   }
 
   /* Badges as symbols; the words stay for screen readers */
