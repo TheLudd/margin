@@ -1380,6 +1380,11 @@ article:has(.ProseMirror:focus) {
     transform: translateX(-100%);
   }
 
+  /* Wider screens without room for it hide it; here it is a drawer */
+  #toc:not([hidden]) {
+    display: block;
+  }
+
   #toc {
     right: 0;
     padding-top: 18px;
@@ -1428,6 +1433,54 @@ article:has(.ProseMirror:focus) {
     flex-wrap: wrap;
     gap: 6px 12px;
     padding: 8px 16px;
+  }
+
+  /* Badges as symbols; the words stay for screen readers */
+  .doc-header .badge {
+    width: 1.2em;
+    padding: 1px 6px;
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .doc-header .badge::before {
+    font-size: 13px;
+  }
+
+  .doc-header .commit[data-state='committed']::before {
+    content: '◆';
+  }
+
+  .doc-header .commit[data-state='uncommitted']::before {
+    content: '±';
+  }
+
+  .doc-header .commit[data-state='untracked']::before {
+    content: '?';
+  }
+
+  .doc-header .status[data-state='clean']::before {
+    content: '✓';
+  }
+
+  .doc-header .status[data-state='dirty']::before {
+    content: '•';
+  }
+
+  .doc-header .status[data-state='saving']::before {
+    content: '…';
+  }
+
+  .doc-header .status[data-state='conflict']::before {
+    content: '⚠';
+  }
+
+  .doc-header .status[data-state='missing']::before {
+    content: '✕';
+  }
+
+  .doc-header .status[data-state='error']::before {
+    content: '↻';
   }
 
   #main > section {

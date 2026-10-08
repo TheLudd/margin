@@ -70,6 +70,7 @@ export class ChangesView {
     this.current = current
     this.commitEl.hidden = commit === undefined
     this.commitEl.textContent = commit ?? ''
+    this.commitEl.dataset.state = commit ?? ''
     this.commitEl.disabled = commit !== 'uncommitted'
     this.commitEl.classList.toggle('unstable', commit === 'uncommitted')
     this.commitEl.classList.toggle('untracked', commit === 'untracked')
