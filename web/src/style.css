@@ -1436,15 +1436,27 @@ article:has(.ProseMirror:focus) {
   }
 
   /* Badges as symbols; the words stay for screen readers */
-  .doc-header .badge {
-    width: 1.2em;
-    padding: 1px 6px;
+  .doc-header .badges {
+    gap: 4px;
+    border: none;
+  }
+
+  .doc-header .badge:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 4px;
     font-size: 0;
     letter-spacing: 0;
   }
 
   .doc-header .badge::before {
-    font-size: 13px;
+    font-family: var(--cp-sans);
+    font-size: 15px;
+    line-height: 1;
   }
 
   .doc-header .commit[data-state='committed']::before {
