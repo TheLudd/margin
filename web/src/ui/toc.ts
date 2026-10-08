@@ -1,10 +1,13 @@
 import { debounce } from '../sync'
 import { h } from './dom'
+import { slugs } from './slugs'
 
 // A table of contents built from the document's headings, so no document
 // needs a [[toc]] marker. It follows edits and highlights the heading in view.
+// Following a heading puts its anchor in the URL, so a reload returns there.
 export class Toc {
   private headings: HTMLElement[] = []
+  private slugs: string[] = []
   private links: HTMLElement[] = []
 
   constructor(
@@ -22,10 +25,12 @@ export class Toc {
 
   build() {
     this.headings = [...this.content.querySelectorAll<HTMLElement>('.ProseMirror > :is(h1, h2, h3, h4)')]
-    this.links = this.headings.map((heading) => {
-      const link = h('a', { href: '#', class: `level-${heading.tagName[1]}` }, heading.textContent || '…')
+    this.slugs = slugs(this.headings.map((heading) => heading.textContent ?? ''))
+    this.links = this.headings.map((heading, i) => {
+      const link = h('a', { href: `#${this.slugs[i]}`, class: `level-${heading.tagName[1]}` }, heading.textContent || '…')
       link.addEventListener('click', (event) => {
         event.preventDefault()
+        history.replaceState(null, '', `#${this.slugs[i]}`)
         heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
       return link
@@ -33,6 +38,11 @@ export class Toc {
     this.root.replaceChildren(...(this.links.length ? [h('h2', {}, 'Contents'), ...this.links] : []))
     this.root.hidden = this.links.length === 0
     this.highlight()
+  }
+
+  // Scrolls to the heading with that anchor, if there is one.
+  reveal(slug: string) {
+    this.headings[this.slugs.indexOf(slug)]?.scrollIntoView({ block: 'start' })
   }
 
   private highlight() {

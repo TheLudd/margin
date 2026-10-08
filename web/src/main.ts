@@ -147,6 +147,7 @@ async function open(path: string, push = true) {
   session.attach(editor)
   main.scrollTop = 0
   toc.build()
+  toc.reveal(decodeURIComponent(location.hash.slice(1)))
   changes.reset()
   compare(current, created)
 
