@@ -1341,6 +1341,11 @@ article:has(.ProseMirror:focus) {
     font-size: 18px;
   }
 
+  #mobile-bar #open-toc {
+    display: inline-flex;
+    align-items: center;
+  }
+
   #mobile-bar .brand {
     flex: 1;
     font-family: var(--cp-mono);
