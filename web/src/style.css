@@ -588,8 +588,7 @@ body.setup #sidebar > :not(.brand-row) {
 }
 
 article {
-  --article-width: 920px;
-  max-width: var(--article-width);
+  max-width: 920px;
   margin: 24px auto 30vh;
   padding: 0 16px;
 }
@@ -1001,19 +1000,24 @@ dialog.busy p {
 }
 
 .milkdown .ProseMirror {
-  --text-inset: 64px;
-  padding: 8px 48px 60px var(--text-inset);
+  --inset-left: 64px;
+  --inset-right: 48px;
+  padding: 8px var(--inset-right) 60px var(--inset-left);
   caret-color: var(--cp-magenta);
 }
 
 /* Code blocks and tables keep to the text's width unless their lines are
-   longer: then they grow into the room right of the text, up to a gutter from
-   the edge, and only scroll beyond that. The text starts at the centered
-   article's edge, plus its border and padding, plus the editor's inset. */
+   longer: then they grow evenly to both sides, centered on the text, up to a
+   24px gutter from the edges, and only scroll beyond that. The text sits
+   off-center by half the difference of its insets (the article's 2px border
+   on the left included), which the nearer side gives up. */
 .milkdown .ProseMirror > :is(.milkdown-code-block, .milkdown-table-block) {
+  position: relative;
+  left: 50%;
+  translate: -50%;
   width: max-content;
   min-width: 100%;
-  max-width: calc(100cqw - (100cqw - min(var(--article-width), 100cqw)) / 2 - 18px - var(--text-inset) - 24px);
+  max-width: calc(100cqw - 48px - (2px + var(--inset-left) - var(--inset-right)));
 }
 
 .milkdown .milkdown-table-block .table-wrapper {
@@ -1577,7 +1581,7 @@ article:has(.ProseMirror:focus) {
   }
 
   .milkdown .ProseMirror {
-    --text-inset: 16px;
-    padding: 8px 16px 60px;
+    --inset-left: 16px;
+    --inset-right: 16px;
   }
 }
