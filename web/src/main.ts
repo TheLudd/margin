@@ -320,10 +320,12 @@ view.editorEl.addEventListener('click', (event) => {
   }
 })
 
-byId('settings-link').addEventListener('click', (event) => {
-  event.preventDefault()
-  navigate('/settings')
-})
+for (const link of document.querySelectorAll('.settings-link')) {
+  link.addEventListener('click', (event) => {
+    event.preventDefault()
+    navigate('/settings')
+  })
+}
 
 fetchSettings().then((loaded) => {
   applySettings(loaded, false)

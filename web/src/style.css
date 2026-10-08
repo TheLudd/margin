@@ -98,6 +98,11 @@ kbd {
   color: var(--cp-cyan);
 }
 
+/* Phones only: the drawer's close button, and settings at its foot */
+#sidebar :is(.close-drawer, .settings-row) {
+  display: none;
+}
+
 /* Nothing to browse until a folder is configured */
 body.setup #sidebar > :not(.brand-row) {
   display: none;
@@ -1394,6 +1399,46 @@ article:has(.ProseMirror:focus) {
     inset: 0;
     z-index: 20;
     background: #0a0b17b3;
+  }
+
+  /* The cog makes way for closing; settings move to the foot */
+  #sidebar {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+
+  #sidebar .brand-row {
+    align-items: center;
+  }
+
+  #sidebar .brand-row .settings-link {
+    display: none;
+  }
+
+  #sidebar .close-drawer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-right: -8px;
+    border: none;
+    background: none;
+    color: var(--cp-muted);
+    font-size: 26px;
+  }
+
+  #sidebar .settings-row {
+    display: block;
+    order: 1;
+    position: sticky;
+    bottom: 0;
+    margin: auto -10px 0;
+    padding: 14px 18px;
+    border-top: 1px solid var(--cp-line);
+    background: var(--cp-panel);
+    font-size: 15px;
   }
 
   /* Fingers, not a mouse: larger targets, nothing that waits for hover */

@@ -23,11 +23,13 @@
     <aside id="sidebar">
       <div class="brand-row">
         <a class="brand" href="/">margin</a>
-        <a id="settings-link" class="settings-link" href="/settings" title="Settings">⚙</a>
+        <a class="settings-link" href="/settings" title="Settings">⚙</a>
+        <button class="close-drawer" type="button" aria-label="Close" data-close-drawer>×</button>
       </div>
-      <button class="find" type="button" onclick="document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))">
+      <button class="find" type="button" data-close-drawer onclick="document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))">
         Open file… <kbd>Ctrl K</kbd>
       </button>
+      <a class="settings-link settings-row" href="/settings">⚙ Settings</a>
     </aside>
     <main id="main" data-view="home">
       <section class="home">
