@@ -19,16 +19,18 @@ import (
 	"margin/internal/config"
 	"margin/internal/events"
 	"margin/internal/index"
+	"margin/internal/manual"
 	"margin/internal/recent"
 	"margin/internal/seen"
 	"margin/internal/workspace"
 )
 
 type fixture struct {
-	root string // the folder served as the root named code
-	url  string
-	port int
-	seen *seen.Store
+	root   string // the folder served as the root named code
+	url    string
+	port   int
+	seen   *seen.Store
+	manual *manual.Store
 }
 
 func setup(t *testing.T) fixture {
@@ -42,12 +44,14 @@ func setup(t *testing.T) fixture {
 	workspaces := workspace.NewManager(configFile, hub.Publish, nil)
 	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), time.Hour)
 	read, _ := seen.Open(t.TempDir())
+	hand, _ := manual.Load(filepath.Join(t.TempDir(), "manual.json"))
 
 	srv := httptest.NewUnstartedServer(nil)
 	s := &Server{
 		Workspaces: workspaces,
 		Recent:     rec,
 		Seen:       read,
+		Manual:     hand,
 		Events:     hub,
 		Web:        fstest.MapFS{"index.html": {Data: []byte("<app>")}},
 		Port:       srv.Listener.Addr().(*net.TCPAddr).Port,
@@ -56,7 +60,7 @@ func setup(t *testing.T) fixture {
 	srv.Config.Handler = s.Handler()
 	srv.Start()
 	t.Cleanup(func() { srv.Close(); workspaces.Close() })
-	return fixture{root: root, url: srv.URL, port: s.Port, seen: read}
+	return fixture{root: root, url: srv.URL, port: s.Port, seen: read, manual: hand}
 }
 
 func write(t *testing.T, path, content string) {
@@ -305,6 +309,78 @@ func TestUnread(t *testing.T) {
 
 	if len(got) != 1 || got[0] != "code/repo/other.md" {
 		t.Fatalf("got %v", got)
+	}
+}
+
+func TestUnreadSkipsFilesEditedByHand(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	f.manual.Set("code/repo/plan.md", true)
+	time.Sleep(10 * time.Millisecond)
+	write(t, filepath.Join(f.root, "repo", "plan.md"), "v2")
+	time.Sleep(200 * time.Millisecond) // let the index see it
+
+	var got []string
+	json.NewDecoder(do(t, "GET", f.url+"/api/unread", "", nil).Body).Decode(&got)
+
+	if len(got) != 0 {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestReadSeenOfFileEditedByHand(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	f.manual.Set("code/repo/plan.md", true)
+
+	if res := do(t, "GET", f.url+"/api/seen?path=code/repo/plan.md", "", nil); res.StatusCode != 404 {
+		t.Fatalf("got %d", res.StatusCode)
+	}
+}
+
+func TestIsManual(t *testing.T) {
+	f := setup(t)
+
+	if res := do(t, "GET", f.url+"/api/manual?path=code/repo/plan.md", "", nil); strings.TrimSpace(bodyOf(res)) != "false" {
+		t.Fatalf("got %d %q", res.StatusCode, bodyOf(res))
+	}
+	do(t, "PUT", f.url+"/api/manual?path=code/repo/plan.md", "", nil)
+	if res := do(t, "GET", f.url+"/api/manual?path=code/repo/plan.md", "", nil); strings.TrimSpace(bodyOf(res)) != "true" {
+		t.Fatalf("got %d %q", res.StatusCode, bodyOf(res))
+	}
+	if res := do(t, "GET", f.url+"/api/manual?path=code/repo/other.md", "", nil); res.StatusCode != 404 {
+		t.Fatalf("unknown file got %d", res.StatusCode)
+	}
+}
+
+func TestSetManualMarksRead(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+
+	res := do(t, "PUT", f.url+"/api/manual?path=code/repo/plan.md", "", nil)
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); res.StatusCode != 204 || string(got) != "v1" || !f.manual.Is("code/repo/plan.md") {
+		t.Fatalf("got %d, seen %q, manual %v", res.StatusCode, got, f.manual.Is("code/repo/plan.md"))
+	}
+}
+
+func TestUnsetManualMarksRead(t *testing.T) {
+	f := setup(t)
+	f.seen.Put("code/repo/plan.md", []byte("v0"))
+	f.manual.Set("code/repo/plan.md", true)
+
+	res := do(t, "DELETE", f.url+"/api/manual?path=code/repo/plan.md", "", nil)
+
+	if got, _, _ := f.seen.Get("code/repo/plan.md"); res.StatusCode != 204 || string(got) != "v1" || f.manual.Is("code/repo/plan.md") {
+		t.Fatalf("got %d, seen %q, manual %v", res.StatusCode, got, f.manual.Is("code/repo/plan.md"))
+	}
+}
+
+func TestSetManualOfUnknownFile(t *testing.T) {
+	f := setup(t)
+
+	if res := do(t, "PUT", f.url+"/api/manual?path=code/repo/other.md", "", nil); res.StatusCode != 404 {
+		t.Fatalf("got %d", res.StatusCode)
 	}
 }
 

@@ -12,9 +12,9 @@ const changeSelector = '.change-block, .change-removed'
 // Header controls for the changes shown in the document: how many there
 // are, stepping through them and marking them read, hidden when there are
 // none; and, next to the save status, whether the file is committed, which
-// shows the uncommitted changes when clicked. A change jumped to becomes
-// current: it is highlighted and counted in the header until it leaves the
-// screen.
+// shows the uncommitted changes when clicked, and whether it is edited by
+// hand, which toggles that. A change jumped to becomes current: it is
+// highlighted and counted in the header until it leaves the screen.
 
 // Leaves room for the sticky header.
 const headerHeight = 40
@@ -30,6 +30,7 @@ export type CommitState = 'committed' | 'uncommitted' | 'untracked'
 export interface ChangesActions {
   use(baseline: Baseline): void
   markRead(): void
+  toggleManual(): void
   focus(focus: Focus | undefined): void
 }
 
@@ -45,6 +46,7 @@ export class ChangesView {
   private timer?: ReturnType<typeof setTimeout>
   readonly el = h('span', { class: 'changes', hidden: true }, this.countEl, this.previousEl, this.nextEl, this.markEl)
   readonly commitEl = h('button', { type: 'button', class: 'badge commit', hidden: true })
+  readonly manualEl = h('button', { type: 'button', class: 'badge manual', hidden: true }, 'manual')
 
   constructor(
     private readonly scroller: HTMLElement,
@@ -55,6 +57,7 @@ export class ChangesView {
     this.nextEl.onclick = () => this.step(1)
     this.markEl.onclick = () => actions.markRead()
     this.commitEl.onclick = () => actions.use(this.current === 'committed' ? 'seen' : 'committed')
+    this.manualEl.onclick = () => actions.toggleManual()
     scroller.addEventListener('scroll', debounce(() => this.update(), 50), { passive: true })
     scroller.addEventListener('scrollend', () => this.arrive())
     document.addEventListener('keydown', (event) => {
@@ -64,10 +67,15 @@ export class ChangesView {
     })
   }
 
-  // The baseline in use, and where the file stands in git (undefined when
-  // it is not in git).
-  state(current: Baseline, commit: CommitState | undefined) {
+  // The baseline in use, where the file stands in git (undefined when it is
+  // not in git), and whether it is edited by hand.
+  state(current: Baseline, commit: CommitState | undefined, manual: boolean) {
     this.current = current
+    this.manualEl.hidden = false
+    this.manualEl.classList.toggle('active', manual)
+    this.manualEl.title = manual
+      ? 'Edited by hand: its changes count as read. Click to show them again'
+      : 'Edit by hand, in your own editor: its changes then count as read'
     this.commitEl.hidden = commit === undefined
     this.commitEl.textContent = commit ?? ''
     this.commitEl.dataset.state = commit ?? ''
@@ -97,11 +105,12 @@ export class ChangesView {
   }
 
   // A new document starts without a jump in progress, or a commit status
-  // until its baselines load.
+  // and a manual badge until its baselines load.
   reset() {
     clearTimeout(this.timer)
     this.jumping = this.pulsing = this.focused = undefined
     this.commitEl.hidden = true
+    this.manualEl.hidden = true
   }
 
   private onScreen(change: Group | undefined): boolean {

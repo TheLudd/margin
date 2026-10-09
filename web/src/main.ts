@@ -13,7 +13,9 @@ import {
   markViewed,
   readCommitted,
   readFile,
+  readManual,
   readSeen,
+  setManual,
   type Settings,
   writeFile,
 } from './api'
@@ -55,6 +57,7 @@ const sidebar = new Sidebar(
 const changes = new ChangesView(main, {
   use: (baseline) => comparison?.use(baseline),
   markRead,
+  toggleManual,
   focus: (focus) => editor?.focusChange(focus),
 })
 const view = new DocumentView(
@@ -62,7 +65,7 @@ const view = new DocumentView(
   (value) => session?.editFrontmatter(value),
   (path) => open(path),
   changes.el,
-  changes.commitEl,
+  [changes.manualEl, changes.commitEl],
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
 // Phones only read for now: the editor isn't made for touch yet.
@@ -102,7 +105,7 @@ async function open(path: string, push = true) {
   const token = ++opening
 
   await session?.flush()
-  const result = await readFile(path)
+  const [result, manual] = await Promise.all([readFile(path), readManual(path)])
   if (token !== opening) return
 
   session?.dispose()
@@ -151,7 +154,7 @@ async function open(path: string, push = true) {
   toc.build()
   toc.reveal(decodeURIComponent(location.hash.slice(1)))
   changes.reset()
-  compare(current, created)
+  compare(current, created, manual)
 
   await markViewed(path)
   refreshRecent()
@@ -159,15 +162,16 @@ async function open(path: string, push = true) {
 }
 
 // Shows the changes in the open document against the chosen baseline.
-function compare(current: DocumentSession, shown: Editor) {
+function compare(current: DocumentSession, shown: Editor, manual: boolean) {
   const live = () => editor === shown
   const comparing: Comparison = new Comparison(
     current.path,
     { seen: readSeen, committed: readCommitted },
     {
       compare: (body) => live() && shown.compare(body),
-      state: (baseline, committed) => live() && changes.state(baseline, commitState(current.path, committed)),
+      state: (baseline, committed, byHand) => live() && changes.state(baseline, commitState(current.path, committed), byHand),
     },
+    manual,
   )
   comparison = comparing
   comparing.load(current.version.content)
@@ -187,6 +191,20 @@ async function markRead() {
   if (!current || !comparing) return
   await current.flush()
   if (!(await markSeen(current.path, current.version.etag))) await current.revalidate()
+  comparing.load(current.version.content)
+  refreshUnread()
+}
+
+// Switches whether the open file is edited by hand. Either way the version
+// on screen counts as read.
+async function toggleManual() {
+  const current = session
+  const comparing = comparison
+  if (!current || !comparing) return
+  await current.flush()
+  const manual = !comparing.manual
+  await setManual(current.path, manual)
+  comparing.setManual(manual)
   comparing.load(current.version.content)
   refreshUnread()
 }

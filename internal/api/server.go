@@ -19,6 +19,7 @@ import (
 	"margin/internal/events"
 	"margin/internal/files"
 	"margin/internal/index"
+	"margin/internal/manual"
 	"margin/internal/recent"
 	"margin/internal/seen"
 	"margin/internal/workspace"
@@ -36,6 +37,7 @@ type Server struct {
 	Workspaces *workspace.Manager
 	Recent     *recent.Store
 	Seen       *seen.Store
+	Manual     *manual.Store // the files edited by hand, whose changes count as read
 	Events     *events.Hub[index.Event]
 	Web        fs.FS // the built frontend: index.html and assets/
 	Port       int
@@ -54,6 +56,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/seen", s.markSeen)
 	mux.HandleFunc("GET /api/committed", s.readCommitted)
 	mux.HandleFunc("GET /api/unread", s.unread)
+	mux.HandleFunc("GET /api/manual", s.isManual)
+	mux.HandleFunc("PUT /api/manual", func(w http.ResponseWriter, r *http.Request) { s.setManual(w, r, true) })
+	mux.HandleFunc("DELETE /api/manual", func(w http.ResponseWriter, r *http.Request) { s.setManual(w, r, false) })
 	mux.HandleFunc("GET /api/recent", s.recent)
 	mux.HandleFunc("POST /api/recent", s.addRecent)
 	mux.HandleFunc("DELETE /api/recent", s.forgetRecent)
@@ -169,10 +174,11 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// readSeen returns the version of a file last read in margin.
+// readSeen returns the version of a file last read in margin. A file edited
+// by hand has none to compare with: its changes count as read.
 func (s *Server) readSeen(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	if !s.Workspaces.Workspace().Has(path) {
+	if !s.Workspaces.Workspace().Has(path) || s.Manual.Is(path) {
 		writeError(w, files.ErrNotFound)
 		return
 	}
@@ -219,6 +225,9 @@ func (s *Server) unread(w http.ResponseWriter, r *http.Request) {
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		for _, f := range root.Index.Files() {
 			path := root.Join(f.Path)
+			if s.Manual.Is(path) {
+				continue
+			}
 			unread, err := s.Seen.Unread(path, f.ModTime, func() ([]byte, error) {
 				doc, err := root.Files.Read(f.Path)
 				return doc.Content, err
@@ -232,6 +241,42 @@ func (s *Server) unread(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, paths)
+}
+
+// isManual reports whether a file is edited by hand.
+func (s *Server) isManual(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if !s.Workspaces.Workspace().Has(path) {
+		writeError(w, files.ErrNotFound)
+		return
+	}
+	writeJSON(w, s.Manual.Is(path))
+}
+
+// setManual records whether a file is edited by hand. Either way, its
+// current version counts as read: switching on claims the changes so far,
+// switching off starts showing changes from here on.
+func (s *Server) setManual(w http.ResponseWriter, r *http.Request, on bool) {
+	path := r.URL.Query().Get("path")
+	store, rel, err := s.file(path)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	doc, err := store.Read(rel)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := s.Seen.Put(path, doc.Content); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := s.Manual.Set(path, on); err != nil {
+		writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // readCommitted returns a file as committed in its repository's HEAD.

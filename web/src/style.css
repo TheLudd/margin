@@ -545,6 +545,27 @@ body.setup #sidebar > :not(.brand-row) {
   background: color-mix(in srgb, var(--tint), transparent 70%);
 }
 
+/* Edited by hand: a toggle, lit while on */
+.doc-header .manual {
+  --chars: 6;
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .manual:hover {
+  opacity: 1;
+}
+
+.doc-header .manual.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .manual.active:hover {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
 .doc-header .status {
   --chars: 8; /* conflict, retrying */
 }
@@ -1538,6 +1559,10 @@ article:has(.ProseMirror:focus) {
     font-family: var(--cp-sans);
     font-size: 15px;
     line-height: 1;
+  }
+
+  .doc-header .manual::before {
+    content: '✎';
   }
 
   .doc-header .commit[data-state='committed']::before {

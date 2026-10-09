@@ -37,6 +37,7 @@ Go service (127.0.0.1:<port>)
 ├── files    read/write with path checks and content-hash etags
 ├── recent   viewed + modified history, JSON in ~/.local/state/margin/
 ├── seen     every file as last read, for showing unread changes
+├── manual   the files edited by hand, whose changes count as read
 ├── events   SSE stream: changed / added / removed
 └── api      HTTP handlers + embedded frontend
 
@@ -54,6 +55,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 - **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
 - **`recent`** — records views and modifications and persists them to `~/.local/state/margin/recent.json`. The lists are capped.
 - **`seen`** — keeps a copy of every file as last read in margin, in `~/.local/state/margin/seen/`. Changes are only ever relative to what was read: a file never opened in margin has no copy and so no unread changes. Opening a file without a copy stores its current version as read. Marking a file read replaces the copy; a save made in margin advances it too, unless the copy holds unread changes. A copy is kept for `unreadDays` (30 by default) after it was last written, even while the file is gone, as after a branch switch; a sweep at startup, daily and on settings changes deletes older copies, after which the file counts as never opened.
+- **`manual`** — remembers the files the reader edits by hand, in an editor of their own, in `~/.local/state/margin/manual.json`. Such a file has no unread changes: they are the reader's, as edits made in margin are. Marking a file manual, and marking it back, records its current version as read. Its uncommitted changes show only when asked for.
 - **`events`** — fans index events out to the SSE subscribers.
 - **`api`** — handlers only, wiring the packages together.
 
@@ -67,6 +69,9 @@ Each package does gsone job and can be tested without the HTTP layer.
 | GET | `/api/seen?path=` | The file as last read |
 | PUT | `/api/seen?path=` | Mark the version with the `If-Match` etag read; otherwise `412` |
 | GET | `/api/unread` | The files changed since they were last read |
+| GET | `/api/manual?path=` | Whether the file is edited by hand |
+| PUT | `/api/manual?path=` | Mark the file edited by hand, and its current version read |
+| DELETE | `/api/manual?path=` | Mark the file no longer edited by hand, and its current version read |
 | GET | `/api/committed?path=` | The file as committed in `HEAD`; `404` when not committed |
 | GET | `/api/recent` | Recently viewed and recently modified |
 | GET | `/api/events` | SSE stream |

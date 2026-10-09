@@ -10,7 +10,7 @@ It is meant mainly for reading, with minor edits on the side: fixing a typo, tic
 - **Finder:** Ctrl K fuzzy-searches the recent files; Tab adds the older ones.
 - **Editor:** always editable, with autosave. Saves keep the original bytes of every block you didn't touch, so a one-word edit changes only that block. Frontmatter, task lists and mermaid diagrams are supported.
 - **Table of contents** built from the headings of every document.
-- **Changes:** the open file shows what changed since you last read it: new words highlighted, removed ones struck through, a bar beside every changed block. Alt ↑/↓ steps through them, the buttons beside a change show it as it is now, as a diff or as it was, and **mark read** clears them. Files with unread changes get a green mark by their time in the sidebar. Next to the save status, a file in git reads **committed**, **uncommitted** or, if never committed, **untracked**; clicking **uncommitted** shows the changes since the last commit instead. margin keeps a copy of every file as you last read it, so changes made while the browser is closed show too; a file you have never opened has no unread changes. Your own edits in margin count as read.
+- **Changes:** the open file shows what changed since you last read it: new words highlighted, removed ones struck through, a bar beside every changed block. Alt ↑/↓ steps through them, the buttons beside a change show it as it is now, as a diff or as it was, and **mark read** clears them. Files with unread changes get a green mark by their time in the sidebar. Next to the save status, a file in git reads **committed**, **uncommitted** or, if never committed, **untracked**; clicking **uncommitted** shows the changes since the last commit instead. margin keeps a copy of every file as you last read it, so changes made while the browser is closed show too; a file you have never opened has no unread changes. Your own edits in margin count as read, and so do those to a file marked **manual** in the header: one you write yourself, in your own editor. Clicking the badge again shows changes from then on.
 - **Never stale:** changes on disk and commits are pushed to the browser, and the open file is revalidated on focus and on reconnect. Unsaved edits are never overwritten; a banner asks which version to keep.
 - **Worktrees:** a file checked out in several git worktrees is listed once and opens the copy changed last.
 - **`.gitignore` aware:** ignored files, `.git` and `node_modules` are left out.
@@ -67,7 +67,7 @@ Settings are edited on the settings screen (the gear in the sidebar) and stored 
 - **`activeDays`** (1–365) is the window that divides Recent from Older.
 - **`unreadDays`** (1–365) is how long after you last read a file its unread changes are kept, even while the file is gone, as after switching branches. After that, it counts as never opened.
 
-Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`, and the copies of files as last read in `seen/` next to it.
+Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`, the copies of files as last read in `seen/` next to it, and the files marked manual in `manual.json`.
 
 ### Flags
 

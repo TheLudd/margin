@@ -35,10 +35,10 @@ export class DocumentView {
     onFrontmatter: (value: string) => void,
     onWorktree: (path: string) => void,
     changes: HTMLElement,
-    commit: HTMLElement,
+    badges: HTMLElement[],
   ) {
     root.append(
-      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'badges' }, commit, this.statusEl)),
+      h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'badges' }, ...badges, this.statusEl)),
       this.bannerEl,
       h('article', {}, this.frontmatterEl, this.editorEl),
     )

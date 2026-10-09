@@ -69,6 +69,24 @@ export async function markSeen(path: string, etag: string): Promise<boolean> {
   return true
 }
 
+const manualUrl = (path: string) => `/api/manual?path=${encodeURIComponent(path)}`
+
+// Whether a file is edited by hand, in an editor of the reader's own, so
+// that its changes count as read.
+export async function readManual(path: string): Promise<boolean> {
+  const res = await fetch(manualUrl(path), noStore)
+  if (res.status === 404) return false
+  if (!res.ok) throw new Error(`read ${path}: ${res.status}`)
+  return res.json()
+}
+
+// Records whether a file is edited by hand. Either way its current version
+// counts as read.
+export async function setManual(path: string, manual: boolean): Promise<void> {
+  const res = await fetch(manualUrl(path), { ...noStore, method: manual ? 'PUT' : 'DELETE' })
+  if (!res.ok) throw new Error(`set ${path} manual: ${res.status}`)
+}
+
 // The files changed since they were last read.
 export async function fetchUnread(): Promise<string[]> {
   return (await fetch('/api/unread', noStore)).json()

@@ -6,9 +6,10 @@ let versions: Partial<Record<Baseline, string>>
 let compared: (string | undefined)[]
 let current: Baseline
 let committed: boolean | undefined
+let manual: boolean
 
 // A comparison whose baselines are whatever `versions` holds when loading.
-function setup(seen: string | undefined, head: string | undefined) {
+function setup(seen: string | undefined, head: string | undefined, byHand = false) {
   versions = { seen, committed: head }
   compared = []
   comparison = new Comparison(
@@ -16,11 +17,13 @@ function setup(seen: string | undefined, head: string | undefined) {
     { seen: async () => versions.seen, committed: async () => versions.committed },
     {
       compare: (body) => compared.push(body),
-      state: (b, c) => {
+      state: (b, c, m) => {
         current = b
         committed = c
+        manual = m
       },
     },
+    byHand,
   )
 }
 
@@ -116,6 +119,55 @@ describe('Comparison with frontmatter', () => {
   })
 
   it('compares the body only', () => expect(compared).toEqual(['body\n']))
+})
+
+describe('Comparison of a file edited by hand', () => {
+  beforeEach(async () => {
+    setup(undefined, 'v0', true)
+    await comparison.load('v2')
+  })
+
+  it('shows no changes', () => expect(compared).toEqual([undefined]))
+  it('stays on the version read', () => expect(current).toBe('seen'))
+  it('reports the file uncommitted', () => expect(committed).toBe(false))
+  it('reports it edited by hand', () => expect(manual).toBe(true))
+})
+
+describe('Comparison of a file edited by hand when the reader asks for uncommitted changes', () => {
+  beforeEach(async () => {
+    setup(undefined, 'v0', true)
+    await comparison.load('v2')
+    comparison.use('committed')
+    await comparison.load('v3')
+  })
+
+  it('shows them', () => expect(compared).toEqual([undefined, 'v0', 'v0']))
+})
+
+describe('Comparison when a file showing uncommitted changes is taken up by hand', () => {
+  beforeEach(async () => {
+    setup('v2', 'v0')
+    await comparison.load('v2')
+    comparison.setManual(true)
+    versions.seen = undefined
+    await comparison.load('v2')
+  })
+
+  it('shows no changes', () => expect(compared).toEqual(['v0', undefined]))
+  it('goes back to the version read', () => expect(current).toBe('seen'))
+})
+
+describe('Comparison when a file edited by hand is handed back', () => {
+  beforeEach(async () => {
+    setup(undefined, 'v0', true)
+    await comparison.load('v2')
+    comparison.setManual(false)
+    versions.seen = 'v2'
+    await comparison.load('v2')
+  })
+
+  it('compares with the version read from here on', () => expect(compared).toEqual([undefined, 'v2']))
+  it('reports it no longer edited by hand', () => expect(manual).toBe(false))
 })
 
 describe('Comparison without a baseline', () => {

@@ -20,6 +20,7 @@ import (
 	"margin/internal/config"
 	"margin/internal/events"
 	"margin/internal/index"
+	"margin/internal/manual"
 	"margin/internal/recent"
 	"margin/internal/seen"
 	"margin/internal/workspace"
@@ -61,6 +62,10 @@ func run(configFile string, port int, state string, hosts []string) error {
 	if err != nil {
 		return err
 	}
+	hand, err := manual.Load(filepath.Join(state, "manual.json"))
+	if err != nil {
+		return err
+	}
 	pruner := &seen.Pruner{
 		Store: read,
 		Keep: func() time.Duration {
@@ -81,6 +86,7 @@ func run(configFile string, port int, state string, hosts []string) error {
 			Workspaces: workspaces,
 			Recent:     viewed,
 			Seen:       read,
+			Manual:     hand,
 			Events:     hub,
 			Web:        dist,
 			Port:       port,
