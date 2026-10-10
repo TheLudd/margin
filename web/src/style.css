@@ -1045,6 +1045,13 @@ dialog.busy p {
   overflow-x: auto;
 }
 
+/* ProseMirror lays tables out fixed at 100%, which Chromium takes as "as wide
+   as allowed" when the block above sizes to its content: every table would
+   fill the whole room. Auto layout sizes the table to its cells instead. */
+.milkdown .milkdown-table-block table {
+  table-layout: auto;
+}
+
 /* Editing: while the cursor is in the document, the page says so */
 article {
   border-left: 2px solid transparent;
