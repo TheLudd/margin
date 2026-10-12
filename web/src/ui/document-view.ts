@@ -57,6 +57,8 @@ export class DocumentView {
       },
       true,
     )
+    this.frontmatterEl.addEventListener('toggle', () => this.fit())
+    window.addEventListener('resize', () => this.fit())
     this.textarea.addEventListener('input', () => {
       this.fit()
       onFrontmatter(this.textarea.value)
@@ -111,8 +113,11 @@ export class DocumentView {
     }
   }
 
+  // Grows the textarea to its wrapped text, so it never scrolls. The height
+  // is only measurable while the panel is open, hence the refit on toggle.
   private fit() {
-    this.textarea.rows = Math.max(2, this.textarea.value.split('\n').length - 1)
+    this.textarea.style.height = 'auto'
+    this.textarea.style.height = `${this.textarea.scrollHeight}px`
   }
 }
 
