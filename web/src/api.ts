@@ -115,12 +115,16 @@ export interface RootSettings {
   files?: number
 }
 
+// How changes are shown: as the blocks they touch, or word by word.
+export type ChangeView = 'blocks' | 'words'
+
 export interface Settings {
   file: string // where the config is stored
   roots: RootSettings[]
   exclude: string[] // file patterns left out
   activeDays: number // how far back activity makes a file active
   unreadDays: number // how long after a file was read its unread changes are kept
+  changeView: ChangeView
   error?: string // why the config file could not be used
 }
 
@@ -130,13 +134,11 @@ export async function fetchSettings(): Promise<Settings> {
 
 export type SaveResult = { kind: 'saved'; settings: Settings } | { kind: 'invalid'; message: string }
 
-export async function saveSettings(
-  roots: RootSettings[],
-  exclude: string[],
-  activeDays: number,
-  unreadDays: number,
-): Promise<SaveResult> {
-  const body = JSON.stringify({ roots: roots.map(({ name, path }) => ({ name, path })), exclude, activeDays, unreadDays })
+// The settings the reader edits.
+export type SettingsChange = Pick<Settings, 'roots' | 'exclude' | 'activeDays' | 'unreadDays' | 'changeView'>
+
+export async function saveSettings(change: SettingsChange): Promise<SaveResult> {
+  const body = JSON.stringify({ ...change, roots: change.roots.map(({ name, path }) => ({ name, path })) })
   const res = await fetch('/api/settings', { ...noStore, method: 'PUT', body, headers: { 'Content-Type': 'application/json' } })
   if (res.status === 400) return { kind: 'invalid', message: (await res.text()).trim() }
   if (!res.ok) throw new Error(`save settings: ${res.status}`)

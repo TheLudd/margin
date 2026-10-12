@@ -6,7 +6,7 @@ import { Plugin } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
-import { type ChangesMeta, changesKey, changesPlugin, type Focus } from './changes'
+import { type ChangesMeta, changesKey, changesPlugin, type Focus, type View } from './changes'
 import { remarkImageTitle } from './remark-image-title'
 
 // Marks the top-level block holding the cursor, so it is easy to find.
@@ -30,6 +30,7 @@ export type RenderPreview = NonNullable<CodeMirrorFeatureConfig['renderPreview']
 export interface EditorOptions {
   onChange?: (markdown: string) => void
   onChanges?: () => void // the changes shown since the base were recomputed
+  changeView?: View // how changes are shown until the reader picks otherwise; as it is now by default
   renderPreview?: RenderPreview
 }
 
@@ -51,6 +52,7 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
   let base: string | undefined // what changes are shown against
   const crepe = await createCrepe(root, markdown, {
     renderPreview: options.renderPreview,
+    changeView: options.changeView,
     onChanges: options.onChanges,
     onChange: (updated) => {
       if (!replacing) options.onChange?.(updated)
@@ -118,7 +120,7 @@ export async function createCrepe(root: HTMLElement, markdown: string, options: 
     })
     .use($remark('imageTitle', () => remarkImageTitle))
     .use(cursorBlock)
-    .use($prose(() => changesPlugin(() => options.onChanges?.())))
+    .use($prose(() => changesPlugin(options.changeView ?? 'new', () => options.onChanges?.())))
   // Otherwise an empty paragraph (an extra Enter) is saved as a `<br />` block.
   await crepe.editor.remove(remarkPreserveEmptyLinePlugin)
 

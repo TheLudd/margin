@@ -26,6 +26,7 @@ type settingsResponse struct {
 	Exclude    []string       `json:"exclude"`         // file patterns left out
 	ActiveDays int            `json:"activeDays"`      // how far back activity makes a file active
 	UnreadDays int            `json:"unreadDays"`      // how long after a file was read its unread changes are kept
+	ChangeView string         `json:"changeView"`      // how changes are shown: blocks or words
 	Error      string         `json:"error,omitempty"` // why the config file could not be used
 }
 
@@ -39,7 +40,7 @@ func (s *Server) currentSettings() settingsResponse {
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		files[root.Name] = len(root.Index.Files())
 	}
-	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}, Exclude: c.Exclude, ActiveDays: c.Active(), UnreadDays: c.Unread()}
+	res := settingsResponse{File: config.Abbreviate(s.Workspaces.File()), Roots: []rootSettings{}, Exclude: c.Exclude, ActiveDays: c.Active(), UnreadDays: c.Unread(), ChangeView: c.Changes()}
 	if res.Exclude == nil {
 		res.Exclude = []string{}
 	}

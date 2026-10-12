@@ -772,6 +772,21 @@ article {
   color: var(--cp-cyan);
 }
 
+.settings select {
+  margin: 0 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px var(--cp-mono);
+}
+
+.settings select:focus {
+  border-color: var(--cp-cyan);
+}
+
 .settings input.days {
   width: 5em;
   margin: 0 4px;
@@ -1074,6 +1089,7 @@ article:has(.ProseMirror:focus) {
 /* Changes since the version read or committed */
 :root {
   --change-added: var(--cp-code);
+  --change-modified: var(--cp-warn);
   --change-removed: #ff5c7a;
 }
 
@@ -1141,6 +1157,21 @@ article:has(.ProseMirror:focus) {
   border-radius: 2px;
   background: var(--change-added);
   box-shadow: 0 0 6px var(--change-added);
+}
+
+.milkdown .ProseMirror .change-block.change-modified::after {
+  background: var(--change-modified);
+  box-shadow: 0 0 6px var(--change-modified);
+}
+
+/* Changed cells of a table, over the striped rows; new rows in the colour
+   of new blocks */
+.milkdown .ProseMirror tr:nth-child(n) :is(td, th).change-cell {
+  background: color-mix(in srgb, var(--change-modified), transparent 86%);
+}
+
+.milkdown .ProseMirror tr:nth-child(n) :is(td, th).change-cell.change-cell-added {
+  background: color-mix(in srgb, var(--change-added), transparent 88%);
 }
 
 /* Buttons in the gutter showing a change as it is, as a diff or as it was;
@@ -1225,11 +1256,17 @@ article:has(.ProseMirror:focus) {
   font-style: italic;
 }
 
-/* Removed blocks shown as it is now: a sliver, still a place to step to */
+/* Removed blocks shown as it is now: a sliver, still a place to step to,
+   with a notch in the gutter as long as a short bar */
 .milkdown .ProseMirror .change-removed.change-collapsed {
   height: 6px;
   margin: 2px 0;
   padding: 0;
+}
+
+.milkdown .ProseMirror .change-removed.change-collapsed::after {
+  top: -4px;
+  bottom: -4px;
 }
 
 /* Removed blocks shown as they were, without strike-through */
@@ -1270,6 +1307,10 @@ article:has(.ProseMirror:focus) {
 .milkdown .ProseMirror hr.change-block {
   outline: 1px solid var(--change-added);
   outline-offset: 4px;
+}
+
+.milkdown .ProseMirror hr.change-block.change-modified {
+  outline-color: var(--change-modified);
 }
 
 .milkdown .ProseMirror .change-inserted {

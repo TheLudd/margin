@@ -1,4 +1,4 @@
-import { type Folder, type RootSettings, saveSettings, type Settings, suggestDirs } from '../api'
+import { type ChangeView, type Folder, type RootSettings, saveSettings, type Settings, suggestDirs } from '../api'
 import { debounce } from '../sync'
 import { BusyOverlay } from './busy-overlay'
 import { fileName, h } from './dom'
@@ -16,6 +16,12 @@ export class SettingsView {
   private readonly exclude = h('textarea', { rows: '4', spellcheck: 'false', placeholder: 'CHANGELOG.md\n*.draft.md' })
   private readonly activeDays = h('input', { type: 'number', min: '1', max: '365', class: 'days' })
   private readonly unreadDays = h('input', { type: 'number', min: '1', max: '365', class: 'days' })
+  private readonly changeView = h(
+    'select',
+    {},
+    h('option', { value: 'blocks' }, 'the blocks they touch'),
+    h('option', { value: 'words' }, 'word by word'),
+  )
   private readonly errorEl = h('p', { class: 'error', hidden: true })
   private readonly saveButton = h('button', { class: 'primary', type: 'button' })
   private readonly busy = new BusyOverlay()
@@ -63,6 +69,14 @@ export class SettingsView {
         this.unreadDays,
         " days after reading it, even when the file is gone for a while, as after switching branches. After that, it counts as never opened.",
       ),
+      h('h2', {}, 'Showing changes'),
+      h(
+        'p',
+        { class: 'inline' },
+        'Show unread and uncommitted changes as ',
+        this.changeView,
+        '. Either way, the buttons beside a change show it as it is, as a diff or as it was.',
+      ),
       h('div', { class: 'actions save' }, this.saveButton),
       this.errorEl,
       h('p', { class: 'file' }, `Stored in ${settings.file}`),
@@ -70,6 +84,7 @@ export class SettingsView {
     this.exclude.value = settings.exclude.join('\n')
     this.activeDays.value = String(settings.activeDays)
     this.unreadDays.value = String(settings.unreadDays)
+    this.changeView.value = settings.changeView
     this.rowsEl.replaceChildren()
     this.rows = []
     const roots = settings.roots.length ? settings.roots : [{ name: '', path: '' }]
@@ -112,7 +127,16 @@ export class SettingsView {
     this.saveButton.disabled = true
     try {
       const exclude = this.exclude.value.split('\n').map((line) => line.trim()).filter(Boolean)
-      const result = await this.busy.during('Indexing…', saveSettings(roots, exclude, Number(this.activeDays.value), Number(this.unreadDays.value)))
+      const result = await this.busy.during(
+        'Indexing…',
+        saveSettings({
+          roots,
+          exclude,
+          activeDays: Number(this.activeDays.value),
+          unreadDays: Number(this.unreadDays.value),
+          changeView: this.changeView.value as ChangeView,
+        }),
+      )
       if (result.kind === 'invalid') {
         this.showError(result.message)
         return

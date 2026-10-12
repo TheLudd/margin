@@ -25,6 +25,7 @@ type Config struct {
 	Exclude    []string `json:"exclude,omitempty"`    // file patterns to leave out, see Excluded
 	ActiveDays int      `json:"activeDays,omitempty"` // how far back activity makes a file active; 0 means DefaultActiveDays
 	UnreadDays int      `json:"unreadDays,omitempty"` // how long after a file was read its unread changes are kept; 0 means DefaultUnreadDays
+	ChangeView string   `json:"changeView,omitempty"` // how changes are shown, ChangeBlocks or ChangeWords; "" means ChangeBlocks
 }
 
 const (
@@ -32,6 +33,9 @@ const (
 	MaxActiveDays     = 365
 	DefaultUnreadDays = 30
 	MaxUnreadDays     = 365
+
+	ChangeBlocks = "blocks" // changes shown as the blocks they touch
+	ChangeWords  = "words"  // changes shown word by word
 )
 
 // Active returns how many days back activity makes a file active.
@@ -49,6 +53,14 @@ func (c Config) Unread() int {
 		return DefaultUnreadDays
 	}
 	return c.UnreadDays
+}
+
+// Changes returns how changes are shown: ChangeBlocks or ChangeWords.
+func (c Config) Changes() string {
+	if c.ChangeView == "" {
+		return ChangeBlocks
+	}
+	return c.ChangeView
 }
 
 // File returns where the config lives: $XDG_CONFIG_HOME/margin/config.json,
@@ -109,6 +121,9 @@ func (c Config) Normalize() Config {
 	if c.UnreadDays == DefaultUnreadDays {
 		c.UnreadDays = 0
 	}
+	if c.ChangeView == ChangeBlocks {
+		c.ChangeView = ""
+	}
 	return c
 }
 
@@ -142,6 +157,9 @@ func (c Config) Validate() error {
 	}
 	if c.UnreadDays < 0 || c.UnreadDays > MaxUnreadDays {
 		return fmt.Errorf("unread days must be between 1 and %d", MaxUnreadDays)
+	}
+	if c.ChangeView != "" && c.ChangeView != ChangeBlocks && c.ChangeView != ChangeWords {
+		return fmt.Errorf("changes must be shown as %q or %q", ChangeBlocks, ChangeWords)
 	}
 	for _, pattern := range c.Exclude {
 		if _, err := path.Match(strings.ToLower(pattern), ""); err != nil {
@@ -261,7 +279,7 @@ func SameIndex(a, b Config) bool {
 
 // Equal reports whether two configs are the same.
 func Equal(a, b Config) bool {
-	return SameIndex(a, b) && a.Active() == b.Active() && a.Unread() == b.Unread()
+	return SameIndex(a, b) && a.Active() == b.Active() && a.Unread() == b.Unread() && a.Changes() == b.Changes()
 }
 
 func within(dir, parent string) bool {

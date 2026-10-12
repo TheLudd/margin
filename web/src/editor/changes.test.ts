@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { View } from './changes'
 import { createEditor, type Editor } from './editor'
 
 let root: HTMLElement
 let editor: Editor
 let updates: number
 
-async function compare(current: string, base: string | undefined) {
+// Shown as a diff unless view says otherwise.
+async function compare(current: string, base: string | undefined, view: View = 'diff') {
   root = document.body.appendChild(document.createElement('div'))
   updates = 0
-  editor = await createEditor(root, current, { onChanges: () => updates++ })
+  editor = await createEditor(root, current, { onChanges: () => updates++, changeView: view })
   editor.compare(base)
 }
 
@@ -267,4 +269,87 @@ describe('a group shown as it is now', () => {
   })
 
   it('shows all of it as it is now', () => expect(texts('.change-inserted')).toEqual([]))
+})
+
+const classed = (selector: string) => [...root.querySelectorAll(selector)].map((e) => e.textContent)
+
+describe('compare shown as it is now by default', () => {
+  beforeEach(() => compare('one four three\n', 'one two three\n', 'new'))
+
+  it('marks the block', () => expect(texts('.change-block')).toEqual(['one four three']))
+  it('shows no words', () => expect(root.querySelectorAll('.change-inserted, .change-deleted').length).toBe(0))
+})
+
+describe('compare when a block is added and another changed', () => {
+  beforeEach(() => compare('a\n\nb\n\nc\n\none four three\n', 'a\n\nc\n\none two three\n', 'new'))
+
+  it('marks the new one as added', () => expect(classed('.change-block.change-added')).toEqual(['b']))
+  it('marks the changed one as modified', () => expect(classed('.change-block.change-modified')).toEqual(['one four three']))
+})
+
+describe('compare when a block is added before a changed one', () => {
+  beforeEach(() =>
+    compare(
+      'a\n\nA brand new paragraph, added here.\n\nThe second paragraph about the new plan.\n',
+      'a\n\nThe second paragraph about the old plan.\n',
+    ),
+  )
+
+  it('marks the new one as added', () => expect(classed('.change-block.change-added')).toEqual(['A brand new paragraph, added here.']))
+  it('marks the changed one as modified', () => expect(texts('.change-block.change-modified')).toEqual(['The second paragraph about the oldnew plan.']))
+  it('removes nothing', () => expect(texts('.change-removed')).toEqual([]))
+})
+
+describe('compare when a line of code changes', () => {
+  const code = (b: string) => `x\n\n\`\`\`js\nconst a = 1\nconst b = ${b}\n\`\`\`\n`
+  beforeEach(() => compare(code('3'), code('2')))
+
+  it('marks the code block as modified', () => expect(root.querySelectorAll('.change-block.change-modified').length).toBe(1))
+  it('shows the old code above it', () => expect(texts('.change-removed.change-plain')).toEqual(['const a = 1\nconst b = 2']))
+})
+
+const table = (...rows: string[]) => `| a | b |\n| - | - |\n${rows.map((r) => `| ${r.split(' ').join(' | ')} |\n`).join('')}`
+
+describe('compare when a table cell changes', () => {
+  beforeEach(() => compare(table('1 2', '3 4x'), table('1 2', '3 4'), 'new'))
+
+  it('marks the table as modified', () => expect(root.querySelectorAll('.milkdown-table-block.change-block.change-modified').length).toBe(1))
+  it('tints the cell', () => expect(texts('.change-cell')).toEqual(['4x']))
+  it('puts its buttons outside the table', () => expect(root.querySelectorAll('table .change-controls').length).toBe(0))
+  it('shows no words', () => expect(root.querySelectorAll('.change-inserted, .change-deleted').length).toBe(0))
+})
+
+describe('compare when a table row is added', () => {
+  beforeEach(() => compare(table('1 2', '5 6', '3 4'), table('1 2', '3 4'), 'new'))
+
+  it('tints its cells as added', () => expect(texts('.change-cell.change-cell-added')).toEqual(['5', '6']))
+  it('tints no other cells', () => expect(texts('.change-cell')).toEqual(['5', '6']))
+})
+
+describe('compare when a table row is changed and one added', () => {
+  beforeEach(() => compare(table('1 2x', '5 6', '3 4'), table('1 2', '3 4'), 'new'))
+
+  it('tints the changed cell', () => expect(texts('.change-cell:not(.change-cell-added)')).toEqual(['2x']))
+  it('tints the new row as added', () => expect(texts('.change-cell-added')).toEqual(['5', '6']))
+})
+
+describe('compare when a table row is removed', () => {
+  beforeEach(() => compare(table('1 2'), table('1 2', '3 4')))
+
+  it('counts one change', () => expect(new Set(numbered().map(([group]) => group))).toEqual(new Set(['0'])))
+  it('shows the old table above it', () => expect(root.querySelectorAll('.change-removed.change-plain table').length).toBe(1))
+  it('draws nothing inside the table', () => expect(root.querySelectorAll('table [class*="change-"]').length).toBe(0))
+})
+
+describe('compare when a table is added', () => {
+  beforeEach(() => compare(`x\n\n${table('1 2')}`, 'x\n', 'new'))
+
+  it('marks it as added', () => expect(root.querySelectorAll('.milkdown-table-block.change-block.change-added').length).toBe(1))
+  it('tints no cells', () => expect(root.querySelectorAll('.change-cell').length).toBe(0))
+})
+
+describe('compare when a rule is added', () => {
+  beforeEach(() => compare('a\n\n---\n\nb\n', 'a\n\nb\n', 'new'))
+
+  it('marks it as added', () => expect(root.querySelectorAll('hr.change-block.change-added').length).toBe(1))
 })

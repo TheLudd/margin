@@ -22,7 +22,7 @@ func TestSettings(t *testing.T) {
 
 	got := settingsOf(t, do(t, "GET", f.url+"/api/settings", "", nil))
 
-	if len(got.Roots) != 1 || got.Roots[0].Name != "code" || got.Roots[0].Files != 1 || got.ActiveDays != 14 || got.UnreadDays != 30 || got.Error != "" {
+	if len(got.Roots) != 1 || got.Roots[0].Name != "code" || got.Roots[0].Files != 1 || got.ActiveDays != 14 || got.UnreadDays != 30 || got.ChangeView != "blocks" || got.Error != "" {
 		t.Fatalf("got %+v", got)
 	}
 }
@@ -114,6 +114,20 @@ func TestSaveSettingsUnreadDays(t *testing.T) {
 	}
 	if bad := do(t, "PUT", f.url+"/api/settings", `{"roots":[],"unreadDays":1000}`, nil); bad.StatusCode != 400 {
 		t.Fatalf("out of range got %d", bad.StatusCode)
+	}
+}
+
+func TestSaveSettingsChangeView(t *testing.T) {
+	f := setup(t)
+	body := `{"roots":[{"name":"code","path":"` + f.root + `"}],"changeView":"words"}`
+
+	res := do(t, "PUT", f.url+"/api/settings", body, nil)
+
+	if got := settingsOf(t, res); res.StatusCode != 200 || got.ChangeView != "words" {
+		t.Fatalf("got %d %+v", res.StatusCode, got)
+	}
+	if bad := do(t, "PUT", f.url+"/api/settings", `{"roots":[],"changeView":"lines"}`, nil); bad.StatusCode != 400 {
+		t.Fatalf("unknown view got %d", bad.StatusCode)
 	}
 }
 

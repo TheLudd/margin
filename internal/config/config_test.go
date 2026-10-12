@@ -182,6 +182,21 @@ func TestUnreadDays(t *testing.T) {
 	}
 }
 
+func TestChangeView(t *testing.T) {
+	if got := (Config{}).Changes(); got != ChangeBlocks {
+		t.Errorf("default: %s", got)
+	}
+	if err := (Config{ChangeView: "lines"}).Validate(); err == nil {
+		t.Error("an unknown view accepted")
+	}
+	if !Equal(Config{}, Config{ChangeView: ChangeBlocks}) {
+		t.Error("the default should equal an unset view")
+	}
+	if Equal(Config{}, Config{ChangeView: ChangeWords}) {
+		t.Error("a changed view should differ")
+	}
+}
+
 func TestActiveDays(t *testing.T) {
 	if got := (Config{}).Active(); got != DefaultActiveDays {
 		t.Errorf("default: %d", got)

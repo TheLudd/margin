@@ -36,7 +36,7 @@ import { Sidebar } from './ui/sidebar'
 import { SidebarFold } from './ui/sidebar-fold'
 import { Toc } from './ui/toc'
 
-let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14, unreadDays: 30 }
+let settings: Settings = { file: '', roots: [], exclude: [], activeDays: 14, unreadDays: 30, changeView: 'blocks' }
 let files: LogicalFile[] = []
 let recent: Activity[] = []
 let session: DocumentSession | undefined
@@ -141,6 +141,7 @@ async function open(path: string, push = true) {
     onChange: () => current.edited(),
     onChanges: () => changes.update(),
     renderPreview: renderMermaid,
+    changeView: settings.changeView === 'words' ? 'diff' : 'new',
   })
   if (token !== opening) {
     await created.destroy()
