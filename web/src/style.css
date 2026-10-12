@@ -1067,6 +1067,12 @@ dialog.busy p {
   table-layout: auto;
 }
 
+/* A wide table reaches over the article's edge, whose focus border would
+   show through its cells */
+.milkdown .milkdown-table-block table {
+  background: var(--cp-bg);
+}
+
 /* Editing: while the cursor is in the document, the page says so */
 article {
   border-left: 2px solid transparent;
