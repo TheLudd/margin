@@ -545,6 +545,23 @@ body.setup #sidebar > :not(.brand-row) {
   background: color-mix(in srgb, var(--tint), transparent 70%);
 }
 
+/* Editing the document: a toggle, lit while on, in the editor's colour */
+.doc-header .edit {
+  --chars: 7; /* editing */
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .edit:hover {
+  opacity: 1;
+}
+
+.doc-header .edit.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
 /* Edited by hand: a toggle, lit while on */
 .doc-header .manual {
   --chars: 6;

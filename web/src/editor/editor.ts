@@ -2,8 +2,8 @@ import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import type { Ctx } from '@milkdown/kit/ctx'
 import { editorViewCtx, editorViewOptionsCtx, parserCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
-import { Plugin } from '@milkdown/kit/prose/state'
-import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
+import { Plugin, Selection, TextSelection } from '@milkdown/kit/prose/state'
+import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
 import { type ChangesMeta, changesKey, changesPlugin, type Focus, type View } from './changes'
@@ -44,6 +44,9 @@ export interface Editor {
   // Highlights the change with that index, as numbered in data-change.
   focusChange(focus: Focus | undefined): void
   setReadonly(readonly: boolean): void
+  // Makes the editor editable and puts the cursor where the reader selected
+  // or clicked while reading, or else at the top of the view.
+  edit(): void
   destroy(): Promise<void>
 }
 
@@ -86,10 +89,41 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
     setReadonly(readonly) {
       crepe.setReadonly(readonly)
     },
+    edit() {
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx)
+        const selection = readSelection(view) ?? topOfView(view)
+        crepe.setReadonly(false)
+        view.focus()
+        view.dispatch(view.state.tr.setSelection(selection).scrollIntoView())
+      })
+    },
     async destroy() {
       await crepe.destroy()
     },
   }
+}
+
+// The text selected in the document while it was read-only, if any.
+function readSelection(view: EditorView): Selection | undefined {
+  const selection = document.getSelection()
+  if (!selection?.anchorNode || !selection.focusNode) return undefined
+  if (!view.dom.contains(selection.anchorNode) || !view.dom.contains(selection.focusNode)) return undefined
+  try {
+    const anchor = view.posAtDOM(selection.anchorNode, selection.anchorOffset)
+    const head = view.posAtDOM(selection.focusNode, selection.focusOffset)
+    return TextSelection.between(view.state.doc.resolve(anchor), view.state.doc.resolve(head))
+  } catch {
+    return undefined // a node ProseMirror doesn't describe, such as a widget
+  }
+}
+
+// The start of the first block in view.
+function topOfView(view: EditorView): Selection {
+  const box = view.dom.getBoundingClientRect()
+  const found = view.posAtCoords({ left: box.left + box.width / 2, top: Math.max(box.top, 0) + 80 })
+  if (!found) return Selection.atStart(view.state.doc)
+  return Selection.near(view.state.doc.resolve(found.pos))
 }
 
 // The configured Crepe instance behind an Editor.

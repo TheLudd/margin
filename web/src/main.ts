@@ -33,6 +33,7 @@ import { Drawers } from './ui/drawers'
 import { Finder } from './ui/finder'
 import { SettingsView } from './ui/settings-view'
 import { Sidebar } from './ui/sidebar'
+import { EditMode } from './ui/edit-mode'
 import { SidebarFold } from './ui/sidebar-fold'
 import { Toc } from './ui/toc'
 
@@ -60,12 +61,17 @@ const changes = new ChangesView(main, {
   toggleManual,
   focus: (focus) => editor?.focusChange(focus),
 })
+const editMode = new EditMode((editing) => {
+  applyReadonly()
+  if (editing) editor?.edit()
+})
 const view = new DocumentView(
   main,
   (value) => session?.editFrontmatter(value),
   (path) => open(path),
   changes.el,
-  [changes.manualEl, changes.commitEl],
+  [editMode.el, changes.manualEl, changes.commitEl],
+  () => editMode.set(false),
 )
 const toc = new Toc(byId('toc'), view.editorEl, main)
 // Phones only read for now: the editor isn't made for touch yet.
@@ -80,8 +86,9 @@ new Drawers(
 )
 new SidebarFold(document.body, byId('close-sidebar'), byId('unfold-sidebar'), compact)
 const applyReadonly = () => {
-  editor?.setReadonly(compact.matches)
-  view.setReadonly(compact.matches)
+  editMode.setAvailable(!compact.matches)
+  editor?.setReadonly(!editMode.editing)
+  view.setReadonly(!editMode.editing)
 }
 compact.addEventListener('change', applyReadonly)
 const settingsView = new SettingsView(main, (saved) => {
@@ -149,6 +156,7 @@ async function open(path: string, push = true) {
   }
   session = current
   editor = created
+  editMode.reset()
   applyReadonly()
   session.attach(editor)
   main.scrollTop = 0

@@ -36,6 +36,7 @@ export class DocumentView {
     onWorktree: (path: string) => void,
     changes: HTMLElement,
     badges: HTMLElement[],
+    onEscape: () => void,
   ) {
     root.append(
       h('header', { class: 'doc-header' }, this.pathEl, this.worktreeEl, changes, h('span', { class: 'badges' }, ...badges, this.statusEl)),
@@ -43,7 +44,7 @@ export class DocumentView {
       h('article', {}, this.frontmatterEl, this.editorEl),
     )
     this.worktreeEl.addEventListener('change', () => onWorktree(this.worktreeEl.value))
-    // Esc leaves the editor, back to reading (and to Vimium's keys), unless it
+    // Esc stops editing, back to reading (and to Vimium's keys), unless it
     // closes a menu first. It is caught before ProseMirror, which takes it.
     this.editorEl.addEventListener(
       'keydown',
@@ -52,6 +53,7 @@ export class DocumentView {
         event.preventDefault()
         event.stopPropagation()
         ;(document.activeElement as HTMLElement | null)?.blur()
+        onEscape()
       },
       true,
     )
