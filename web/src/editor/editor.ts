@@ -2,7 +2,7 @@ import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import type { Ctx } from '@milkdown/kit/ctx'
 import { editorViewCtx, editorViewOptionsCtx, parserCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
-import { Plugin, Selection, TextSelection } from '@milkdown/kit/prose/state'
+import { Plugin, PluginKey, Selection, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 import { $prose, $remark, replaceAll } from '@milkdown/kit/utils'
 import type { CodeMirrorFeatureConfig } from '@milkdown/crepe/feature/code-mirror'
@@ -21,6 +21,32 @@ const cursorBlock = $prose(
           const end = start + state.doc.child($head.index(0)).nodeSize
           return DecorationSet.create(state.doc, [Decoration.node(start, end, { class: 'cursor-block' })])
         },
+      },
+    }),
+)
+
+// Code blocks are CodeMirror editors that only pick up whether the document
+// is editable when they are redrawn, which switching modes alone doesn't do.
+// Marking them with the mode redraws them on every switch.
+const editableKey = new PluginKey<DecorationSet>('editable')
+const codeBlocksEditable = $prose(
+  () =>
+    new Plugin({
+      key: editableKey,
+      state: {
+        init: () => DecorationSet.empty,
+        apply(tr, set) {
+          const editable = tr.getMeta(editableKey) as boolean | undefined
+          if (editable === undefined) return set.map(tr.mapping, tr.doc)
+          const marks: Decoration[] = []
+          tr.doc.descendants((node, pos) => {
+            if (node.type.name === 'code_block') marks.push(Decoration.node(pos, pos + node.nodeSize, { 'data-editable': `${editable}` }))
+          })
+          return DecorationSet.create(tr.doc, marks)
+        },
+      },
+      props: {
+        decorations: (state) => editableKey.getState(state),
       },
     }),
 )
@@ -66,6 +92,13 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
       const view = ctx.get(editorViewCtx)
       view.dispatch(view.state.tr.setMeta(changesKey, meta(ctx)))
     })
+  const setEditable = (editable: boolean) => {
+    crepe.setReadonly(!editable)
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      view.dispatch(view.state.tr.setMeta(editableKey, editable))
+    })
+  }
   const showChanges = () => setChanges((ctx) => ({ base: base === undefined ? undefined : ctx.get(parserCtx)(base) }))
 
   return {
@@ -87,13 +120,13 @@ export async function createEditor(root: HTMLElement, markdown: string, options:
       setChanges(() => ({ focus }))
     },
     setReadonly(readonly) {
-      crepe.setReadonly(readonly)
+      setEditable(!readonly)
     },
     edit() {
       crepe.editor.action((ctx) => {
         const view = ctx.get(editorViewCtx)
         const selection = readSelection(view) ?? topOfView(view)
-        crepe.setReadonly(false)
+        setEditable(true)
         view.focus()
         view.dispatch(view.state.tr.setSelection(selection).scrollIntoView())
       })
@@ -154,6 +187,7 @@ export async function createCrepe(root: HTMLElement, markdown: string, options: 
     })
     .use($remark('imageTitle', () => remarkImageTitle))
     .use(cursorBlock)
+    .use(codeBlocksEditable)
     .use($prose(() => changesPlugin(options.changeView ?? 'new', () => options.onChanges?.())))
   // Otherwise an empty paragraph (an extra Enter) is saved as a `<br />` block.
   await crepe.editor.remove(remarkPreserveEmptyLinePlugin)

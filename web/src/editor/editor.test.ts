@@ -1,7 +1,7 @@
 import type { Crepe } from '@milkdown/crepe'
 import { editorViewCtx } from '@milkdown/kit/core'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createCrepe } from './editor'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createCrepe, createEditor } from './editor'
 
 let crepe: Crepe
 
@@ -26,4 +26,34 @@ describe('createCrepe with a <br /> in the source', () => {
   })
 
   it('keeps it', () => expect(crepe.getMarkdown()).toContain('<br />'))
+})
+
+// Holds back what is in view until shown, as code blocks only set up
+// CodeMirror once seen.
+const observed: [IntersectionObserverCallback, Element][] = []
+class Visibility {
+  constructor(private readonly callback: IntersectionObserverCallback) {}
+  observe(target: Element) {
+    observed.push([this.callback, target])
+  }
+  unobserve() {}
+  disconnect() {}
+}
+const showAll = () => {
+  for (const [callback, target] of observed) callback([{ target, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+}
+
+describe('createEditor when editing starts after reading', () => {
+  let root: HTMLElement
+
+  beforeEach(async () => {
+    vi.stubGlobal('IntersectionObserver', Visibility)
+    root = mount()
+    const editor = await createEditor(root, '```ts\nconst a = 1\n```\n')
+    editor.setReadonly(true)
+    showAll()
+    editor.setReadonly(false)
+  })
+
+  it('makes code blocks editable', () => expect(root.querySelector('.cm-content')?.hasAttribute('aria-readonly')).toBe(false))
 })
