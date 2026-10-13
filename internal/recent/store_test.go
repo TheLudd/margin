@@ -117,28 +117,6 @@ func TestForget(t *testing.T) {
 	if _, ok := s.Viewed("a.md"); ok {
 		t.Fatal("view kept")
 	}
-	if _, ok := s.Dismissed("a.md"); !ok {
-		t.Fatal("dismissal not recorded")
-	}
-}
-
-func TestPersistsDismissals(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "recent.json")
-	s := load(t, path)
-	s.Add("a.md")
-	s.Forget("b.md")
-
-	reloaded, err := Load(path, 90*24*time.Hour)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := reloaded.Viewed("a.md"); !ok {
-		t.Fatal("view lost")
-	}
-	if _, ok := reloaded.Dismissed("b.md"); !ok {
-		t.Fatal("dismissal lost")
-	}
 }
 
 func TestLoadsViewMap(t *testing.T) {

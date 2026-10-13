@@ -3,7 +3,7 @@ import { groupBy, type LogicalFile } from './copies'
 import { display } from './display'
 import { fileLabel, fileLink, h, timeAgo } from './dom'
 
-// Every markdown file, once: the ones viewed or modified within the active
+// Every markdown file, once: the ones viewed within the active
 // window under "Recent", latest first, and the rest under "Older", grouped by
 // project. A file checked out in several worktrees is listed once and opens
 // the copy that was changed last.
@@ -59,7 +59,7 @@ export class Sidebar {
   }
 
   private recentEntry(a: Activity) {
-    const time = h('time', { datetime: a.at, class: a.kind, title: a.kind === 'viewed' ? 'viewed' : 'modified' }, timeAgo(a.at))
+    const time = h('time', { datetime: a.at, title: 'viewed' }, timeAgo(a.at))
     const remove = h('button', { type: 'button', class: 'forget', title: 'Remove from recent activity' }, '×')
     remove.addEventListener('click', () => this.forget(a.path))
     return h('div', { class: 'recent-entry' }, this.entry(a.path, [a.path], display(a.path), time), remove)

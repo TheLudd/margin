@@ -60,7 +60,7 @@ export class SettingsView {
       ),
       this.exclude,
       h('h2', {}, 'Recent files'),
-      h('p', { class: 'inline' }, 'List files viewed or modified in the last ', this.activeDays, ' days under Recent. Others are under Older.'),
+      h('p', { class: 'inline' }, 'List files viewed in the last ', this.activeDays, ' days under Recent. Others are under Older.'),
       h('h2', {}, 'Unread changes'),
       h(
         'p',

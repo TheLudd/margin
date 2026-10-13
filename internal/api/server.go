@@ -79,7 +79,6 @@ type treeEntry struct {
 	Main     bool       `json:"main"`               // the repo is its project's main checkout
 	Git      bool       `json:"git"`                // the repo is a git checkout
 	Changed  *time.Time `json:"changed,omitempty"`  // when the repo changed the file relative to main
-	Modified *time.Time `json:"modified,omitempty"` // when the file was last modified, see modified
 	Viewed   *time.Time `json:"viewed,omitempty"`   // when the file was last viewed in margin
 }
 
@@ -96,9 +95,6 @@ func (s *Server) tree(w http.ResponseWriter, r *http.Request) {
 			}
 			if at, ok := root.Trees.Changed(f.Repo, inRepo(f)); ok {
 				e.Changed = &at
-			}
-			if at, ok := modified(root, f); ok {
-				e.Modified = &at
 			}
 			if at, ok := s.Recent.Viewed(e.Path); ok {
 				e.Viewed = &at
@@ -301,46 +297,25 @@ func (s *Server) readCommitted(w http.ResponseWriter, r *http.Request) {
 
 type activity struct {
 	Path string    `json:"path"`
-	At   time.Time `json:"at"`
-	Kind string    `json:"kind"` // "viewed" or "modified", whichever was last
+	At   time.Time `json:"at"` // when it was last viewed
 }
 
-// recent lists the files viewed in margin or modified within the active
-// window, most recent first.
+// recent lists the files viewed in margin within the active window, most
+// recent first.
 func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 	c, _ := s.Workspaces.Config()
 	since := time.Now().AddDate(0, 0, -c.Active())
 	all := []activity{}
 	for _, root := range s.Workspaces.Workspace().Roots() {
 		for _, f := range root.Index.Files() {
-			latest := activity{Path: root.Join(f.Path)}
-			if at, ok := modified(root, f); ok {
-				latest.At, latest.Kind = at, "modified"
-			}
-			if at, ok := s.Recent.Viewed(latest.Path); ok && at.After(latest.At) {
-				latest.At, latest.Kind = at, "viewed"
-			}
-			if dismissed, ok := s.Recent.Dismissed(latest.Path); ok && !latest.At.After(dismissed) {
-				continue
-			}
-			if latest.Kind != "" && latest.At.After(since) {
-				all = append(all, latest)
+			path := root.Join(f.Path)
+			if at, ok := s.Recent.Viewed(path); ok && at.After(since) {
+				all = append(all, activity{Path: path, At: at})
 			}
 		}
 	}
 	slices.SortFunc(all, func(a, b activity) int { return b.At.Compare(a.At) })
 	writeJSON(w, all)
-}
-
-// modified reports when a file was last modified by someone working on it.
-// In a git checkout only the changes git reports count, uncommitted or made
-// on the worktree's branch: checkouts, rebases and pulls rewrite files that
-// nobody edited. Outside git, the modification time is all there is.
-func modified(root *workspace.Root, f index.File) (time.Time, bool) {
-	if !root.Trees.IsGit(f.Repo) {
-		return f.ModTime, true
-	}
-	return root.Trees.Changed(f.Repo, inRepo(f))
 }
 
 // addRecent records a view of a file. A file viewed for the first time has
@@ -367,8 +342,8 @@ func (s *Server) addRecent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// forgetRecent removes a file from recent activity until it is viewed or
-// changed again.
+// forgetRecent removes a file from recent activity until it is viewed
+// again.
 func (s *Server) forgetRecent(w http.ResponseWriter, r *http.Request) {
 	if err := s.Recent.Forget(r.URL.Query().Get("path")); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

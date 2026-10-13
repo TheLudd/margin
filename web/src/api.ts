@@ -16,14 +16,12 @@ export interface FileEntry {
   main: boolean // the repo is its project's main checkout
   git: boolean // the repo is a git checkout
   changed?: string // when the repo changed the file relative to main
-  modified?: string // when someone last modified the file; checkouts don't count
   viewed?: string // when the file was last viewed in margin
 }
 
 export interface Activity {
   path: string
-  at: string
-  kind: 'viewed' | 'modified' // whichever was last
+  at: string // when it was last viewed
 }
 
 // The service is the source of truth, so the browser cache is never used.
