@@ -66,15 +66,16 @@ describe('isActive', () => {
   const daysAgo = (days: number) => new Date(now - days * 86_400_000).toISOString()
   const active = (...copies: FileEntry[]) => isActive(groupCopies(copies)[0], 14, now)
 
+  it('counts a recent modification', () => expect(active(entry('a4', 'x.md', { modified: daysAgo(3) }))).toBe(true))
+
   it('counts a recent view', () => expect(active(entry('a4', 'x.md', { viewed: daysAgo(13) }))).toBe(true))
 
-  it('ignores a view older than 14 days', () => expect(active(entry('a4', 'x.md', { viewed: daysAgo(15) }))).toBe(false))
+  it('ignores activity older than 14 days', () => expect(active(entry('a4', 'x.md', { modified: daysAgo(15), viewed: daysAgo(20) }))).toBe(false))
 
-  it('ignores a file never viewed, however recently changed', () =>
-    expect(active(entry('gaius/master', 'x.md'), entry('gaius/claims', 'x.md', { changed: daysAgo(1) }))).toBe(false))
+  it('ignores a file nobody modified or viewed', () => expect(active(entry('gaius/master', 'x.md'), entry('gaius/claims', 'x.md'))).toBe(false))
 
-  it('uses the given window', () => expect(isActive(groupCopies([entry('a4', 'x.md', { viewed: daysAgo(20) })])[0], 30, now)).toBe(true))
+  it('uses the given window', () => expect(isActive(groupCopies([entry('a4', 'x.md', { modified: daysAgo(20) })])[0], 30, now)).toBe(true))
 
-  it('counts a view of any copy', () =>
-    expect(active(entry('gaius/master', 'x.md'), entry('gaius/claims', 'x.md', { viewed: daysAgo(2) }))).toBe(true))
+  it('counts a change made in a worktree', () =>
+    expect(active(entry('gaius/master', 'x.md'), entry('gaius/claims', 'x.md', { modified: daysAgo(2) }))).toBe(true))
 })

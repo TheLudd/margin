@@ -35,13 +35,6 @@ type fixture struct {
 
 func setup(t *testing.T) fixture {
 	t.Helper()
-	return setupViewed(t, nil)
-}
-
-// setupViewed sets up with the files of views, by workspace path, viewed at
-// the given times.
-func setupViewed(t *testing.T, views map[string]time.Time) fixture {
-	t.Helper()
 	root := t.TempDir()
 	write(t, filepath.Join(root, "repo", "plan.md"), "v1")
 	configFile := filepath.Join(t.TempDir(), "config.json")
@@ -49,12 +42,7 @@ func setupViewed(t *testing.T, views map[string]time.Time) fixture {
 
 	hub := events.NewHub[index.Event]()
 	workspaces := workspace.NewManager(configFile, hub.Publish, nil)
-	recentFile := filepath.Join(t.TempDir(), "recent.json")
-	if views != nil {
-		data, _ := json.Marshal(map[string]any{"views": views})
-		os.WriteFile(recentFile, data, 0o644)
-	}
-	rec, _ := recent.Load(recentFile, 365*24*time.Hour)
+	rec, _ := recent.Load(filepath.Join(t.TempDir(), "recent.json"), time.Hour)
 	read, _ := seen.Open(t.TempDir())
 	hand, _ := manual.Load(filepath.Join(t.TempDir(), "manual.json"))
 
@@ -113,34 +101,37 @@ func TestTree(t *testing.T) {
 	}
 }
 
-func TestRecentListsViewsOnly(t *testing.T) {
+func TestRecentKeepsToActiveWindow(t *testing.T) {
 	f := setup(t)
-	write(t, filepath.Join(f.root, "repo", "new.md"), "") // modified, never viewed
-	time.Sleep(200 * time.Millisecond)                     // let the index see it
+	old := time.Now().AddDate(0, 0, -20)
+	os.Chtimes(filepath.Join(f.root, "repo", "plan.md"), old, old)
+	write(t, filepath.Join(f.root, "repo", "new.md"), "")
+	time.Sleep(200 * time.Millisecond) // let the index see both
 
-	if got := recentPaths(t, f); len(got) != 0 {
-		t.Fatalf("got %v", got)
-	}
-	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
-	if got := recentPaths(t, f); len(got) != 1 || got[0] != "code/repo/plan.md" {
-		t.Fatalf("got %v", got)
-	}
-	if unknown := do(t, "POST", f.url+"/api/recent?path=code/repo/nope.md", "", nil); unknown.StatusCode != 404 {
-		t.Fatalf("unknown file got %d", unknown.StatusCode)
+	var got []activity
+	json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+
+	if len(got) != 1 || got[0].Path != "code/repo/new.md" {
+		t.Fatalf("got %+v", got)
 	}
 }
 
-func TestRecentKeepsToActiveWindow(t *testing.T) {
-	f := setupViewed(t, map[string]time.Time{"code/repo/plan.md": time.Now().AddDate(0, 0, -15)})
-	write(t, filepath.Join(f.root, "repo", "new.md"), "")
-	time.Sleep(200 * time.Millisecond) // let the index see it
+func TestRecentIgnoresCheckouts(t *testing.T) {
+	f := setup(t)
+	repo := filepath.Join(f.root, "repo")
+	git(t, repo, "init", "-q")
+	git(t, repo, "add", "plan.md")
+	git(t, repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "plan")
+	write(t, filepath.Join(repo, "plan.md"), "v1") // rewritten as by a checkout
+	time.Sleep(1500 * time.Millisecond)            // let the worktree tracker catch up
 
 	if got := recentPaths(t, f); len(got) != 0 {
-		t.Fatalf("a view older than 14 days shows: %v", got)
-	}
-	do(t, "POST", f.url+"/api/recent?path=code/repo/new.md", "", nil)
-	if got := recentPaths(t, f); len(got) != 1 {
 		t.Fatalf("got %v", got)
+	}
+	write(t, filepath.Join(repo, "plan.md"), "v2")
+	time.Sleep(1500 * time.Millisecond)
+	if got := recentPaths(t, f); len(got) != 1 {
+		t.Fatalf("an uncommitted change does not show: %v", got)
 	}
 }
 
@@ -465,6 +456,26 @@ func TestApp(t *testing.T) {
 	}
 	if got := do(t, "GET", f.url+"/code/repo/main.go", "", nil).StatusCode; got != 404 {
 		t.Fatalf("non-markdown path got %d", got)
+	}
+}
+
+func TestRecentLatestKindWins(t *testing.T) {
+	f := setup(t)
+	recentOf := func() []activity {
+		var got []activity
+		json.NewDecoder(do(t, "GET", f.url+"/api/recent", "", nil).Body).Decode(&got)
+		return got
+	}
+
+	if got := recentOf(); len(got) != 1 || got[0].Kind != "modified" {
+		t.Fatalf("before viewing: %+v", got)
+	}
+	do(t, "POST", f.url+"/api/recent?path=code/repo/plan.md", "", nil)
+	if got := recentOf(); len(got) != 1 || got[0].Path != "code/repo/plan.md" || got[0].Kind != "viewed" {
+		t.Fatalf("after viewing: %+v", got)
+	}
+	if unknown := do(t, "POST", f.url+"/api/recent?path=code/repo/nope.md", "", nil); unknown.StatusCode != 404 {
+		t.Fatalf("unknown file got %d", unknown.StatusCode)
 	}
 }
 

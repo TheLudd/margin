@@ -401,6 +401,10 @@ body.setup #sidebar > :not(.brand-row) {
   flex: none;
 }
 
+#sidebar time.modified {
+  color: var(--cp-cyan);
+}
+
 #sidebar details ul {
   margin-left: 14px;
 }

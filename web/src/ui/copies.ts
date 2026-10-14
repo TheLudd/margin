@@ -8,16 +8,18 @@ export interface LogicalFile {
   copies: FileEntry[] // the main checkout first, then by worktree
   preferred: FileEntry // the copy to open by default
   changed: boolean // some copy differs from the main checkout
-  activeAt: number // last view of any copy, in ms
+  activeAt: number // last view or modification of any copy, in ms
 }
 
 const day = 24 * 60 * 60 * 1000
 
-// Viewed within the last `days` days.
+// Viewed or modified within the last `days` days.
 export const isActive = (f: LogicalFile, days: number, now = Date.now()) => f.activeAt >= now - days * day
 
-// When a copy was last viewed.
-const viewedAt = (copy: FileEntry) => (copy.viewed ? Date.parse(copy.viewed) : 0)
+// When a copy was last viewed or modified.
+function activityOf(copy: FileEntry): number {
+  return Math.max(copy.viewed ? Date.parse(copy.viewed) : 0, copy.modified ? Date.parse(copy.modified) : 0)
+}
 
 export function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>()
@@ -49,7 +51,7 @@ export function groupCopies(files: FileEntry[]): LogicalFile[] {
       copies,
       preferred: changed[0] ?? copies[0],
       changed: changed.some((c) => !c.main),
-      activeAt: Math.max(...copies.map(viewedAt)),
+      activeAt: Math.max(...copies.map(activityOf)),
     }
   })
 }

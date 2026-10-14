@@ -12,7 +12,7 @@ A local, always-running service to browse and edit the markdown files in a set o
 - Read and edit in the same view, with WYSIWYG editing and no separate source pane.
 - Show a TOC sidebar for every document, without needing `[[toc]]` in the file.
 - Never show a stale document.
-- Recently viewed list.
+- Recently viewed and recently modified lists.
 
 ## Non-goals
 
@@ -35,7 +35,7 @@ Go service (127.0.0.1:<port>)
 ├── workspace one index, file store and worktree tracker per configured root
 ├── index    walks a root, keeps an in-memory list of .md files, watches with inotify
 ├── files    read/write with path checks and content-hash etags
-├── recent   view history, JSON in ~/.local/state/margin/
+├── recent   viewed + modified history, JSON in ~/.local/state/margin/
 ├── seen     every file as last read, for showing unread changes
 ├── manual   the files edited by hand, whose changes count as read
 ├── events   SSE stream: changed / added / removed
@@ -53,7 +53,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 
 - **`index`** — walks a root and returns the set of markdown files. It skips `.git`, `node_modules` and anything matched by a `.gitignore`. It watches directories, not files, so atomic rename-writes are still caught, and emits add/change/remove events.
 - **`files`** — reads a file and returns its content plus an etag (a content hash). Writes are conditional on the etag the client sent. It resolves symlinks and rejects any path outside its root.
-- **`recent`** — records views and persists them to `~/.local/state/margin/recent.json`.
+- **`recent`** — records views and modifications and persists them to `~/.local/state/margin/recent.json`. The lists are capped.
 - **`seen`** — keeps a copy of every file as last read in margin, in `~/.local/state/margin/seen/`. Changes are only ever relative to what was read: a file never opened in margin has no copy and so no unread changes. Opening a file without a copy stores its current version as read. Marking a file read replaces the copy; a save made in margin advances it too, unless the copy holds unread changes. A copy is kept for `unreadDays` (30 by default) after it was last written, even while the file is gone, as after a branch switch; a sweep at startup, daily and on settings changes deletes older copies, after which the file counts as never opened.
 - **`manual`** — remembers the files the reader edits by hand, in an editor of their own, in `~/.local/state/margin/manual.json`. Such a file has no unread changes: they are the reader's, as edits made in margin are. Marking a file manual, and marking it back, records its current version as read. Its uncommitted changes show only when asked for.
 - **`events`** — fans index events out to the SSE subscribers.
@@ -73,7 +73,7 @@ Each package does gsone job and can be tested without the HTTP layer.
 | PUT | `/api/manual?path=` | Mark the file edited by hand, and its current version read |
 | DELETE | `/api/manual?path=` | Mark the file no longer edited by hand, and its current version read |
 | GET | `/api/committed?path=` | The file as committed in `HEAD`; `404` when not committed |
-| GET | `/api/recent` | Recently viewed |
+| GET | `/api/recent` | Recently viewed and recently modified |
 | GET | `/api/events` | SSE stream |
 | GET | `/<path>` | Opens the SPA on that file (deep link used by `mp`) |
 
@@ -140,14 +140,14 @@ The same file checked out in several git worktrees is shown once in the sidebar 
 
 ## Activity
 
-The sidebar lists only files viewed in margin within the active window, counted back from now: 14 days by default, set with `"activeDays"` in the config or on the settings screen (1–365). Projects are sorted by their latest activity. Everything else is folded under **Older**, which expands to the full project tree. Search covers active files only; Tab (or the line at the bottom of the results, which counts the older matches) adds an Older section. Each section shows its best 10 matches. Every query word must match within one path segment, as a substring or an abbreviation of its words; words shorter than three letters only match at a word start.
+The sidebar lists only files viewed in margin or modified within the active window, counted back from now: 14 days by default, set with `"activeDays"` in the config or on the settings screen (1–365). Projects are sorted by their latest activity. Everything else is folded under **Older**, which expands to the full project tree. Search covers active files only; Tab (or the line at the bottom of the results, which counts the older matches) adds an Older section. Each section shows its best 10 matches. Every query word must match within one path segment, as a substring or an abbreviation of its words; words shorter than three letters only match at a word start.
 
 - **Viewed** means opened in margin; other apps are not considered. Views are kept with their time for 365 days (the longest window) in `~/.local/state/margin/recent.json`.
-- Changes don't count, whoever made them: pulls, rebases and other people's edits would fill the list with files nobody here cares about. A file becomes recent by being opened, and the unread marker shows what changed since.
+- **Modified** counts only changes git reports in a git checkout: uncommitted changes in the main checkout, and for a worktree its changes since it forked, committed or not. Checkouts, rebases and pulls rewrite files nobody edited, so their modification times don't count. In a folder outside git it is the modification time.
 - The window moves with time: the sidebar re-renders every 10 minutes even without changes.
-- **Recent activity** at the top of the sidebar lists the files viewed within the active window, latest first, each timed by its last view.
+- **Recent activity** at the top of the sidebar merges views and modifications within the active window: up to the 8 most recent files, each timed by whichever happened last (a modification in cyan).
 - Changing only the active window applies at once; changing folders or hidden files re-indexes.
-- **Removing from recent activity:** the × on an entry forgets its view; the next view shows it again.
+- **Removing from recent activity:** the × on an entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals are kept with the views.
 - Both sidebar sections fold, and fold state is kept per browser across reloads.
 
 ## Changes
