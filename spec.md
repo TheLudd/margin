@@ -66,7 +66,12 @@ margin is a local, always-running service for reading the markdown files in a se
 ## 5. Sidebar and finder (S)
 
 - **S-01** **OPEN: what Recent means.** Today: the files viewed in margin or modified within the active window, latest first, with a time per entry; a modification's time in cyan, a view's in muted. The last two commits restricted it to files opened in margin and then reverted that. The rewrite needs one definition, written here, before anything else in this section is tested against it.
-- **S-02** Modified, in a git checkout, means changed and not committed (in the main checkout) or changed since it forked (in a worktree). Checkouts, rebases and pulls don't count. Outside git, it is the mtime.
+- **S-02** When a file counts as modified, and with what time, as computed today. **OPEN** together with S-01: these rules are what Recent is built on, and two of them are likely why it feels wrong (see the note after the list).
+  - Outside git: the file's modification time on disk, always.
+  - In the main checkout of a repository: modified only while git sees the file as changed against HEAD, or as untracked and not ignored. The time is the modification time on disk. Once committed, the file is no longer modified at all. A checkout, rebase or pull that rewrites a file does not make it modified.
+  - In a linked worktree: modified if the file differs from the merge base of the worktree's HEAD and the main checkout's HEAD (where the branch forked), or is untracked. Uncommitted: the modification time on disk. Committed: the newest commit on the branch that touched it. The file stays modified until the branch is merged into main.
+  - Recent takes, per file, the later of its modified time and its last view in margin, labels the entry with that kind, drops entries older than `activeDays` and entries dismissed since, and sorts latest first.
+  - Note: in a main checkout a commit removes the committed files from Recent unless they were viewed in margin, so a session of writing and committing leaves nothing behind; and the main checkout and a worktree follow different rules for the same workflow.
 - **S-03** Views are recorded only when a file is opened in margin, and kept with their time for 365 days.
 - **S-04** Recent and Older are foldable sections with counts; Older groups files by project, each group foldable, sorted by name within. Fold state is kept per browser across reloads. Older stays folded when a file is opened from it.
 - **S-05** The × on a Recent entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals survive restarts.
