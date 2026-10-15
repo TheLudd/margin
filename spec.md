@@ -24,9 +24,10 @@ margin is a local, always-running service for reading the markdown files in a se
 - **P-01** A single Go binary serves the frontend, embedded at build time. Node is needed only to build.
 - **P-02** Config is read from `$XDG_CONFIG_HOME/margin/config.json`, falling back to `~/.config/margin/config.json`. A relative XDG value is ignored, as the XDG spec says.
 - **P-03** State lives in `$XDG_STATE_HOME/margin/`, falling back to `~/.local/state/margin/`: views and dismissals, the copies of files as last read, the files marked manual.
-- **P-04** Flags: `-port` (default 48217), `-config`, `-state`, `-host` (repeatable, another name margin accepts, such as `margin.local` behind a reverse proxy).
-- **P-05** Binds to 127.0.0.1 only.
-- **P-06** Every request's `Host` and `Origin` headers are checked against localhost and the `-host` names, against DNS rebinding and cross-site requests.
+- **P-04** Flags: `-port` (default 48217), `-listen` (address to bind, default 127.0.0.1), `-config`, `-state`, `-host` (repeatable, another name margin accepts, such as `margin.local` behind a reverse proxy).
+- **P-05** Binds to loopback by default. With `-listen` on an interface address or `0.0.0.0`, margin is reachable from other devices on the LAN, phones included.
+- **P-06** Every request's `Host` header must name margin: localhost, the machine's hostname, any of its interface addresses as found at startup, or a `-host` name. This is what defeats DNS rebinding, where a web page open in the reader's own browser gets its domain pointed at margin's address and then reads every served file with plain GETs. An `Origin` header, when present, must match the `Host`. Binding to loopback does not make these checks unnecessary; the attacking page runs in the reader's browser, on the reader's machine.
+- **P-11** **OPEN: authentication.** On the LAN, anyone on it can read and write the files. Either the spec says a home LAN is trusted and there is none, or a token given once in the URL and kept in a cookie is required for every request.
 - **P-07** Every path is resolved, symlinks included, and anything outside its root is rejected.
 - **P-08** Runs as a systemd user service; `make install` builds into `~/.local/bin/margin`.
 - **P-09** The event stream starts with a build id. A tab connected to an older build saves its edits and reloads, so an install plus restart reaches every open tab.
@@ -230,5 +231,6 @@ A general rule, then its instances: no state change moves any element that didn'
 1. **S-01** What should Recent list? The sidebar is the most visible part and has been reworked four times.
 2. **W** Keep worktrees? Together with the HEAD watching they are about a quarter of the backend.
 3. **CH-13** Keep the manual flag?
-4. Should phones get editing, or stay read-only as now?
+4. Should phones get editing, or stay read-only as now? With LAN access (P-05) phones are a real use, not a nicety.
 5. Is the three-view-per-change (now, diff, was) wanted, or is one diff view enough?
+6. **P-11** Authentication on the LAN: none, or a token?
