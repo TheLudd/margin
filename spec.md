@@ -6,13 +6,12 @@ status: draft
 
 What margin must do, as demands with ids. A rewrite is done when every demand has a test that names its id and passes. The look is specified by `spec/look.css`, the current stylesheet, and section 9 reads the demands out of it. Decisions taken while writing it are recorded at the end.
 
-Ids are stable: never renumber, never reuse a dropped one. A test names the ids it covers in its title, as in `"P-02, P-03: config falls back to ~/.config"`. A script lists the ids no test names.
+Ids are stable: never renumber, never reuse a dropped one. A test names the ids it covers in its title, as in `"P-02, P-03: config falls back to ~/.config"`.
 
 ## How the rewrite proceeds
 
 - The rewrite happens on a branch of this repository. Its first commit deletes everything except `spec.md`, `spec/`, `readme.md`, `.gitignore` and `.claude/`: all Go and TypeScript code, `main.go`, `go.mod` and `go.sum`, the whole `web/` folder including its build config, lockfile, embed file and tests, the `Makefile`, and `plan.md`. Nothing of the old code is kept, reused or copied; it stays in git history and is not consulted. The rewrite chooses its own layout, build and dependencies from this spec. `readme.md` is rewritten from this spec at the end.
 - `.claude/settings.json` holds a hook that runs `make install` and restarts margin after every commit. The first commit removes that hook, so the margin in use is not replaced by a half-built one. The last commit, once the whole Playwright suite passes, restores it unchanged.
-- `make coverage` is written before anything it would cover, so the gaps are visible from the start.
 - The order of work is the order of the sections: operation and files, then the document, then never stale, then changes, then the look and the nothing-jumps rules.
 
 ## 1. Purpose
@@ -247,14 +246,14 @@ A general rule, then its instances: no state change moves any element that didn'
 
 Every demand is tested at every level where it can be, not at one chosen level. The logic under a behaviour gets a unit test, the package or endpoint that carries it gets an integration test, and what the reader sees gets an end-to-end test. A browser test never stands in for the unit test of the logic underneath it, and a unit test never stands in for seeing the behaviour in the browser.
 
-- **T-01** Every demand id appears in the title of at least one test at every level that applies to it. `make coverage` lists, per id, the levels it is tested at, flags the ids missing a level they should have, and exits non-zero if any id is untested at any level. Which levels apply is declared in the coverage script, per id, so a deliberate single-level demand is visible as such.
+- **T-01** Every demand id appears in the title of at least one test at every level that applies to it. There is no coverage report or script; the test titles are the record, and a demand without a test at a level is found by reading them.
 - **T-02** Unit level. Go: every package without the HTTP layer, against a temp root with a real git repository and real file writes. Vitest: every frontend module with logic, such as matching (S-10), source preservation (D-04), the diff and its grouping (CH-05, CH-06, CH-08), the session's save, conflict and retry (N-02, N-06, N-07), the time and label formatting (F-04, L-12).
 - **T-03** Integration level. Go: every endpoint through the HTTP layer, including the guard (P-06), etags and conditional requests (P-10), the event stream (N-01, N-05, P-09), settings validation and re-indexing (C-02, C-07). Vitest with a DOM: the sidebar, finder, header and settings components against fake data, for the structure and states they render.
 - **T-04** End-to-end level. Playwright against the built binary and a temp root: every demand in sections 5 to 11, and every demand in 2 to 4 that has a visible effect. L demands are checked by reading computed styles and sizes against `spec/look.css`, J demands by comparing bounding boxes before and after a state change, K rows by pressing the keys.
 - **T-05** The never-stale tests, at integration and end-to-end level, write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the stream sends and what the browser shows.
 - **T-06** The round-trip corpus (D-05) is its own target, `make roundtrip`, run over `~/code` and reported, not part of `make test`.
 - **T-07** A browser test asserts the script loaded before any document is opened is under 300KB.
-- **T-08** `make test` runs all three levels and `make coverage`, and is what "done" means for any change.
+- **T-08** `make test` runs all three levels and is what "done" means for any change.
 
 ## Decisions
 
