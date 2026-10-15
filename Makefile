@@ -1,6 +1,6 @@
 # margin: one Go binary with the frontend embedded. Node is needed only to build.
 
-.PHONY: all build web test test-go test-web test-e2e roundtrip clean
+.PHONY: all build web install test test-go test-web test-e2e roundtrip clean
 
 all: build
 
@@ -13,6 +13,11 @@ web: web/node_modules
 
 build: web
 	go build -o margin .
+
+# P-08: the binary for the systemd user service.
+install: build
+	mkdir -p $(HOME)/.local/bin
+	install -m 755 margin $(HOME)/.local/bin/margin
 
 test: test-go test-web test-e2e
 

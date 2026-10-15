@@ -1,1 +1,18 @@
-{}
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && make install >/dev/null && systemctl --user restart margin || exit 2",
+            "timeout": 300,
+            "statusMessage": "Installing and restarting margin"
+          }
+        ]
+      }
+    ]
+  }
+}

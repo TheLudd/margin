@@ -1,39 +1,35 @@
 # margin
 
-A local service for reading and editing the markdown files in your folders, in the browser. It runs in the background, lists every `.md` file in the folders you choose, and opens each one in a WYSIWYG editor with a table of contents. What is on screen is never stale: changes made on disk show up at once.
+A local, always-running service for reading the markdown files in a set of folders, in the browser. The files are typically written by an LLM; margin is where they are read and touched up. Reading is primary. Editing is for small things: a typo, a task ticked, a paragraph adjusted. What is on screen is never stale.
 
-It is meant mainly for reading, with minor edits on the side: fixing a typo, ticking a task, adjusting a paragraph. It is intended for files typically written by an LLM; margin is where you read them and touch them up.
+margin does not create, rename or delete files, has no multi-user mode, never polls, and has no full-text search. The demands it meets are listed with ids in [spec.md](spec.md); every test names the ids it covers.
 
-## Features
+## What it does
 
-- **Sidebar:** Recent lists the files viewed or modified within the active window (14 days by default), latest first. In git, modified means changed and not yet committed (or changed on a worktree's branch), so checkouts and pulls don't fill it. Older holds every other file, grouped by project.
-- **Finder:** Ctrl K fuzzy-searches the recent files; Tab adds the older ones.
-- **Editor:** files open for reading, so selecting text to copy it is just selecting. **E** or the **edit** button in the header starts editing where you selected or clicked, and **Esc** stops. Edits autosave. Saves keep the original bytes of every block you didn't touch, so a one-word edit changes only that block. Frontmatter, task lists and mermaid diagrams are supported.
-- **Table of contents** built from the headings of every document.
-- **Changes:** the open file shows what changed since you last read it: a bar beside every block that is new (green) or changed (amber), a red notch where blocks were removed, and in tables a tint on the changed cells. Code blocks and tables count as one block. Alt ↑/↓ steps through them, the buttons beside a change show it as it is now, as a diff (words highlighted and struck through; code and tables as the old version above the new) or as it was, and **mark read** clears them. Files with unread changes get a green mark by their time in the sidebar. Next to the save status, a file in git reads **committed**, **uncommitted** or, if never committed, **untracked**; clicking **uncommitted** shows the changes since the last commit instead. margin keeps a copy of every file as you last read it, so changes made while the browser is closed show too; a file you have never opened has no unread changes. Your own edits in margin count as read, and so do those to a file marked **manual** in the header: one you write yourself, in your own editor. Clicking the badge again shows changes from then on.
-- **Never stale:** changes on disk and commits are pushed to the browser, and the open file is revalidated on focus and on reconnect. Unsaved edits are never overwritten; a banner asks which version to keep.
-- **Worktrees:** a file checked out in several git worktrees is listed once and opens the copy changed last.
-- **`.gitignore` aware:** ignored files, `.git` and `node_modules` are left out.
-
-margin doesn't create, rename or delete files.
+- **Sidebar.** Recent lists every file viewed in margin or modified within the active window (14 days by default), latest first. A file is modified when its content on disk differs from the copy margin kept when you last read it, however the change got there; git plays no part. A file nobody has opened is never modified, so files an LLM just wrote wait under Older, grouped by project, until they are opened. Unread changes get a green mark. The × on an entry forgets it until something new happens. The sidebar folds to a strip, and the gear at its foot leads to the settings.
+- **Finder.** Ctrl K or Ctrl P. An empty query lists recent activity; a query searches the active files, and Tab adds the older ones. Every word of the query must match within one path segment, as a substring or an abbreviation (`gcp` for `guarded-commands-plan`); matches in the file name rank first.
+- **Document.** Files open for reading. E or the edit badge starts editing where you clicked, Esc stops. Edits autosave a second after the last keystroke, and a save keeps the original bytes of every block you did not touch, so a one-word edit changes one block. Frontmatter sits in a folded panel. Task checkboxes are edits. Mermaid blocks render as diagrams. The contents panel follows the headings and the one in view. Ctrl click on a link to another markdown file opens it in margin.
+- **Never stale.** Changes on disk, written in place or by rename, and commits are pushed to the browser; the open file is revalidated on focus and on reconnect; the stream reopens with backoff after a restart; a tab on an older build saves and reloads. Unsaved edits are never overwritten: an outside change while editing shows a banner with keep mine and take theirs. A failed save retries after five seconds.
+- **Changes.** The open file is compared with the version you last read: green bars beside new blocks, amber beside changed ones, a red notch where blocks were removed, tinted cells in tables. Nearby changes count as one; the header counts them, Alt ↑ and Alt ↓ step through them, and three buttons beside each change show it as it is now, as a diff, or as it was. Mark read clears them. A file in git shows committed, uncommitted or untracked; clicking uncommitted compares with the last commit instead. A file marked manual, edited by hand elsewhere, counts its changes as read. Your own edits in margin never show as unread.
+- **Worktrees.** A file checked out in several git worktrees is listed once with a copy count and opens the copy changed last; the header lists every copy.
 
 ## Install
 
-Requires Go 1.27 and pnpm.
+Requires Go 1.27 and pnpm to build. The result is one static binary with the frontend embedded.
 
 ```bash
-make install    # builds the frontend and the binary into ~/.local/bin/margin
+make install    # builds and installs ~/.local/bin/margin
 margin          # serves http://localhost:48217
 ```
 
-On first run, the browser shows a setup screen. It suggests the folders in your home that hold markdown; pick the ones to serve.
+On first run the browser shows a setup screen that suggests the folders in your home holding markdown.
 
 ### As a systemd user service
 
 ```ini
 # ~/.config/systemd/user/margin.service
 [Unit]
-Description=margin, markdown reader/editor
+Description=margin, markdown reader
 
 [Service]
 ExecStart=%h/.local/bin/margin
@@ -46,12 +42,12 @@ WantedBy=default.target
 
 ```bash
 systemctl --user enable --now margin
-systemctl --user restart margin   # after make install
+systemctl --user restart margin   # after make install; open tabs reload themselves
 ```
 
 ## Configuration
 
-Settings are edited on the settings screen (the gear in the sidebar) and stored in `$XDG_CONFIG_HOME/margin/config.json`, falling back to `~/.config/margin/config.json`. Hand edits are picked up live.
+Settings are edited on the settings screen (the gear in the sidebar, or `/settings`) and stored in `$XDG_CONFIG_HOME/margin/config.json`, falling back to `~/.config/margin/config.json`. Hand edits are picked up live; a broken file keeps the current folders and shows its error on the settings screen.
 
 ```json
 {
@@ -62,34 +58,50 @@ Settings are edited on the settings screen (the gear in the sidebar) and stored 
 }
 ```
 
-- **`roots`** are the folders served. Each name is the first part of every path in it, as in `/code/margin/plan.md`. Folders must exist, names must be unique and roots must not overlap.
-- **`exclude`** leaves files out of the sidebar, search and recent activity. A pattern without a slash matches file names anywhere; one with a slash matches the end of a path. Case is ignored.
+- **`roots`** are the folders served. The name is the first part of every address, as in `/code/margin/plan.md`; with a single root it is left out of displayed paths. Folders must exist, names must be unique and not `api`, `assets` or `settings`, and roots must not overlap.
+- **`exclude`** leaves files out of the sidebar, the finder and recent activity. A pattern without a slash matches file names anywhere; one with a slash matches the end of a path. Case is ignored. An excluded file still opens by its address.
 - **`activeDays`** (1–365) is the window that divides Recent from Older.
-- **`unreadDays`** (1–365) is how long after you last read a file its unread changes are kept, even while the file is gone, as after switching branches. After that, it counts as never opened.
-- **`changeView`** is how changes are shown until you pick otherwise for one: `blocks` (the default), as the blocks they touch, or `words`, as a diff word by word.
+- **`unreadDays`** (1–365) is how long the copy of a file as last read is kept after it was last written, even while the file is gone, as after a branch switch. After that the file counts as never opened.
 
-Views are kept in `$XDG_STATE_HOME/margin/recent.json`, falling back to `~/.local/state/margin/`, the copies of files as last read in `seen/` next to it, and the files marked manual in `manual.json`.
+Every `.md` file under every root is served except under `.git`, under `node_modules`, and what a `.gitignore` ignores. Changes to `.gitignore` files are picked up on restart.
+
+State lives in `$XDG_STATE_HOME/margin/`, falling back to `~/.local/state/margin/`: views and dismissals, the files marked manual, and the copies of files as last read.
 
 ### Flags
 
 | Flag | Default | |
 |---|---|---|
-| `-port` | `48217` | Port to listen on, on 127.0.0.1 only |
+| `-port` | `48217` | Port to listen on; `0` picks a free one and prints it |
+| `-listen` | `127.0.0.1` | Address to bind; an interface address or `0.0.0.0` opens margin to the LAN, phones included |
 | `-config` | see above | Config file |
-| `-state` | see above | Directory for margin's own state |
+| `-state` | see above | State folder |
 | `-host` | | Another name margin is reached by, such as `margin.local` behind a reverse proxy (repeatable) |
 
 ## Security
 
-margin binds to 127.0.0.1 only and checks the `Host` and `Origin` headers of every request, against DNS rebinding and cross-site requests from other pages. Every path is resolved, symlinks included, and anything outside its root is rejected.
+Every request's `Host` header must name margin: localhost, the machine's hostname, any of its interface addresses as found at startup, or a `-host` name. An `Origin` header, when present, must match the `Host`. This defeats DNS rebinding, where a page open in your own browser gets its domain pointed at margin's address. Every path is resolved, symlinks included, and anything outside its root is rejected. There is no authentication: the LAN margin is opened to is trusted.
+
+## Keys
+
+| Key | Where | Does |
+|---|---|---|
+| E | document | start editing |
+| Esc | editing | stop editing (closes a menu first if one is open); closes a drawer |
+| Ctrl K, Ctrl P | anywhere | open the finder |
+| ↑ ↓, Enter, Tab | finder | move, open, toggle older files |
+| Alt ↑, Alt ↓ | document with changes | previous and next change |
+| Ctrl click | link to a `.md` | open in margin |
+| middle click | sidebar link | open in a new tab |
 
 ## Development
 
 ```bash
-make                 # build web/dist and the binary
-make test            # go tests + vitest
-make roundtrip       # report the markdown files under ~/code an unchanged save would alter
-cd web && pnpm dev   # Vite dev server against the running service
+make                 # build the frontend and the binary
+make test            # go tests, vitest, and playwright against the built binary
+make roundtrip       # D-05: report the files under ~/code an unchanged save would alter
+cd web && pnpm dev   # vite dev server proxying /api to a running margin
 ```
 
-The backend is Go (`internal/`), the frontend TypeScript with Vite and [Milkdown](https://milkdown.dev) (`web/`), embedded in the binary at build time. See [plan.md](plan.md) for the design.
+The service is Go (`internal/`): the index with its folder watches, git by shelling out, the projects and worktrees, the state, the lists, the core that ties them together, and the HTTP layer with etags and the event stream. The frontend (`web/`) is TypeScript with Vite and no framework; the editor is Milkdown kit without Crepe, loaded with the first document opened so the chrome stays small. Mermaid loads only when a document has a mermaid block.
+
+Tests run at three levels and every test names the demands it covers: Go unit tests per package against temp roots with real repositories, Go integration tests through the HTTP layer, Vitest unit and DOM tests for the frontend, and Playwright end-to-end tests that start the built binary over a temp root for every visible demand. The look is checked by reading computed styles against `spec/look.css`, and the nothing-jumps rules by comparing bounding boxes before and after a change.
