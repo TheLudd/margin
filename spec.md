@@ -66,7 +66,16 @@ margin is a local, always-running service for reading the markdown files in a se
 ## 5. Sidebar and finder (S)
 
 - **S-01** Recent lists every file viewed in margin or modified within the active window, latest first, each timed by whichever happened last. A modified entry carries the unread mark (S-07); marking it read turns it into a viewed entry timed at the reading. Entries never vanish by being committed.
-- **S-02** A file is modified when its content differs from the copy margin keeps of it as last read (CH-02). The copy is replaced by marking the file read, by saving an edit in margin, or by toggling manual. The time of the modification is the file's modification time on disk, so changes made while margin was down count. Git plays no part: commits, checkouts, rebases and pulls change nothing unless they leave the file different from what was read. A file never opened in margin has no copy and so is not modified. **OPEN:** whether a file new on disk since margin last indexed it appears in Recent as modified at its creation time, so files an LLM just wrote show up without being opened; a checkout's files are changed, not new, so they would not.
+- **S-02** When a file counts as modified, and with what time. Git plays no part in any of it.
+  - **The copy.** margin keeps a copy of every file as last read in margin (CH-02). A file has at most one copy.
+  - **Modified** means the file's content on disk differs from its copy. Equal content, however the file got there, is not modified.
+  - **The time** of a modification is the file's modification time on disk. It is not when margin noticed, so changes made while margin was down keep their time.
+  - **The copy is replaced**, which ends the modification, by any of: the reader pressing mark read; margin saving an edit the reader made; the reader toggling manual on or off. Only these. Opening a file that already has a copy does not replace it.
+  - **The copy is created** the first time the file is opened in margin, from the content at that moment. Until then the file has no copy and is never modified.
+  - **The copy is removed** after `unreadDays` without being replaced (CH-04). The file then counts as never opened.
+  - **Git does nothing.** A commit, checkout, rebase, pull or merge neither starts nor ends a modification. If one of them leaves the file's content different from its copy, the file is modified, because it did change since it was read. If it leaves the content equal, it is not.
+  - **Never opened.** A file without a copy is not modified, however recently it changed. **OPEN:** whether a file that is new on disk since margin last indexed it appears in Recent as modified at its creation time, so files an LLM just wrote show up without being opened. A checkout's files are changed, not new, so they would not qualify.
+  - **Not modified** also means: a file the reader edited in margin and has not touched since; a file marked manual, whatever its content; a file whose only changes were made before it was first opened.
 - **S-03** Views are recorded only when a file is opened in margin, and kept with their time for 365 days.
 - **S-04** Recent and Older are foldable sections with counts; Older groups files by project, each group foldable, sorted by name within. Fold state is kept per browser across reloads. Older stays folded when a file is opened from it.
 - **S-05** The × on a Recent entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals survive restarts.
