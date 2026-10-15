@@ -21,6 +21,7 @@ import (
 	"margin/internal/safepath"
 	"margin/internal/state"
 	"margin/internal/suggest"
+	"margin/internal/textdiff"
 )
 
 // Errors the HTTP layer maps to statuses.
@@ -426,8 +427,10 @@ func (c *Core) Meta(mpath string) (Meta, error) {
 	return Meta{Path: doc.Path, Git: doc.Git, Manual: doc.Manual, HasCopy: doc.HasCopy, Unread: doc.Unread, Copies: doc.Copies, Project: doc.Project, Etag: doc.Etag}, nil
 }
 
-// Read opens a file for the browser.
-func (c *Core) Read(mpath string) (Doc, error) {
+// Read reads a file for the browser. With open, the file counts as opened:
+// a view is recorded (S-03) and, the first time, the copy is made from the
+// very bytes served (CH-02).
+func (c *Core) Read(mpath string, open ...bool) (Doc, error) {
 	root, rel, abs, err := c.resolve(mpath)
 	if err != nil {
 		return Doc{}, err
@@ -438,6 +441,17 @@ func (c *Core) Read(mpath string) (Doc, error) {
 	}
 	if err != nil {
 		return Doc{}, err
+	}
+	if len(open) > 0 && open[0] {
+		if _, ok := c.st.CopyHash(abs); !ok {
+			if err := c.st.PutCopy(abs, content); err != nil {
+				return Doc{}, err
+			}
+		}
+		if err := c.st.View(abs, time.Now()); err != nil {
+			return Doc{}, err
+		}
+		defer c.hub.Broadcast("lists", nil)
 	}
 	hash := index.Hash(content)
 	f := c.fileFor(root, rel, abs)
@@ -529,8 +543,15 @@ func (c *Core) Write(mpath string, content []byte, ifMatch string) (string, erro
 		return "", err
 	}
 	newHash := index.Hash(content)
-	if h, ok := c.st.CopyHash(abs); ok && h == oldHash {
-		c.st.PutCopy(abs, content)
+	if h, ok := c.st.CopyHash(abs); ok {
+		if h == oldHash {
+			// No unread changes: the copy advances with the save (CH-03).
+			c.st.PutCopy(abs, content)
+		} else if copyText, ok := c.st.Copy(abs); ok {
+			// Unread changes stay unread; the reader's own edit joins the
+			// copy so it never shows as unread (CH-14).
+			c.st.PutCopy(abs, []byte(textdiff.Rebase(string(copyText), string(current), string(content))))
+		}
 	}
 	c.mu.RLock()
 	ix := c.ix
@@ -540,28 +561,6 @@ func (c *Core) Write(mpath string, content []byte, ifMatch string) (string, erro
 	}
 	c.hub.Broadcast("file", map[string]any{"path": mpath, "kind": "changed", "etag": etagOf(newHash)})
 	return etagOf(newHash), nil
-}
-
-// Open records a view (S-03) and creates the copy the first time (CH-02).
-func (c *Core) Open(mpath string) error {
-	_, _, abs, err := c.resolve(mpath)
-	if err != nil {
-		return err
-	}
-	if _, ok := c.st.CopyHash(abs); !ok {
-		content, err := os.ReadFile(abs)
-		if err != nil {
-			return ErrNotFound
-		}
-		if err := c.st.PutCopy(abs, content); err != nil {
-			return err
-		}
-	}
-	if err := c.st.View(abs, time.Now()); err != nil {
-		return err
-	}
-	c.hub.Broadcast("lists", nil)
-	return nil
 }
 
 // MarkRead replaces the copy with the current content (CH-03) and times the

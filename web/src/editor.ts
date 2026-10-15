@@ -10,6 +10,7 @@ import { $prose, $view } from '@milkdown/kit/utils'
 import type { Node as PMNode, Schema } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView, type NodeView, type ViewMutationRecord } from '@milkdown/kit/prose/view'
+import { changesPlugin } from './marks'
 import { renderMermaid } from './mermaid'
 import { normalizeLabel, type BlockInfo } from './preserve'
 
@@ -37,7 +38,7 @@ export interface EditorHandle {
 
 export interface EditorEvents {
   /** A transaction changed the document through the reader's doing. */
-  onEdit(): void
+  onEdit(tr: Transaction): void
   /** Any transaction was applied; the DOM is up to date. */
   onTransaction(tr: Transaction): void
 }
@@ -79,6 +80,8 @@ const cursorBlock = $prose(
     }),
 )
 let currentView: EditorView | null = null
+
+const changesProse = $prose(() => changesPlugin())
 
 /* Code blocks (D-08, D-09): a pre the editor types into; mermaid renders
    its diagram and shows the source with a live preview on a click. */
@@ -284,7 +287,7 @@ export async function createEditor(root: HTMLElement, markdown: string, events: 
         dispatchTransaction(this: EditorView, tr: Transaction) {
           const state = this.state.apply(tr)
           this.updateState(state)
-          if (isEdit(tr)) events.onEdit()
+          if (isEdit(tr)) events.onEdit(tr)
           events.onTransaction(tr)
         },
         handleDOMEvents: {
@@ -302,6 +305,7 @@ export async function createEditor(root: HTMLElement, markdown: string, events: 
     .use(clipboard)
     .use(cursor)
     .use(cursorBlock)
+    .use(changesProse)
     .use(views)
   await editor.create()
   const view = editor.ctx.get(editorViewCtx)

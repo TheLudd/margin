@@ -275,7 +275,7 @@ article {
 }
 
 /* Editor surface (L-25) */
-.editor {
+.editor-host {
   --editor-surface: var(--cp-panel);
   --editor-surface-low: var(--cp-raised);
   --editor-primary: var(--cp-cyan);
@@ -284,7 +284,7 @@ article {
   --editor-error: var(--change-removed);
 }
 
-.editor .ProseMirror {
+.editor-host .ProseMirror {
   --inset-left: 64px;
   --inset-right: 48px;
   padding: 8px var(--inset-right) 60px var(--inset-left);
@@ -295,12 +295,12 @@ article {
   word-wrap: break-word;
 }
 
-.editor .ProseMirror-selectednode {
+.editor-host .ProseMirror-selectednode {
   outline: 2px solid var(--editor-selected);
 }
 
 /* Editing: the block holding the cursor */
-.editor .ProseMirror:focus .cursor-block {
+.editor-host .ProseMirror:focus .cursor-block {
   border-radius: 3px;
   background: color-mix(in srgb, var(--cp-magenta) 6%, transparent);
   box-shadow:
@@ -311,7 +311,7 @@ article {
 /* Code blocks and tables keep to the text's width unless their lines are
    longer: then they grow evenly to both sides, centered on the text, up to a
    24px gutter from the edges, and only scroll beyond that. */
-.editor .ProseMirror > :is(.code-block, .table-block) {
+.editor-host .ProseMirror > :is(.code-block, .table-block) {
   position: relative;
   left: 50%;
   translate: -50%;
@@ -320,89 +320,89 @@ article {
   max-width: calc(100cqw - 48px - (2px + var(--inset-left) - var(--inset-right)));
 }
 
-.editor .table-block .table-wrapper {
+.editor-host .table-block .table-wrapper {
   overflow-x: auto;
 }
 
 /* Auto layout sizes the table to its cells instead of the room there is */
-.editor .table-block table {
+.editor-host .table-block table {
   table-layout: auto;
   border-collapse: collapse;
   background: var(--cp-bg);
 }
 
-.editor .ProseMirror :is(td, th) {
+.editor-host .ProseMirror :is(td, th) {
   padding: 4px 10px;
   border: 1px solid var(--cp-line);
   vertical-align: top;
 }
 
-.editor .ProseMirror :is(td, th) > p {
+.editor-host .ProseMirror :is(td, th) > p {
   margin: 0;
 }
 
 /* Markdown styling (L-22) */
-.editor .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+.editor-host .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--cp-mono);
   letter-spacing: 0.02em;
 }
 
-.editor .ProseMirror h1 {
+.editor-host .ProseMirror h1 {
   color: var(--cp-magenta);
   text-shadow: 0 0 6px color-mix(in srgb, var(--cp-magenta) 30%, transparent);
   border-bottom: 1px solid var(--cp-magenta);
   padding-bottom: 6px;
 }
 
-.editor .ProseMirror h2 {
+.editor-host .ProseMirror h2 {
   color: var(--cp-cyan);
   text-shadow: 0 0 5px color-mix(in srgb, var(--cp-cyan) 20%, transparent);
   border-bottom: 1px solid var(--cp-line);
   padding-bottom: 4px;
 }
 
-.editor .ProseMirror h3 {
+.editor-host .ProseMirror h3 {
   color: var(--cp-h3);
 }
 
-.editor .ProseMirror strong {
+.editor-host .ProseMirror strong {
   color: var(--cp-white);
 }
 
-.editor .ProseMirror a {
+.editor-host .ProseMirror a {
   color: var(--cp-cyan);
   cursor: pointer;
 }
 
-.editor .ProseMirror a:hover {
+.editor-host .ProseMirror a:hover {
   color: var(--cp-magenta);
   text-shadow: 0 0 8px color-mix(in srgb, var(--cp-magenta) 50%, transparent);
 }
 
-.editor .ProseMirror blockquote {
+.editor-host .ProseMirror blockquote {
   margin: 1em 0;
   padding: 2px 16px;
   border-left: 3px solid var(--cp-magenta);
   background: color-mix(in srgb, var(--cp-magenta) 5%, transparent);
 }
 
-.editor .ProseMirror hr {
+.editor-host .ProseMirror hr {
   height: 2px;
   border: 0;
   background: linear-gradient(90deg, var(--cp-magenta), var(--cp-cyan));
 }
 
-.editor .ProseMirror th {
+.editor-host .ProseMirror th {
   color: var(--cp-cyan);
   font-family: var(--cp-mono);
 }
 
-.editor .ProseMirror tr:nth-child(2n) td {
+.editor-host .ProseMirror tr:nth-child(2n) td {
   background: var(--cp-raised);
 }
 
 /* Inline code wraps as text, not as a box (D-12) */
-.editor .ProseMirror :not(pre) > code {
+.editor-host .ProseMirror :not(pre) > code {
   display: inline;
   padding: 1px 4px;
   border-radius: 3px;
@@ -414,43 +414,43 @@ article {
   -webkit-box-decoration-break: clone;
 }
 
-.editor .ProseMirror img {
+.editor-host .ProseMirror img {
   max-width: 100%;
   height: auto;
 }
 
 /* Task items (D-07) */
-.editor .ProseMirror li[data-item-type='task'] {
+.editor-host .ProseMirror li[data-item-type='task'] {
   display: flex;
   gap: 8px;
   align-items: baseline;
   list-style: none;
 }
 
-.editor .ProseMirror li[data-item-type='task'] > input {
+.editor-host .ProseMirror li[data-item-type='task'] > input {
   margin: 0;
   accent-color: var(--cp-cyan);
   cursor: pointer;
 }
 
-.editor .ProseMirror li[data-item-type='task'] > .task-content {
+.editor-host .ProseMirror li[data-item-type='task'] > .task-content {
   flex: 1;
   min-width: 0;
 }
 
-.editor .ProseMirror li[data-item-type='task'] > .task-content > p {
+.editor-host .ProseMirror li[data-item-type='task'] > .task-content > p {
   margin: 0;
 }
 
 /* Code blocks (D-08, D-09) */
-.editor .code-block {
+.editor-host .code-block {
   margin: 1em 0;
   border: 1px solid var(--cp-line);
   border-left: 3px solid var(--cp-cyan);
   background: var(--cp-code-bg);
 }
 
-.editor .code-block pre {
+.editor-host .code-block pre {
   margin: 0;
   padding: 12px 16px;
   overflow-x: auto;
@@ -460,31 +460,31 @@ article {
   white-space: pre;
 }
 
-.editor .code-block pre code {
+.editor-host .code-block pre code {
   font: inherit;
 }
 
-.editor .code-block .preview {
+.editor-host .code-block .preview {
   display: none;
   padding: 12px 16px;
 }
 
-.editor .code-block .preview svg {
+.editor-host .code-block .preview svg {
   max-width: 100%;
   height: auto;
 }
 
-.editor .code-block.mermaid .preview {
+.editor-host .code-block.mermaid .preview {
   display: block;
 }
 
 /* A mermaid block: the diagram alone, the source once clicked while editing */
-.editor .code-block.mermaid:not(.source-open) pre,
-.editor .ProseMirror[contenteditable='false'] .code-block.mermaid pre {
+.editor-host .code-block.mermaid:not(.source-open) pre,
+.editor-host .ProseMirror[contenteditable='false'] .code-block.mermaid pre {
   display: none;
 }
 
-.editor .code-block.mermaid.source-open .preview {
+.editor-host .code-block.mermaid.source-open .preview {
   border-top: 1px dashed var(--cp-line);
 }
 
@@ -572,7 +572,7 @@ article {
     margin: 0 16px 8px;
   }
 
-  .editor .ProseMirror {
+  .editor-host .ProseMirror {
     --inset-left: 16px;
     --inset-right: 16px;
   }

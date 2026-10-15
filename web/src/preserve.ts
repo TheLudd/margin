@@ -58,8 +58,13 @@ export function splitOriginal(source: string, tools: Tools): OriginalBlock[] {
     if (b.definition && b.identifier) definitions.set(b.identifier, source.slice(b.position.start.offset, b.position.end.offset))
   }
   return positioned.map(({ position, definition }) => {
-    const bytes = source.slice(position.start.offset, position.end.offset)
-    if (definition) return { start: position.start.offset, end: position.end.offset, bytes, norm: null }
+    // A block's bytes start at its line, indentation included, so an
+    // indented list parses alone as it does in the file.
+    let start = position.start.offset
+    const lineStart = source.lastIndexOf('\n', start - 1) + 1
+    if (lineStart < start && /^[ \t]*$/.test(source.slice(lineStart, start))) start = lineStart
+    const bytes = source.slice(start, position.end.offset)
+    if (definition) return { start, end: position.end.offset, bytes, norm: null }
     let withDefinitions = bytes
     if (definitions.size > 0 && bytes.includes('[')) {
       const needed: string[] = []
@@ -71,7 +76,7 @@ export function splitOriginal(source: string, tools: Tools): OriginalBlock[] {
     }
     const norms = tools.norms(withDefinitions)
     const norm = norms.length === 0 ? null : norms.join('\n\n')
-    return { start: position.start.offset, end: position.end.offset, bytes, norm }
+    return { start, end: position.end.offset, bytes, norm }
   })
 }
 
@@ -159,7 +164,7 @@ export function assemble(source: string, originals: OriginalBlock[], current: Cu
     }
     push(originals[origin].bytes, origin)
     for (const inv of invisibleAfter.get(origin) ?? []) {
-      parts.push(separator(origin, inv) || '\n\n')
+      parts.push(separator(lastOriginal ?? origin, inv) || '\n\n')
       parts.push(originals[inv].bytes)
       lastOriginal = inv
     }
@@ -171,5 +176,5 @@ export function assemble(source: string, originals: OriginalBlock[], current: Cu
   if (originals.length === 0) return current.length === 0 ? source : out + '\n'
   out = leading + out
   if (current.length === 0 && invisibleOrphans.length === 0) return leading.trimEnd() === '' ? '' : leading
-  return out + (trailing.includes('\n') ? trailing : '\n')
+  return out + trailing
 }

@@ -12,7 +12,9 @@ import { SaveError, Session, type Status } from './session'
 import { el, type Shell } from './shell'
 import { activeEntry, markActive, readEntries, renderToc, type TocEntry } from './toc'
 import type { Doc, Lists, StreamEvent } from './types'
+import { Review } from './review'
 import './document.css'
+import './changes.css'
 
 export interface DocumentHost {
   onMissing(): void
@@ -26,6 +28,7 @@ interface Open {
   doc: Doc
   editor: EditorHandle
   session: Session
+  review: Review
   split: Split
   originals: OriginalBlock[]
   source: string
@@ -53,7 +56,7 @@ function ensure(s: Shell): void {
   frontmatterPanel = el('details', { class: 'frontmatter', hidden: '' }, el('summary', { text: 'frontmatter' }))
   frontmatterArea = el('textarea', { spellcheck: 'false', 'aria-label': 'Frontmatter', readonly: '' })
   frontmatterPanel.append(frontmatterArea)
-  editorRoot = el('div', { class: 'editor' })
+  editorRoot = el('div', { class: 'editor-host' })
   article.append(frontmatterPanel, editorRoot)
   s.main.prepend(header.root, banner, article)
   wireChrome()
@@ -77,6 +80,11 @@ function wireChrome(): void {
     document.dispatchEvent(new CustomEvent('margin:manual', { detail: { on } }))
     host?.refreshLists()
   })
+  h.badges.commit.addEventListener('click', () => void open?.review.toggleHead())
+  h.markRead.addEventListener('click', () => void open?.review.markRead())
+  h.count.addEventListener('click', () => open?.review.jumpTo(0))
+  h.prev.addEventListener('click', () => open?.review.prev())
+  h.next.addEventListener('click', () => open?.review.next())
   h.worktree.addEventListener('change', () => {
     if (h.worktree.value && h.worktree.value !== open?.path) navigate(h.worktree.value)
   })
@@ -113,6 +121,12 @@ function onKey(ev: KeyboardEvent): void {
   if (!open) return
   const finder = document.getElementById('finder') as HTMLDialogElement | null
   if (finder?.open) return
+  if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+    ev.preventDefault()
+    if (ev.key === 'ArrowUp') open.review.prev()
+    else open.review.next()
+    return
+  }
   if (ev.key === 'Escape') {
     if (document.body.dataset.drawer) return
     if (open.editor.editing) {
@@ -178,7 +192,7 @@ function onStreamEvent(ev: StreamEvent): void {
   }
   if (ev.name === 'head' && open.path.startsWith(ev.data.repo + '/')) {
     document.dispatchEvent(new CustomEvent('margin:head', { detail: ev.data }))
-    void refreshMeta()
+    void refreshMeta().then(() => open?.review.onHead())
   }
   if (ev.name === 'lists') void refreshMeta()
 }
@@ -198,6 +212,7 @@ async function refreshMeta(): Promise<void> {
     setCommit(header, meta.git)
     setCopies(header, meta.copies, o.path)
     setManual(header, meta.manual)
+    void o.review.onMeta(meta)
     document.dispatchEvent(new CustomEvent('margin:meta', { detail: meta }))
   } catch {
     // The file may be gone; the stream says so separately.
@@ -255,6 +270,7 @@ function reloadFrom(o: Open, doc: Doc): void {
     setManual(header, doc.manual)
   }
   hideBanner()
+  o.review.onReload()
   document.dispatchEvent(new CustomEvent('margin:reloaded', { detail: doc }))
 }
 
@@ -285,7 +301,7 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
     }
     let doc: Doc | null
     try {
-      doc = await api.file(path)
+      doc = await api.file(path, undefined, true)
     } catch (err) {
       if (err instanceof ApiError && (err.status === 404 || err.status === 403)) {
         h.onMissing()
@@ -297,13 +313,31 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
     if (!doc) return
     const split = splitFrontmatter(doc.content)
     const events = {
-      onEdit: () => open?.session.edited(),
+      onEdit: (tr: import('@milkdown/kit/prose/state').Transaction) => {
+        open?.session.edited()
+        open?.review.onEdit(tr)
+      },
       onTransaction: () => scheduleToc(),
     }
     editorRoot!.replaceChildren()
     const editor = await createEditor(editorRoot!, split.body, events)
-    const o: Open = { path, doc, editor, split, originals: [], source: doc.content, frontmatterText: split.text, session: null as unknown as Session }
+    const o: Open = { path, doc, editor, split, originals: [], source: doc.content, frontmatterText: split.text, session: null as unknown as Session, review: null as unknown as Review }
     o.originals = splitOriginal(split.body, tools(editor))
+    o.review = new Review({
+      editor,
+      header: header!,
+      scroller: s.main,
+      doc: () => o.doc,
+      fetchBaseline: async (kind) => {
+        const text = await api.baseline(path, kind).catch(() => null)
+        return text === null ? null : splitFrontmatter(text).body
+      },
+      markRead: async () => {
+        await api.markRead(path)
+        o.doc.unread = false
+        await host?.refreshLists()
+      },
+    })
     o.session = new Session(
       path,
       {
@@ -340,7 +374,7 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
           rebase(o, produce(o))
           document.dispatchEvent(new CustomEvent('margin:saved', { detail: { etag } }))
           host?.refreshLists()
-          refreshMeta()
+          void refreshMeta().then(() => o.review.onSaved())
         },
       },
       () => produce(o),
@@ -363,7 +397,8 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
     rebuildToc()
     if (location.hash) scrollToHeading(decodeURIComponent(location.hash.slice(1)), false)
     else s.main.scrollTop = 0
-    api.open(path).then(() => h.refreshLists())
+    void o.review.start()
+    void h.refreshLists()
     document.dispatchEvent(new CustomEvent('margin:opened', { detail: doc }))
   })()
   await opening
@@ -375,6 +410,7 @@ async function closeDocument(): Promise<void> {
   const o = open
   await o.session.flush()
   o.session.destroy()
+  o.review.destroy()
   open = null
   document.body.classList.remove('editing')
   await o.editor.destroy()

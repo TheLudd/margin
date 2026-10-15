@@ -125,6 +125,19 @@ func (e *env) doc(p string) core.Doc {
 	return d
 }
 
+// open reads a file as the browser does when opening it: the view is
+// recorded and the copy made from the bytes served.
+func (e *env) open(p string) core.Doc {
+	e.t.Helper()
+	res, data := e.do("GET", "/api/file"+p, "", map[string]string{"X-Margin-Open": "1"})
+	if res.StatusCode != 200 {
+		e.t.Fatalf("GET %s: %d %s", p, res.StatusCode, data)
+	}
+	var d core.Doc
+	json.Unmarshal(data, &d)
+	return d
+}
+
 // stream opens the event stream and returns a function that waits for the
 // next event of a name, with its data.
 func (e *env) stream() (next func(name string) map[string]any, stop func()) {
@@ -350,6 +363,25 @@ func TestViewsAndCopies(t *testing.T) {
 	e := start(t, "")
 	p := "/code/notes/n.md"
 	abs := filepath.Join(e.root, "notes", "n.md")
+	t.Run("CH-02: the copy is made from the bytes served when the file is opened, so a change right after is unread", func(t *testing.T) {
+		e2 := start(t, "")
+		q := "/code/notes/race.md"
+		write(t, filepath.Join(e2.root, "notes", "race.md"), "served\n")
+		time.Sleep(300 * time.Millisecond)
+		d := e2.open(q)
+		write(t, filepath.Join(e2.root, "notes", "race.md"), "changed right after\n")
+		time.Sleep(300 * time.Millisecond)
+		if d.Content != "served\n" {
+			t.Fatalf("served %q", d.Content)
+		}
+		if d := e2.doc(q); !d.Unread {
+			t.Fatal("change right after opening is not unread")
+		}
+		_, data := e2.get("/api/baseline" + q)
+		if string(data) != "served\n" {
+			t.Fatalf("copy %q", data)
+		}
+	})
 	t.Run("S-03, CH-02: opening a file records a view and creates the copy; a never-opened file has none", func(t *testing.T) {
 		if d := e.doc(p); d.HasCopy {
 			t.Fatal("copy before opening")
@@ -357,9 +389,8 @@ func TestViewsAndCopies(t *testing.T) {
 		if l := e.lists(); len(l.Recent) != 0 {
 			t.Fatalf("recent before opening: %+v", l.Recent)
 		}
-		res, _ := e.post("/api/open", `{"path":"`+p+`"}`)
-		if res.StatusCode != 200 {
-			t.Fatal(res.StatusCode)
+		if d := e.open(p); !d.HasCopy || d.Unread {
+			t.Fatalf("on opening %+v", d)
 		}
 		if d := e.doc(p); !d.HasCopy || d.Unread {
 			t.Fatalf("after opening %+v", d)
@@ -410,17 +441,22 @@ func TestViewsAndCopies(t *testing.T) {
 			t.Fatalf("copy %q", data)
 		}
 	})
-	t.Run("CH-03: a save while the copy holds unread changes keeps them", func(t *testing.T) {
-		write(t, abs, "outside again\n")
+	t.Run("CH-03, CH-14: a save while the copy holds unread changes keeps them and takes in the reader's own edit", func(t *testing.T) {
+		e.do("PUT", "/api/file"+p, "# T\n\nread para.\n\nother para.\n", map[string]string{"If-Match": e.doc(p).Etag})
+		e.post("/api/read", `{"path":"`+p+`"}`)
+		write(t, abs, "# T\n\nread para.\n\nother para, changed outside.\n")
 		time.Sleep(300 * time.Millisecond)
 		d := e.doc(p)
 		if !d.Unread {
 			t.Fatal("not unread")
 		}
-		e.do("PUT", "/api/file"+p, "outside again, then edited\n", map[string]string{"If-Match": d.Etag})
+		e.do("PUT", "/api/file"+p, "# T\n\nread para, edited by me.\n\nother para, changed outside.\n", map[string]string{"If-Match": d.Etag})
 		_, data := e.get("/api/baseline" + p)
-		if string(data) != "edited in margin\n" {
-			t.Fatalf("copy advanced over unread changes: %q", data)
+		if string(data) != "# T\n\nread para, edited by me.\n\nother para.\n" {
+			t.Fatalf("copy after save: %q", data)
+		}
+		if d := e.doc(p); !d.Unread {
+			t.Fatal("unread changes lost")
 		}
 		e.post("/api/read", `{"path":"`+p+`"}`)
 	})
@@ -533,7 +569,7 @@ func TestStream(t *testing.T) {
 		}
 	})
 	t.Run("S-06: opening, marking read and dismissing push a lists event", func(t *testing.T) {
-		e.post("/api/open", `{"path":"/code/notes/n.md"}`)
+		e.open("/code/notes/n.md")
 		next("lists")
 		e.post("/api/read", `{"path":"/code/notes/n.md"}`)
 		next("lists")

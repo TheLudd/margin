@@ -37,7 +37,6 @@ func New(c *core.Core, g *guard.Guard, static fs.FS) *Server {
 	s.mux.HandleFunc("PUT /api/file/{path...}", s.writeFile)
 	s.mux.HandleFunc("GET /api/meta/{path...}", s.meta)
 	s.mux.HandleFunc("GET /api/baseline/{path...}", s.baseline)
-	s.mux.HandleFunc("POST /api/open", s.open)
 	s.mux.HandleFunc("POST /api/read", s.markRead)
 	s.mux.HandleFunc("POST /api/manual", s.manual)
 	s.mux.HandleFunc("POST /api/dismiss", s.dismiss)
@@ -90,7 +89,8 @@ func (s *Server) lists(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) readFile(w http.ResponseWriter, r *http.Request) {
-	doc, err := s.core.Read("/" + r.PathValue("path"))
+	open := r.Header.Get("X-Margin-Open") == "1"
+	doc, err := s.core.Read("/"+r.PathValue("path"), open)
 	if err != nil {
 		failErr(w, err)
 		return
@@ -160,18 +160,6 @@ func readBody(w http.ResponseWriter, r *http.Request) (pathBody, bool) {
 		return b, false
 	}
 	return b, true
-}
-
-func (s *Server) open(w http.ResponseWriter, r *http.Request) {
-	b, ok := readBody(w, r)
-	if !ok {
-		return
-	}
-	if err := s.core.Open(b.Path); err != nil {
-		failErr(w, err)
-		return
-	}
-	writeJSON(w, map[string]bool{"ok": true})
 }
 
 func (s *Server) markRead(w http.ResponseWriter, r *http.Request) {

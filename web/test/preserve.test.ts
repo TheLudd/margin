@@ -22,7 +22,7 @@ const tools: Tools = {
       .split(/\n\s*\n/)
       .map((b) => b.trim())
       .filter((b) => b && !/^\[[^\]]+\]: /.test(b) && b !== '<!-- hidden -->')
-      .map((b) => b.replace(/\s+/g, ' ').replace(/\[([^\]]+)\]\[ref\]/g, '[$1](url)'))
+      .map((b) => b.replace(/\s+/g, ' ').replace(/\[([^\]]+)\]\[[^\]]+\]/g, '[$1](url)'))
   },
 }
 
@@ -89,11 +89,29 @@ describe('preserve', () => {
     expect([...referencedLabels('a [One] and [two][Three] [] x')]).toEqual(['one', 'two', 'three'])
   })
 
-  it('D-04: leading and trailing bytes of the file are kept', () => {
+  it('D-04, D-05: leading and trailing bytes of the file are kept, a missing final newline included', () => {
     const source = '\n\nA   a.\n\n\n'
     const o = blocks(source)
     expect(assemble(source, o, current('A a.'))).toBe(source)
-    expect(assemble('A a.', o.length ? blocks('A a.') : [], current('A a.'))).toBe('A a.\n')
+    expect(assemble('A a.', blocks('A a.'), current('A a.'))).toBe('A a.')
+    expect(assemble('A a.\n', blocks('A a.\n'), current('A a.'))).toBe('A a.\n')
+  })
+
+  it('D-05: a block indented on its line is taken from the line start, and consecutive definitions keep their separators', () => {
+    const indented = '# H\n  * a\n  * b\n'
+    const custom: Tools = {
+      blocks: () => [
+        { position: { start: { offset: 0 }, end: { offset: 3 } }, definition: false },
+        { position: { start: { offset: 6 }, end: { offset: 15 } }, definition: false },
+      ],
+      norms: tools.norms,
+    }
+    const o = splitOriginal(indented, custom)
+    expect(o[1].bytes).toBe('  * a\n  * b')
+    expect(assemble(indented, o, current('# H', '* a * b'))).toBe(indented)
+    const defs = 'Text [a][a] and [b][b].\n\n[a]: x\n[b]: y\n'
+    const o2 = blocks(defs)
+    expect(assemble(defs, o2, current('Text [a][a] and [b][b].'.replace(/\[(\w)\]\[\w\]/g, '[$1](url)')))).toBe(defs)
   })
 
   it('D-04: a separator of a single newline between blocks is kept', () => {

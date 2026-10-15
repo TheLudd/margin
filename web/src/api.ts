@@ -33,10 +33,15 @@ function post(url: string, body: unknown): Promise<Response> {
 export const api = {
   lists: (): Promise<Lists> => fetch('/api/lists').then((r) => json<Lists>(r)),
 
-  /** Reads a file; with an etag, answers null when it is unchanged (304). */
-  async file(path: string, etag?: string): Promise<Doc | null> {
+  /**
+   * Reads a file; with an etag, answers null when it is unchanged (304).
+   * With open, the file counts as opened: a view is recorded and the copy
+   * made from the bytes served (S-03, CH-02).
+   */
+  async file(path: string, etag?: string, open = false): Promise<Doc | null> {
     const headers: Record<string, string> = {}
     if (etag) headers['If-None-Match'] = etag
+    if (open) headers['X-Margin-Open'] = '1'
     const res = await fetch('/api/file' + encodePath(path), { headers })
     if (res.status === 304) return null
     return json<Doc>(res)
@@ -61,7 +66,6 @@ export const api = {
     return res.text()
   },
 
-  open: (path: string) => post('/api/open', { path }).then((r) => json<unknown>(r)),
   markRead: (path: string) => post('/api/read', { path }).then((r) => json<unknown>(r)),
   manual: (path: string, manual: boolean) => post('/api/manual', { path, manual }).then((r) => json<unknown>(r)),
   dismiss: (path: string) => post('/api/dismiss', { path }).then((r) => json<unknown>(r)),
