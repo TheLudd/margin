@@ -19,6 +19,16 @@ margin is a local, always-running service for reading the markdown files in a se
 - Polling, of any kind, anywhere.
 - Full-text search.
 
+## Stack
+
+Decided 2026-10-15. Not up for reopening during the rewrite.
+
+- **Go** for the service: one static binary with the frontend embedded, inotify, SSE, git by shelling out, a systemd user service.
+- **TypeScript with Vite** for the frontend, without a framework: the chrome is a few hundred lines of DOM code.
+- **Milkdown kit, without Crepe**, as the editor. It is the only mainstream editor that parses with remark, which the byte-preserving save (D-04) and the change marks (CH) depend on. Crepe's extras (image block, LaTeX, slash menu, link editor) are not used; the theme, the code block view and mermaid are the rewrite's own.
+- **Mermaid** loaded only when a document has a mermaid block. The page loads under 300KB of script before any document is opened (T-07).
+- **Tests**: Go's testing package, Vitest, and Playwright against the built binary (section 12).
+
 ## 2. Operation (P)
 
 - **P-01** A single Go binary serves the frontend, embedded at build time. Node is needed only to build.
@@ -234,6 +244,7 @@ A general rule, then its instances: no state change moves any element that didn'
 - **T-04** Browser tests (Playwright, against the built binary and a temp root) cover D, N-01, N-03, N-04, N-06, CH-05 to CH-12, every L demand by reading computed styles and sizes against `spec/look.css`, every J demand by comparing bounding boxes, and every K row.
 - **T-05** The never-stale tests write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the browser shows.
 - **T-06** `make test` runs all three levels and `make coverage`.
+- **T-07** A browser test asserts the script loaded before any document is opened is under 300KB.
 
 ## Decisions
 
