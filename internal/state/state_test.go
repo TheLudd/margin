@@ -30,6 +30,23 @@ func TestState(t *testing.T) {
 		}
 	})
 
+	t.Run("P-03: state files from an older build, or broken ones, do not keep margin from starting", func(t *testing.T) {
+		dir := t.TempDir()
+		os.WriteFile(filepath.Join(dir, "manual.json"), []byte(`["/old/a.md"]`), 0o644)
+		os.WriteFile(filepath.Join(dir, "views.json"), []byte(`{"views": [`), 0o644)
+		s, err := Open(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !s.Manual("/old/a.md") || len(s.Views()) != 0 {
+			t.Fatalf("manual %v views %v", s.ManualSet(), s.Views())
+		}
+		os.WriteFile(filepath.Join(dir, "manual.json"), []byte(`nonsense`), 0o644)
+		if s, err := Open(dir); err != nil || len(s.ManualSet()) != 0 {
+			t.Fatalf("broken manual: %v %v", err, s.ManualSet())
+		}
+	})
+
 	t.Run("CH-13, P-03: manual marks survive a restart and can be cleared", func(t *testing.T) {
 		dir := t.TempDir()
 		s, _ := Open(dir)

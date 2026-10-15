@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -50,9 +51,11 @@ func Open(dir string) (*Store, error) {
 		return nil, err
 	}
 	s := &Store{dir: dir, views: map[string]time.Time{}, dismissed: map[string]time.Time{}, manual: map[string]bool{}, copies: map[string]copyInfo{}}
+	// A state file from another build, or a broken one, never keeps margin
+	// from starting: it is left alone and the state starts empty.
 	var vf viewsFile
 	if err := readJSON(filepath.Join(dir, "views.json"), &vf); err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "margin: ignoring %s: %v\n", filepath.Join(dir, "views.json"), err)
 	}
 	if vf.Views != nil {
 		s.views = vf.Views
@@ -60,11 +63,7 @@ func Open(dir string) (*Store, error) {
 	if vf.Dismissed != nil {
 		s.dismissed = vf.Dismissed
 	}
-	var mf manualFile
-	if err := readJSON(filepath.Join(dir, "manual.json"), &mf); err != nil {
-		return nil, err
-	}
-	for _, p := range mf.Manual {
+	for _, p := range readManual(filepath.Join(dir, "manual.json")) {
 		s.manual[p] = true
 	}
 	entries, err := os.ReadDir(filepath.Join(dir, "copies"))
@@ -91,6 +90,20 @@ func Open(dir string) (*Store, error) {
 
 // Dir is the state folder.
 func (s *Store) Dir() string { return s.dir }
+
+// readManual reads the manual list, as {"manual": [...]} or as a bare list.
+func readManual(p string) []string {
+	var mf manualFile
+	if err := readJSON(p, &mf); err == nil {
+		return mf.Manual
+	}
+	var list []string
+	if err := readJSON(p, &list); err != nil {
+		fmt.Fprintf(os.Stderr, "margin: ignoring %s: %v\n", p, err)
+		return nil
+	}
+	return list
+}
 
 func readJSON(p string, v any) error {
 	data, err := os.ReadFile(p)
