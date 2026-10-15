@@ -101,8 +101,9 @@ describe('round trip', () => {
         failures.push(`${file} (${err instanceof Error ? err.message : err})`)
       }
     }
-    console.log(`round trip: ${total - failures.length} of ${total} files reproduced byte for byte`)
-    for (const f of failures) console.log('  differs: ' + f)
+    // Written straight to stdout, so the report shows whether the bar is met or not.
+    process.stdout.write(`round trip: ${total - failures.length} of ${total} files reproduced byte for byte\n`)
+    for (const f of failures) process.stdout.write('  differs: ' + f + '\n')
     // The spec's bar: 551 of 554 files, so at most 0.6% may differ.
     expect(failures.length).toBeLessThanOrEqual(Math.ceil(total * 0.006))
     await editor.destroy()
