@@ -49,6 +49,15 @@ export function external(tr: Transaction): Transaction {
   return tr.setMeta(externalMeta, true).setMeta('addToHistory', false)
 }
 
+/**
+ * Whether a transaction is the reader's doing (D-03): it changes the
+ * document, comes from inside, and is not housekeeping, which plugins mark
+ * by keeping it out of the history (heading ids, list numbering).
+ */
+export function isEdit(tr: Transaction): boolean {
+  return tr.docChanged && !tr.getMeta(externalMeta) && tr.getMeta('addToHistory') !== false
+}
+
 /* The block holding the cursor, highlighted while editing (D-02). */
 const cursorBlockKey = new PluginKey('margin-cursor-block')
 const cursorBlock = $prose(
@@ -275,7 +284,7 @@ export async function createEditor(root: HTMLElement, markdown: string, events: 
         dispatchTransaction(this: EditorView, tr: Transaction) {
           const state = this.state.apply(tr)
           this.updateState(state)
-          if (tr.docChanged && !tr.getMeta(externalMeta)) events.onEdit()
+          if (isEdit(tr)) events.onEdit()
           events.onTransaction(tr)
         },
         handleDOMEvents: {
