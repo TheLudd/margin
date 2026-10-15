@@ -8,6 +8,13 @@ What margin must do, as demands with ids. A rewrite is done when every demand ha
 
 Ids are stable: never renumber, never reuse a dropped one. A test names the ids it covers in its title, as in `"P-02, P-03: config falls back to ~/.config"`. A script lists the ids no test names.
 
+## How the rewrite proceeds
+
+- The rewrite happens on a branch of this repository. Its first commit deletes `internal/`, `web/src`, `main.go` and `plan.md`; the old code stays in history for reference and nothing else. `readme.md` is rewritten from this spec at the end.
+- `.claude/settings.json` holds a hook that runs `make install` and restarts margin after every commit. The first commit removes that hook, so the margin in use is not replaced by a half-built one. The last commit, once the whole Playwright suite passes, restores it unchanged.
+- `make coverage` is written before anything it would cover, so the gaps are visible from the start.
+- The order of work is the order of the sections: operation and files, then the document, then never stale, then changes, then the look and the nothing-jumps rules.
+
 ## 1. Purpose
 
 margin is a local, always-running service for reading the markdown files in a set of folders, in the browser. The files are typically written by an LLM; margin is where they are read and touched up. Reading is primary. Editing is for small things: a typo, a task ticked, a paragraph adjusted. What is on screen is never stale.
