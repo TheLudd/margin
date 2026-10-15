@@ -1,0 +1,1684 @@
+/* Cyberpunk palette, ported from newdotfiles' markdown-preview theme */
+:root {
+  --cp-bg: #0a0b17;
+  --cp-panel: #10122a;
+  --cp-raised: #171a3a;
+  --cp-line: #2a2f63;
+  --cp-text: #d6dbff;
+  --cp-muted: #7f86c2;
+  --cp-cyan: #00e5ff;
+  --cp-magenta: #ff2bd6;
+  --cp-h3: #8fa8ff;
+  --cp-code: #5cffa8;
+  --cp-warn: #ffb347;
+  --cp-mono: 'Source Code Pro', 'DejaVuSansM Nerd Font', monospace;
+  --cp-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  --sidebar-width: 290px;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 300px;
+  background:
+    radial-gradient(ellipse at top left, #ff2bd61a, transparent 50%),
+    radial-gradient(ellipse at bottom right, #00e5ff14, transparent 50%),
+    var(--cp-bg);
+  color: var(--cp-text);
+  font-family: var(--cp-sans);
+  overflow: hidden;
+}
+
+body:has(#toc[hidden]) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+kbd {
+  font-family: var(--cp-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  color: var(--cp-muted);
+}
+
+::selection {
+  background: var(--cp-magenta);
+  color: var(--cp-bg);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cp-line);
+  border-radius: 4px;
+}
+
+/* Sidebar */
+#sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 14px 10px 0;
+  border-right: 1px solid var(--cp-line);
+  border-top: 2px solid var(--cp-magenta);
+  background: #0a0b17cc;
+  font-size: 13px;
+}
+
+#sidebar .brand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px 12px;
+}
+
+#sidebar :is(.close-sidebar, .unfold-sidebar) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -6px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--cp-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+#sidebar :is(.close-sidebar, .unfold-sidebar):hover {
+  color: var(--cp-cyan);
+}
+
+#sidebar .unfold-sidebar {
+  display: none;
+}
+
+/* Settings at the foot, in view however long the lists get */
+#sidebar .settings-row {
+  order: 1;
+  position: sticky;
+  bottom: 0;
+  margin: auto -10px 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--cp-line);
+  background: var(--cp-bg);
+  color: var(--cp-muted);
+}
+
+#sidebar .settings-row:hover {
+  color: var(--cp-cyan);
+}
+
+/* Folded on wider screens: a strip that unfolds it again */
+@media (min-width: 701px) {
+  body.sidebar-folded {
+    --sidebar-width: 48px;
+  }
+
+  body.sidebar-folded #sidebar {
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  body.sidebar-folded #sidebar > :not(.unfold-sidebar) {
+    display: none;
+  }
+
+  body.sidebar-folded #sidebar .unfold-sidebar {
+    display: inline-flex;
+    margin: 0;
+  }
+}
+
+/* Nothing to browse until a folder is configured */
+body.setup #sidebar > :not(.brand-row) {
+  display: none;
+}
+
+#sidebar .brand {
+  display: block;
+  font-family: var(--cp-mono);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--cp-magenta);
+  text-shadow: 0 0 8px #ff2bd666;
+}
+
+#sidebar .find {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+#sidebar .find:hover {
+  border-color: var(--cp-cyan);
+}
+
+#sidebar h2 {
+  margin: 18px 8px 6px;
+  font-family: var(--cp-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-cyan);
+}
+
+#sidebar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#sidebar li a {
+  display: flex;
+  gap: 0;
+  align-items: baseline;
+  padding: 3px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#sidebar li a:hover {
+  background: var(--cp-raised);
+}
+
+/* Unread changes: a mark by the time (or the copy count, or the right edge
+   when there is neither), drawn in existing padding so that marking files
+   read never moves anything */
+#sidebar li a.unread {
+  position: relative;
+}
+
+#sidebar li a.unread :is(time, .copies) {
+  position: relative;
+  color: var(--cp-code);
+}
+
+#sidebar li a.unread :is(time, .copies)::after,
+#sidebar li a.unread:not(:has(time, .copies))::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 2px);
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cp-code);
+  box-shadow: 0 0 4px var(--cp-code);
+}
+
+#sidebar li a.unread:not(:has(time, .copies))::after {
+  left: auto;
+  right: 6px;
+}
+
+#sidebar li a.current {
+  background: var(--cp-raised);
+  border-left-color: var(--cp-magenta);
+}
+
+/* A file label: name, then folder. The folder shrinks first; the name is cut
+   only when it alone doesn't fit. In the sidebar it gives way to the time and
+   copy count. */
+.file-label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.file-label .dir {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cp-muted);
+  font-size: 0.9em;
+}
+
+.file-label .name {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#sidebar .recent-entry {
+  display: flex;
+  align-items: center;
+}
+
+#sidebar .recent-entry > a {
+  flex: 1;
+  min-width: 0;
+}
+
+#sidebar .forget {
+  flex-shrink: 0;
+  width: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-muted);
+  font-size: 14px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+#sidebar .recent-entry:hover .forget {
+  visibility: visible;
+}
+
+#sidebar .forget:hover {
+  color: var(--cp-magenta);
+}
+
+#sidebar time {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 11px;
+}
+
+#sidebar .copies {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 11px;
+}
+
+#sidebar .copies.changed {
+  color: var(--cp-cyan);
+}
+
+#sidebar .copies.changed::before {
+  content: '● ';
+}
+
+#sidebar .empty {
+  margin: 4px 8px;
+  color: var(--cp-muted);
+}
+
+#sidebar details summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+#sidebar details summary::before {
+  content: '▸';
+  width: 14px;
+  color: var(--cp-muted);
+}
+
+#sidebar details[open] summary::before {
+  content: '▾';
+}
+
+#sidebar details summary span:first-of-type {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#sidebar details summary:hover {
+  background: var(--cp-raised);
+}
+
+#sidebar details .count {
+  color: var(--cp-muted);
+}
+
+#sidebar details.section {
+  margin-top: 12px;
+}
+
+#sidebar details.section > summary {
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 0;
+}
+
+#sidebar details.section > summary h2 {
+  flex: 1;
+  margin: 0;
+}
+
+#sidebar details.section > div > ul {
+  margin-left: 0;
+}
+
+#sidebar details.section > summary .count {
+  flex: none;
+}
+
+#sidebar time.modified {
+  color: var(--cp-cyan);
+}
+
+#sidebar details ul {
+  margin-left: 14px;
+}
+
+/* Main */
+#main {
+  container-type: inline-size; /* wide blocks size against it */
+  overflow-y: auto;
+  scroll-padding-top: 60px;
+}
+
+#main > section {
+  display: none;
+  max-width: 640px;
+  margin: 18vh auto 0;
+  padding: 0 32px;
+  color: var(--cp-muted);
+}
+
+#main > section h1 {
+  font-family: var(--cp-mono);
+  color: var(--cp-magenta);
+  text-shadow: 0 0 6px #ff2bd64d;
+}
+
+#main > section.settings {
+  max-width: 820px;
+  margin-top: 10vh;
+  color: var(--cp-text);
+}
+
+#main[data-view='settings'] .settings,
+#main[data-view='home'] .home,
+#main[data-view='missing'] .not-found {
+  display: block;
+}
+
+#main:not([data-view='document']) :is(.doc-header, .banner, article) {
+  display: none;
+}
+
+.doc-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--cp-line);
+  background: #0a0b17e6;
+  backdrop-filter: blur(6px);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+.doc-header .path {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-header .path .name {
+  color: var(--cp-text);
+}
+
+.doc-header .worktree {
+  padding: 1px 4px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-cyan);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .worktree[hidden] {
+  display: none;
+}
+
+/* Status badges, sitting together. Each is as wide as its longest value,
+   so the header doesn't shift as values change; stable values are dim. */
+.doc-header .badges {
+  display: flex;
+  flex-shrink: 0;
+  align-self: center;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.doc-header .badge {
+  box-sizing: content-box;
+  width: calc(var(--chars) * (1ch + 0.1em));
+  padding: 1px 8px;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.6;
+}
+
+.doc-header .badge[hidden] {
+  display: none;
+}
+
+.doc-header .badge.unstable {
+  --tint: var(--cp-cyan);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .commit {
+  --chars: 11; /* uncommitted */
+}
+
+.doc-header .commit.unstable {
+  --tint: var(--cp-warn);
+  cursor: pointer;
+}
+
+/* Never committed: nothing to compare with */
+.doc-header .commit.untracked {
+  --tint: var(--cp-warn);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .commit.unstable:hover,
+.doc-header .commit.active {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
+/* Editing the document: a toggle, lit while on, in the editor's colour */
+.doc-header .edit {
+  --chars: 7; /* editing */
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .edit:hover {
+  opacity: 1;
+}
+
+.doc-header .edit.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+/* Edited by hand: a toggle, lit while on */
+.doc-header .manual {
+  --chars: 6;
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .manual:hover {
+  opacity: 1;
+}
+
+.doc-header .manual.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .manual.active:hover {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
+.doc-header .status {
+  --chars: 8; /* conflict, retrying */
+}
+
+.doc-header .status:is([data-state='conflict'], [data-state='missing'], [data-state='error']) {
+  --tint: var(--change-removed);
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 32px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--cp-warn);
+  border-radius: 4px;
+  background: #ffb3471a;
+  font-size: 14px;
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner button {
+  padding: 4px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-raised);
+  color: var(--cp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.banner button:first-of-type {
+  margin-left: auto;
+}
+
+.banner button:hover {
+  border-color: var(--cp-cyan);
+}
+
+article {
+  max-width: 920px;
+  margin: 24px auto 30vh;
+  padding: 0 16px;
+}
+
+.frontmatter {
+  margin: 0 64px 8px;
+  border: 1px solid var(--cp-line);
+  border-left: 2px solid var(--cp-magenta);
+  border-radius: 4px;
+  background: var(--cp-panel);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+.frontmatter[hidden] {
+  display: none;
+}
+
+.frontmatter summary {
+  padding: 6px 12px;
+  color: var(--cp-muted);
+  cursor: pointer;
+}
+
+.frontmatter textarea {
+  display: block;
+  width: 100%;
+  padding: 4px 12px 10px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--cp-code);
+  font: inherit;
+  line-height: 1.5;
+}
+
+/* Settings */
+.settings p {
+  color: var(--cp-muted);
+  line-height: 1.5;
+}
+
+.settings .roots-head,
+.settings .root {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 60px 32px;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings .roots-head {
+  margin-top: 28px;
+  padding: 0 2px 6px;
+  color: var(--cp-cyan);
+  font: 11px var(--cp-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.settings .root {
+  margin-bottom: 8px;
+}
+
+.settings input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px var(--cp-mono);
+}
+
+.settings input:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings .files {
+  color: var(--cp-muted);
+  font: 12px var(--cp-mono);
+  text-align: right;
+}
+
+.settings button {
+  padding: 7px 14px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  background: var(--cp-raised);
+  color: var(--cp-text);
+  font: 13px var(--cp-mono);
+  cursor: pointer;
+}
+
+.settings button:hover {
+  border-color: var(--cp-cyan);
+}
+
+.settings button.remove {
+  padding: 6px 0;
+  color: var(--cp-muted);
+}
+
+.settings button.primary {
+  border-color: var(--cp-magenta);
+  color: var(--cp-magenta);
+}
+
+.settings button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.settings .suggestions .loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--cp-muted);
+  font: 13px var(--cp-mono);
+}
+
+.settings .suggestions .loading .spinner {
+  --size: 16px;
+}
+
+.settings .suggestion {
+  min-height: 36px;
+  font: 14px var(--cp-mono);
+}
+
+.settings .suggestion .path {
+  color: var(--cp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings button.add {
+  padding: 6px 0;
+  color: var(--cp-cyan);
+}
+
+.settings .actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.settings .actions.save {
+  justify-content: flex-end;
+}
+
+.settings h2 {
+  margin: 40px 0 0;
+  font: 11px var(--cp-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-cyan);
+}
+
+.settings select {
+  margin: 0 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px var(--cp-mono);
+}
+
+.settings select:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings input.days {
+  width: 5em;
+  margin: 0 4px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
+.settings textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  resize: vertical;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px/1.5 var(--cp-mono);
+}
+
+.settings textarea:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings .error {
+  padding: 10px 14px;
+  border: 1px solid var(--cp-warn);
+  border-radius: 4px;
+  background: #ffb3471a;
+  color: var(--cp-text);
+}
+
+.settings .error[hidden] {
+  display: none;
+}
+
+.settings .file {
+  margin-top: 32px;
+  font: 12px var(--cp-mono);
+}
+
+/* Busy overlay */
+dialog.busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-text);
+  font: 13px var(--cp-mono);
+  outline: 0;
+}
+
+dialog.busy:not([open]) {
+  display: none;
+}
+
+dialog.busy::backdrop {
+  background: #05060fcc;
+  backdrop-filter: blur(3px);
+}
+
+dialog.busy p {
+  margin: 0;
+}
+
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: var(--size, 32px);
+  height: var(--size, 32px);
+  border: 2px solid var(--cp-line);
+  border-top-color: var(--cp-magenta);
+  border-right-color: var(--cp-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* TOC */
+#toc {
+  overflow-y: auto;
+  padding: 58px 18px 40px 14px;
+  border-left: 1px solid var(--cp-line);
+  font-family: var(--cp-mono);
+  font-size: 14px;
+}
+
+#toc h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-magenta);
+}
+
+#toc a {
+  display: block;
+  padding: 4px 0 4px 8px;
+  border-left: 2px solid transparent;
+  color: var(--cp-muted);
+  line-height: 1.35;
+}
+
+#toc a.level-1,
+#toc a.level-2 {
+  color: var(--cp-text);
+}
+
+#toc a.level-3 {
+  padding-left: 20px;
+}
+
+#toc a.level-4 {
+  padding-left: 32px;
+}
+
+#toc a:hover {
+  color: var(--cp-magenta);
+}
+
+#toc a.active {
+  border-left-color: var(--cp-cyan);
+  color: var(--cp-cyan);
+}
+
+/* Finder */
+#finder {
+  width: min(640px, 90vw);
+  margin-top: 12vh;
+  padding: 0;
+  border: 1px solid var(--cp-line);
+  border-top: 2px solid var(--cp-magenta);
+  border-radius: 6px;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  box-shadow: 0 0 40px #00e5ff26;
+}
+
+#finder::backdrop {
+  background: #05060fb3;
+}
+
+#finder input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--cp-line);
+  outline: 0;
+  background: transparent;
+  color: var(--cp-text);
+  font: 15px var(--cp-mono);
+}
+
+#finder ul {
+  max-height: 50vh;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+#finder li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#finder li.tier {
+  padding: 10px 10px 4px;
+  cursor: default;
+  font-family: var(--cp-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-muted);
+}
+
+#finder li.tier.older {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+}
+
+#finder li.older:not(.tier) {
+  opacity: 0.6;
+}
+
+#finder li.older.selected {
+  opacity: 1;
+}
+
+#finder li.toggle {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+  border-radius: 0;
+  padding-top: 10px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+#finder li.toggle:hover {
+  color: var(--cp-cyan);
+}
+
+#finder li.selected {
+  background: var(--cp-raised);
+  box-shadow: inset 2px 0 var(--cp-cyan);
+}
+
+/* Editor: Crepe variables, then markdown styling */
+.milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--cp-text);
+  --crepe-color-surface: var(--cp-panel);
+  --crepe-color-surface-low: var(--cp-raised);
+  --crepe-color-on-surface: var(--cp-text);
+  --crepe-color-on-surface-variant: var(--cp-muted);
+  --crepe-color-outline: var(--cp-line);
+  --crepe-color-primary: var(--cp-cyan);
+  --crepe-color-secondary: var(--cp-raised);
+  --crepe-color-on-secondary: var(--cp-text);
+  --crepe-color-inverse: var(--cp-text);
+  --crepe-color-on-inverse: var(--cp-bg);
+  --crepe-color-inline-code: var(--cp-code);
+  --crepe-color-error: #ff5c7a;
+  --crepe-color-hover: var(--cp-raised);
+  --crepe-color-selected: #ff2bd633;
+  --crepe-color-inline-area: var(--cp-raised);
+  --crepe-font-title: var(--cp-mono);
+  --crepe-font-default: var(--cp-sans);
+  --crepe-font-code: var(--cp-mono);
+  --crepe-shadow-1: 0 0 12px #00e5ff1f;
+  --crepe-shadow-2: 0 0 24px #00e5ff26;
+}
+
+.milkdown .ProseMirror {
+  --inset-left: 64px;
+  --inset-right: 48px;
+  padding: 8px var(--inset-right) 60px var(--inset-left);
+  caret-color: var(--cp-magenta);
+}
+
+/* Code blocks and tables keep to the text's width unless their lines are
+   longer: then they grow evenly to both sides, centered on the text, up to a
+   24px gutter from the edges, and only scroll beyond that. The text sits
+   off-center by half the difference of its insets (the article's 2px border
+   on the left included), which the nearer side gives up. */
+.milkdown .ProseMirror > :is(.milkdown-code-block, .milkdown-table-block) {
+  position: relative;
+  left: 50%;
+  translate: -50%;
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100cqw - 48px - (2px + var(--inset-left) - var(--inset-right)));
+}
+
+.milkdown .milkdown-table-block .table-wrapper {
+  overflow-x: auto;
+}
+
+/* ProseMirror lays tables out fixed at 100%, which Chromium takes as "as wide
+   as allowed" when the block above sizes to its content: every table would
+   fill the whole room. Auto layout sizes the table to its cells instead. */
+.milkdown .milkdown-table-block table {
+  table-layout: auto;
+}
+
+/* A wide table reaches over the article's edge, whose focus border would
+   show through its cells */
+.milkdown .milkdown-table-block table {
+  background: var(--cp-bg);
+}
+
+/* Editing: while the cursor is in the document, the page says so */
+article {
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+article:has(.ProseMirror:focus) {
+  border-left-color: var(--cp-magenta);
+  background: #ff2bd608;
+  box-shadow: -6px 0 18px -10px var(--cp-magenta);
+}
+
+.milkdown .ProseMirror:focus .cursor-block {
+  border-radius: 3px;
+  background: #ff2bd610;
+  box-shadow: -10px 0 0 #ff2bd610, 10px 0 0 #ff2bd610;
+}
+
+/* Changes since the version read or committed */
+:root {
+  --change-added: var(--cp-code);
+  --change-modified: var(--cp-warn);
+  --change-removed: #ff5c7a;
+}
+
+.doc-header .changes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes[hidden],
+.doc-header .changes [hidden] {
+  display: none;
+}
+
+.doc-header .changes button {
+  padding: 0 6px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .changes button:hover:not(:disabled) {
+  border-color: var(--cp-cyan);
+  color: var(--cp-text);
+}
+
+.doc-header .changes button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.doc-header .changes button.count {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes button.count:hover:not(:disabled) {
+  color: var(--cp-cyan);
+  text-decoration: underline;
+}
+
+.doc-header .changes .mark-read {
+  color: var(--change-added);
+}
+
+.milkdown .ProseMirror .change-block {
+  position: relative;
+}
+
+.milkdown .ProseMirror .change-block::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  /* List items are indented; the bar stays in the gutter */
+  left: calc(-14px - var(--list-depth, 0) * 34px);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--change-added);
+  box-shadow: 0 0 6px var(--change-added);
+}
+
+.milkdown .ProseMirror .change-block.change-modified::after {
+  background: var(--change-modified);
+  box-shadow: 0 0 6px var(--change-modified);
+}
+
+/* Changed cells of a table, over the striped rows; new rows in the colour
+   of new blocks */
+.milkdown .ProseMirror tr:nth-child(n) :is(td, th).change-cell {
+  background: color-mix(in srgb, var(--change-modified), transparent 86%);
+}
+
+.milkdown .ProseMirror tr:nth-child(n) :is(td, th).change-cell.change-cell-added {
+  background: color-mix(in srgb, var(--change-added), transparent 88%);
+}
+
+/* Buttons in the gutter showing a change as it is, as a diff or as it was;
+   visible for the current change and while pointing at one */
+.milkdown .ProseMirror .change-controls {
+  position: relative;
+  height: 0;
+}
+
+.milkdown .ProseMirror .change-controls > span {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  /* Left of the bar, with room to move the pointer across to it */
+  left: calc(-14px - var(--list-depth, 0) * 34px - 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 14px;
+  opacity: 0;
+  visibility: hidden;
+  /* Hidden only after a while, so the pointer can cross the gutter to it */
+  transition:
+    opacity 0.15s 0.4s,
+    visibility 0s 0.55s;
+}
+
+.milkdown .ProseMirror .change-controls:is(.current, :hover, :has(+ :is(.change-block, .change-removed):hover)) > span {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.15s,
+    visibility 0s;
+}
+
+.milkdown .ProseMirror .change-controls button {
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: 12px/1 var(--cp-mono);
+  cursor: pointer;
+}
+
+.milkdown .ProseMirror .change-controls button:hover {
+  border-color: var(--cp-cyan);
+  color: var(--cp-text);
+}
+
+.milkdown .ProseMirror .change-controls button.active {
+  border-color: var(--cp-cyan);
+  color: var(--cp-cyan);
+}
+
+/* A block shown as it was: the document's block is hidden */
+.milkdown .ProseMirror .change-hidden {
+  display: none;
+}
+
+.milkdown .ProseMirror .change-old {
+  position: relative;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--change-removed), transparent 92%);
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-old::after,
+.milkdown .ProseMirror .change-removed.change-plain::after {
+  background: var(--change-removed);
+  box-shadow: 0 0 6px var(--change-removed);
+}
+
+.milkdown .ProseMirror .change-old > :first-child {
+  margin-top: 0;
+}
+
+.milkdown .ProseMirror .change-note {
+  color: var(--cp-muted);
+  font-style: italic;
+}
+
+/* Removed blocks shown as it is now: a sliver, still a place to step to,
+   with a notch in the gutter as long as a short bar */
+.milkdown .ProseMirror .change-removed.change-collapsed {
+  height: 6px;
+  margin: 2px 0;
+  padding: 0;
+}
+
+.milkdown .ProseMirror .change-removed.change-collapsed::after {
+  top: -4px;
+  bottom: -4px;
+}
+
+/* Removed blocks shown as they were, without strike-through */
+.milkdown .ProseMirror .change-removed.change-plain {
+  color: inherit;
+  text-decoration: none;
+  opacity: 1;
+}
+
+/* The change nearest the middle of the view */
+.milkdown .ProseMirror :is(.change-block, .change-removed).change-current {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cp-cyan), transparent 93%);
+  box-shadow:
+    -10px 0 0 color-mix(in srgb, var(--cp-cyan), transparent 93%),
+    10px 0 0 color-mix(in srgb, var(--cp-cyan), transparent 93%);
+}
+
+.milkdown .ProseMirror :is(.change-block, .change-removed).change-current::after {
+  width: 5px;
+  margin-left: -1px;
+  background: var(--cp-cyan);
+  box-shadow: 0 0 8px var(--cp-cyan);
+}
+
+/* After jumping to a change */
+.milkdown .ProseMirror .change-pulse {
+  animation: change-pulse 1.2s ease-out;
+}
+
+@keyframes change-pulse {
+  from {
+    background-color: color-mix(in srgb, var(--cp-cyan), transparent 70%);
+  }
+}
+
+/* Too thin for a bar */
+.milkdown .ProseMirror hr.change-block {
+  outline: 1px solid var(--change-added);
+  outline-offset: 4px;
+}
+
+.milkdown .ProseMirror hr.change-block.change-modified {
+  outline-color: var(--change-modified);
+}
+
+.milkdown .ProseMirror .change-inserted {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--change-added), transparent 82%);
+  box-shadow: 0 1px 0 var(--change-added);
+}
+
+.milkdown .ProseMirror .change-deleted {
+  margin: 0 1px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--change-removed), transparent 85%);
+  color: var(--change-removed);
+  text-decoration: line-through;
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-removed {
+  position: relative;
+  margin: 4px 0;
+  padding: 0 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--change-removed), transparent 90%);
+  color: color-mix(in srgb, var(--change-removed), var(--cp-text) 40%);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--change-removed), transparent 40%);
+  opacity: 0.75;
+  user-select: none;
+}
+
+.milkdown .ProseMirror .change-removed::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: -14px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--change-removed);
+}
+
+.milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--cp-mono);
+  letter-spacing: 0.02em;
+}
+
+.milkdown .ProseMirror h1 {
+  color: var(--cp-magenta);
+  text-shadow: 0 0 6px #ff2bd64d;
+  border-bottom: 1px solid var(--cp-magenta);
+  padding-bottom: 6px;
+}
+
+.milkdown .ProseMirror h2 {
+  color: var(--cp-cyan);
+  text-shadow: 0 0 5px #00e5ff33;
+  border-bottom: 1px solid var(--cp-line);
+  padding-bottom: 4px;
+}
+
+.milkdown .ProseMirror h3 {
+  color: var(--cp-h3);
+}
+
+.milkdown .ProseMirror strong {
+  color: #fff;
+}
+
+.milkdown .ProseMirror a {
+  color: var(--cp-cyan);
+}
+
+.milkdown .ProseMirror a:hover {
+  color: var(--cp-magenta);
+  text-shadow: 0 0 8px #ff2bd680;
+}
+
+.milkdown .ProseMirror blockquote {
+  border-left: 3px solid var(--cp-magenta);
+  background: #ff2bd60d;
+}
+
+.milkdown .ProseMirror hr {
+  height: 2px;
+  border: 0;
+  background: linear-gradient(90deg, var(--cp-magenta), var(--cp-cyan));
+}
+
+.milkdown .ProseMirror th {
+  color: var(--cp-cyan);
+  font-family: var(--cp-mono);
+}
+
+.milkdown .ProseMirror tr:nth-child(2n) td {
+  background: var(--cp-raised);
+}
+
+/* Crepe makes inline code an inline-block, which wraps as a box of its own:
+   a long span, or one holding a change, rises above the line it is on */
+.milkdown .ProseMirror :not(pre) > code {
+  display: inline;
+  box-decoration-break: clone;
+}
+
+.milkdown .milkdown-code-block {
+  border: 1px solid var(--cp-line);
+  border-left: 3px solid var(--cp-cyan);
+  background: #07081a;
+}
+
+.milkdown .milkdown-code-block .cm-editor {
+  background: transparent;
+}
+
+.milkdown .milkdown-code-block .preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  color: #ff5c7a;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1100px) {
+  body,
+  body:has(#toc[hidden]) {
+    --sidebar-width: 240px;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  #toc {
+    display: none;
+  }
+}
+
+/* Narrow screens: the document alone, with the sidebar and the contents
+   sliding over it from a bar on top */
+#mobile-bar,
+#scrim {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  body,
+  body:has(#toc[hidden]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  #mobile-bar {
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    border-top: 2px solid var(--cp-magenta);
+    border-bottom: 1px solid var(--cp-line);
+    background: var(--cp-panel);
+  }
+
+  #mobile-bar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--cp-line);
+    border-radius: 6px;
+    background: none;
+    color: var(--cp-text);
+  }
+
+  #mobile-bar .brand {
+    flex: 1;
+    font-family: var(--cp-mono);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--cp-magenta);
+    text-shadow: 0 0 8px #ff2bd666;
+  }
+
+  body:has(#toc[hidden]) #open-toc {
+    display: none;
+  }
+
+  #main {
+    grid-row: 2;
+  }
+
+  #sidebar,
+  #toc {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(85vw, 340px);
+    background: var(--cp-panel);
+    transition: transform 0.2s ease;
+  }
+
+  #sidebar {
+    left: 0;
+    transform: translateX(-100%);
+  }
+
+  /* Wider screens without room for it hide it; here it is a drawer */
+  #toc:not([hidden]) {
+    display: block;
+  }
+
+  #toc {
+    right: 0;
+    padding-top: 18px;
+    transform: translateX(100%);
+  }
+
+  body[data-drawer='sidebar'] #sidebar,
+  body[data-drawer='toc'] #toc {
+    transform: none;
+  }
+
+  body[data-drawer] #scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: #0a0b17b3;
+  }
+
+  #sidebar .close-sidebar {
+    width: 40px;
+    height: 40px;
+    margin-right: -8px;
+    font-size: 26px;
+  }
+
+  #sidebar .settings-row {
+    padding: 14px 18px;
+    background: var(--cp-panel);
+  }
+
+  /* Fingers, not a mouse: larger targets, nothing that waits for hover */
+  #sidebar {
+    font-size: 15px;
+  }
+
+  #sidebar li a,
+  #sidebar details summary {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #sidebar .forget {
+    visibility: visible;
+    width: 36px;
+  }
+
+  #sidebar .find kbd {
+    display: none;
+  }
+
+  #toc a {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .doc-header {
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+
+  /* Badges as symbols; the words stay for screen readers */
+  .doc-header .badges {
+    gap: 4px;
+    border: none;
+  }
+
+  .doc-header .badge:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 4px;
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .doc-header .badge::before {
+    font-family: var(--cp-sans);
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .doc-header .manual::before {
+    content: '✎';
+  }
+
+  .doc-header .commit[data-state='committed']::before {
+    content: '◆';
+  }
+
+  .doc-header .commit[data-state='uncommitted']::before {
+    content: '±';
+  }
+
+  .doc-header .commit[data-state='untracked']::before {
+    content: '?';
+  }
+
+  .doc-header .status[data-state='clean']::before {
+    content: '✓';
+  }
+
+  .doc-header .status[data-state='dirty']::before {
+    content: '•';
+  }
+
+  .doc-header .status[data-state='saving']::before {
+    content: '…';
+  }
+
+  .doc-header .status[data-state='conflict']::before {
+    content: '⚠';
+  }
+
+  .doc-header .status[data-state='missing']::before {
+    content: '✕';
+  }
+
+  .doc-header .status[data-state='error']::before {
+    content: '↻';
+  }
+
+  #main > section {
+    padding: 0 16px;
+  }
+
+  .milkdown .ProseMirror {
+    --inset-left: 16px;
+    --inset-right: 16px;
+  }
+}

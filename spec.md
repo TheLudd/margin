@@ -4,7 +4,7 @@ status: draft
 
 # margin — spec
 
-What margin must do, as demands with ids. A rewrite is done when every demand has a test that names its id and passes, or is marked as covered by a reference screenshot. Open questions are marked **OPEN** and must be settled before the list is final.
+What margin must do, as demands with ids. A rewrite is done when every demand has a test that names its id and passes. The look is specified by `spec/look.css`, the current stylesheet, and section 9 reads the demands out of it. Open questions are marked **OPEN** and must be settled before the list is final.
 
 Ids are stable: never renumber, never reuse a dropped one. A test names the ids it covers in its title, as in `"P-02, P-03: config falls back to ~/.config"`. A script lists the ids no test names.
 
@@ -127,19 +127,70 @@ Any one mechanism is enough. All must exist.
 
 ## 9. Look (L)
 
-Reference: a screenshot of the current build per layout (wide, no TOC, narrow, phone) taken before the rewrite, in `spec/screenshots/`. Demands below are the ones a test can measure; the screenshots carry the rest.
+The reference is `spec/look.css`, the stylesheet of the last build before the rewrite, copied verbatim. The rewrite may structure its CSS as it likes, but what is rendered must match the reference in everything listed here; the browser tests read computed styles and sizes. Where the reference and this list disagree, the reference wins, and the list gets fixed.
 
-- **L-01** Palette, as CSS tokens and nowhere else:
-  `bg #0a0b17`, `panel #10122a`, `raised #171a3a`, `line #2a2f63`, `text #d6dbff`, `muted #7f86c2`, `cyan #00e5ff`, `magenta #ff2bd6`, `h3 #8fa8ff`, `code #5cffa8`, `warn #ffb347`, `removed #ff5c7a`. Changes: added = code green, modified = warn, removed = `#ff5c7a`.
-- **L-02** Fonts: mono is `Source Code Pro`, falling back to `DejaVuSansM Nerd Font`, then monospace; prose is `system-ui`. Headings, the document header, the TOC, the sidebar brand, badges and kbd are mono. Body text is sans.
-- **L-03** Background: the bg colour with a magenta radial glow at top left and a cyan one at bottom right. Dark colour scheme only.
-- **L-04** Headings in cyan, h3 in the h3 blue, inline code in the code green, selection magenta on bg, caret magenta, scrollbars 8px thin with a line-coloured thumb.
-- **L-05** Sidebar: 290px, magenta 2px top border, line right border, 13px text. Brand `margin` in magenta mono. Search field with a `Ctrl K` kbd. Section headings uppercase, letter-spaced, with counts right-aligned.
-- **L-06** Contents: 300px, line left border, mono 14px, `CONTENTS` in magenta uppercase, h1 and h2 in text colour, h3 and h4 indented and muted, the active heading cyan with a cyan left bar.
-- **L-07** Document header: sticky, blurred bg, mono 12px, path left, changes controls and badges right.
-- **L-08** Text column: 64px left inset, 48px right, 60px bottom padding. Edit-mode accent: 2px magenta left border on the article, a faint magenta wash and glow.
-- **L-09** Breakpoints: below 1100px the contents panel hides and the sidebar is 240px; below 700px a single column with a top bar, the sidebar and contents as drawers over a scrim, editing not offered, 16px insets, larger targets (8px vertical padding), nothing that waits for hover, badges as symbols (✎ ◆ ± ? ✓ • … ⚠ ✕ ↻) at 24px with the words kept for screen readers.
-- **L-10** Pages that aren't a document (home, missing, settings) are a centered column, 640px (settings 820px), with a magenta mono h1.
+### Tokens
+
+- **L-01** The palette is defined once, as CSS custom properties on `:root`, and used nowhere as literal colours:
+  `bg #0a0b17`, `panel #10122a`, `raised #171a3a`, `line #2a2f63`, `text #d6dbff`, `muted #7f86c2`, `cyan #00e5ff`, `magenta #ff2bd6`, `h3 #8fa8ff`, `code #5cffa8`, `warn #ffb347`; for changes `added` = code, `modified` = warn, `removed #ff5c7a`. Dark colour scheme only.
+- **L-02** Fonts: mono is `Source Code Pro`, then `DejaVuSansM Nerd Font`, then monospace. Sans is `system-ui`. Mono is used for everything that is chrome or structure: headings, the document header, the contents panel, the sidebar brand and section titles, times, counts, badges, kbd, the finder, settings controls. Sans is used for body text and the sidebar's file names.
+- **L-03** The page background is bg with a magenta radial glow at top left (`#ff2bd61a` to transparent at 50%) and a cyan one at bottom right (`#00e5ff14`). Selection is magenta on bg. The caret is magenta. Scrollbars are 8px with a line-coloured rounded thumb.
+- **L-04** Tints are made with `color-mix` of a token and transparent, never a second literal. Lit things glow: a `box-shadow` or `text-shadow` in the thing's own colour.
+
+### Layout
+
+- **L-05** Three columns: sidebar 290px, document, contents 300px. Without headings the contents column is gone, not empty. Nothing but the three panels scrolls; the document column is the scroller and keeps 60px scroll padding under its sticky header.
+- **L-06** Below 1100px the contents panel hides and the sidebar is 240px. Below 700px the document stands alone under a top bar with two icon buttons; the sidebar and the contents slide in as drawers over a scrim (`#0a0b17b3`), the contents from the right. Esc or the scrim closes a drawer.
+- **L-07** On wide screens the sidebar folds to a 48px strip holding only an unfold button; the × beside the brand folds it.
+- **L-08** The text column has a 64px left and 48px right inset and 60px bottom padding; on phones 16px both sides. Wide code blocks and tables grow past the insets as D-11 says.
+
+### Sidebar
+
+- **L-09** Magenta 2px top border, line right border, translucent bg (`#0a0b17cc`), 13px text, 14px top padding. The brand `margin` is magenta mono beside a muted × that turns cyan on hover.
+- **L-10** The search field shows `Open file…` and a `Ctrl K` kbd (hidden on phones).
+- **L-11** Sections Recent and Older: uppercase letter-spaced mono 12px headings in a `details` summary with a ▸/▾ marker, a muted count at the right, 12px above each section. Project groups within Older use the same summary, indented 14px per level, with a raised background on hover.
+- **L-12** A file entry: name in text colour, folder muted at 0.9em, a mono 11px time or `×n` copy count right-aligned. A view's time is muted, a modification's cyan. A changed copy count is cyan with a ● before it. The open file has a raised background and a magenta left border. The × that dismisses an entry shows on hover (always on phones) and turns magenta.
+- **L-13** Unread: the time or count turns code green with a 4px glowing dot to its left, or the dot sits 6px from the right edge when there is neither (J-02).
+- **L-14** Empty sections say `Nothing in the last 14 days` or `Nothing yet` in muted text.
+- **L-15** The settings row sits at the foot, in view however long the lists get.
+
+### Contents
+
+- **L-16** 300px, line left border, mono 14px, 58px top padding so it aligns under the document header. `CONTENTS` in magenta uppercase letter-spaced 12px. Links are blocks with a 2px transparent left border; h1 and h2 in text colour, h3 indented 20px and h4 32px in muted. Hover magenta. The active heading is cyan with a cyan left border and is kept scrolled into view.
+
+### Document header
+
+- **L-17** Sticky at the top of the scroller, 10px by 32px padding, line bottom border, translucent bg (`#0a0b17e6`) with a 6px blur, mono 12px. Left: the file as in F-04, name in text colour. Then, when the file has copies, a cyan select. Right: the changes controls, then the badges.
+- **L-18** Badges sit together in one line-coloured rounded box with no inner borders, 11px uppercase letter-spaced, 1px by 8px padding, muted at 0.6 opacity when stable. Widths as J-01. A lit badge has its tint at 15% as background and the tint as text; hovered or active clickable ones at 30%.
+- **L-19** Changes controls: a count that is a borderless button (cyan underline on hover), ↑ ↓ buttons and `mark read` in code green, each 1px line border, panel bg, cyan border and text colour on hover, 0.4 opacity disabled.
+- **L-20** The conflict and missing banner: 16px by 32px margin, warn border, 10px by 14px padding, text and buttons in a row.
+- **L-21** On phones the header is 8px by 12px, badges become 24px symbol tiles as in L-26.
+
+### Document body
+
+- **L-22** Headings mono with 0.02em letter spacing. h1 magenta with a magenta glow and a magenta bottom border; h2 cyan with a cyan glow and a line bottom border; h3 in the h3 blue. Strong is white. Links cyan, magenta with glow on hover. Blockquotes have a 3px magenta left border on a faint magenta wash. A rule is a 2px magenta-to-cyan gradient. Table headers are cyan mono; even rows raised. Inline code is code green on the raised background and wraps as text (D-12).
+- **L-23** Editing: the article gets a 2px magenta left border, a faint magenta wash and a magenta glow off its left edge; the block holding the cursor has a faint magenta wash extended 10px to each side.
+- **L-24** The frontmatter panel is a `details` labelled `frontmatter` holding a textarea the height of its text.
+- **L-25** Editor surface colours map onto the tokens: panel for surfaces, raised for hover and inline areas, cyan as primary, a magenta 20% selection, cyan glows for shadows, `#ff5c7a` for errors.
+- **L-26** Phone badge symbols: manual ✎, committed ◆, uncommitted ±, untracked ?, saved ✓, unsaved •, saving …, conflict ⚠, deleted ✕, retrying ↻; 15px sans glyphs in 24px tiles, the words kept for screen readers.
+
+### Changes
+
+- **L-27** A changed block has a 3px rounded bar in the gutter 14px left of the text (plus 34px per list level), 2px inside its top and bottom, glowing in its colour: added green, modified amber. A removed block is drawn in place, struck through, 0.75 opacity, on a faint red wash with a red bar; collapsed to a 6px sliver with a notch when shown "as it is now". A rule too thin for a bar gets a 1px outline instead.
+- **L-28** The current change has a faint cyan wash extended 10px to each side and its bar widens to 5px cyan with a glow; a reached jump pulses from a 30% cyan wash over 1.2s.
+- **L-29** Word diffs: inserted text on a green 18% wash with a 1px green underline; deleted text struck through in red on a red 15% wash, not selectable. A block shown as it was sits on a faint red wash with a red bar and is not selectable; a note under it is muted italic.
+- **L-30** Changed table cells are tinted amber at 14%, added cells green at 12%, over the row stripes.
+- **L-31** The three view buttons stack vertically 34px left of the bar, 20px by 18px each, 1px line border, panel bg, muted mono 12px; cyan border and text when hovered, cyan when active. They show for the current change and while pointing at a change, and fade out after 0.4s (J-04).
+
+### Finder
+
+- **L-32** A centered dialog, `min(640px, 90vw)` wide, 12vh from the top, line border with a magenta 2px top, 6px radius, panel bg, a cyan glow, over a `#05060fb3` backdrop. Input 15px mono with a line bottom border. Results up to 50vh, 13px, in rows with 6px by 10px padding and 4px radius; the selected row raised with a 2px cyan inset left bar. Section titles muted uppercase mono 11px; the Older section starts with a line rule and its rows are at 0.6 opacity except the selected. The Tab line at the foot is muted mono 12px over a rule, cyan on hover.
+
+### Pages and settings
+
+- **L-33** Home, missing and setup pages are a 640px column 18vh from the top in muted text with a magenta glowing mono h1; settings is 820px, 10vh, in text colour.
+- **L-34** Settings: cyan uppercase mono 11px section headings 40px apart; a roots grid of name 160px, folder, files 60px, remove 32px; inputs, selects and textarea in panel bg, line border, 4px radius, 14px mono, cyan border on focus; buttons raised with a line border, cyan on hover, the primary one magenta; the error box warn-bordered on a warn 10% wash; the file location in mono 12px at the foot.
+- **L-35** Busy overlay: a dialog with a 32px spinner (line ring, magenta top, cyan right, 0.8s spin) and a mono 13px label over a blurred `#05060fcc` backdrop.
 
 ## 10. Nothing jumps (J)
 
@@ -167,10 +218,10 @@ A general rule, then its instances: no state change moves any element that didn'
 
 ## 12. Tests (T)
 
-- **T-01** Every demand id appears in at least one test title, or in a `spec/screenshots/` note for a look-only demand. A script, `make coverage`, lists the ids that appear nowhere and exits non-zero if any do.
+- **T-01** Every demand id appears in at least one test title. A script, `make coverage`, lists the ids that appear nowhere and exits non-zero if any do.
 - **T-02** Go tests cover P, C, F, W, S-02, S-03, S-05, N-01, N-05 and CH-02 to CH-04, against a temp root with a real git repository and real file writes, through the HTTP layer where the demand is about an HTTP behaviour.
 - **T-03** Vitest covers pure logic: S-10, D-04, D-05 (the corpus run is a separate `make roundtrip`), CH-05, CH-06, CH-08 grouping, N-02, N-06, N-07.
-- **T-04** Browser tests (Playwright, against the built binary and a temp root) cover D, N-01, N-03, N-04, N-06, CH-05 to CH-12, every L demand that names a size or colour, every J demand by comparing bounding boxes, and every K row.
+- **T-04** Browser tests (Playwright, against the built binary and a temp root) cover D, N-01, N-03, N-04, N-06, CH-05 to CH-12, every L demand by reading computed styles and sizes against `spec/look.css`, every J demand by comparing bounding boxes, and every K row.
 - **T-05** The never-stale tests write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the browser shows.
 - **T-06** `make test` runs all three levels and `make coverage`.
 
