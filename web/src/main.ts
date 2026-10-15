@@ -3,8 +3,10 @@
 import './style.css'
 import './sidebar.css'
 import './settings.css'
+import './finder.css'
 import { api, ApiError } from './api'
 import { hideBusy, showBusy } from './busy'
+import { buildFinder, finderView, renderFinder, type FinderState } from './finder'
 import { renderHome, renderMissing } from './pages'
 import { currentRoute, navigate, onRoute, plainClick, startRouter, type Route } from './router'
 import { renderSettings } from './settings'
@@ -35,6 +37,7 @@ async function refreshLists(): Promise<void> {
   }
   renderSidebar(sidebar, { lists, current: currentPath() }, folds)
   document.body.classList.toggle('setup', lists.roots.length === 0)
+  if (finder.dialog.open) drawFinder()
   if (route.kind === 'home' && lists.roots.length === 0) showSetup()
 }
 
@@ -143,6 +146,101 @@ document.addEventListener('click', (ev) => {
   if (a.closest('.ProseMirror')) return
   ev.preventDefault()
   navigate(a.pathname + a.search, a.hash)
+})
+
+// The finder (S-09): Ctrl K or Ctrl P, or the search field, opens it.
+const finder = buildFinder()
+const finderState: FinderState = { query: '', older: false, selected: 0 }
+
+function finderRows() {
+  return lists ? finderView(lists, finderState) : null
+}
+
+function drawFinder(): void {
+  const view = finderRows()
+  if (!view) return
+  if (finderState.selected >= view.rows.length) finderState.selected = Math.max(0, view.rows.length - 1)
+  renderFinder(finder, view, finderState)
+}
+
+function openFinder(): void {
+  if (finder.dialog.open) return
+  finderState.query = ''
+  finderState.older = false
+  finderState.selected = 0
+  finder.input.value = ''
+  drawFinder()
+  finder.dialog.showModal()
+  finder.input.focus()
+}
+
+function closeFinder(): void {
+  if (finder.dialog.open) finder.dialog.close()
+}
+
+finder.input.addEventListener('input', () => {
+  finderState.query = finder.input.value
+  finderState.selected = 0
+  drawFinder()
+})
+
+finder.input.addEventListener('keydown', (ev) => {
+  const view = finderRows()
+  if (!view) return
+  switch (ev.key) {
+    case 'ArrowDown':
+      ev.preventDefault()
+      finderState.selected = Math.min(view.rows.length - 1, finderState.selected + 1)
+      drawFinder()
+      break
+    case 'ArrowUp':
+      ev.preventDefault()
+      finderState.selected = Math.max(0, finderState.selected - 1)
+      drawFinder()
+      break
+    case 'Tab':
+      ev.preventDefault()
+      finderState.older = !finderState.older
+      drawFinder()
+      break
+    case 'Enter': {
+      ev.preventDefault()
+      const row = view.rows[finderState.selected]
+      if (row) {
+        closeFinder()
+        navigate(row.entry.path)
+      }
+      break
+    }
+  }
+})
+
+finder.dialog.addEventListener('click', (ev) => {
+  const target = ev.target as HTMLElement
+  if (target === finder.dialog) {
+    closeFinder()
+    return
+  }
+  if (target.closest('li.toggle')) {
+    finderState.older = !finderState.older
+    drawFinder()
+    finder.input.focus()
+    return
+  }
+  const a = target.closest('a') as HTMLAnchorElement | null
+  if (a && plainClick(ev)) {
+    ev.preventDefault()
+    closeFinder()
+    navigate(a.pathname)
+  }
+})
+
+sidebar.findButton.addEventListener('click', openFinder)
+document.addEventListener('keydown', (ev) => {
+  if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'k' || ev.key === 'p')) {
+    ev.preventDefault()
+    openFinder()
+  }
 })
 
 sidebar.closeButton.addEventListener('click', () => setSidebarFolded(true))

@@ -1,0 +1,112 @@
+/* Finder (L-32) */
+#finder {
+  width: min(640px, 90vw);
+  margin-top: 12vh;
+  padding: 0;
+  border: 1px solid var(--cp-line);
+  border-top: 2px solid var(--cp-magenta);
+  border-radius: 6px;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--cp-cyan) 15%, transparent);
+}
+
+#finder::backdrop {
+  background: color-mix(in srgb, var(--cp-deep) 70%, transparent);
+}
+
+#finder input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--cp-line);
+  outline: 0;
+  background: transparent;
+  color: var(--cp-text);
+  font: 15px var(--cp-mono);
+}
+
+#finder ul {
+  max-height: 50vh;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+#finder li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#finder li a {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+#finder li .file-label {
+  flex: 1;
+}
+
+#finder li time,
+#finder li .copies {
+  flex-shrink: 0;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 11px;
+}
+
+#finder li.tier {
+  padding: 10px 10px 4px;
+  cursor: default;
+  font-family: var(--cp-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-muted);
+}
+
+#finder li.none {
+  color: var(--cp-muted);
+  cursor: default;
+}
+
+#finder li.tier.older {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+}
+
+#finder li.older:not(.tier) {
+  opacity: 0.6;
+}
+
+#finder li.older.selected {
+  opacity: 1;
+}
+
+#finder li.toggle {
+  margin-top: 6px;
+  border-top: 1px solid var(--cp-line);
+  border-radius: 0;
+  padding-top: 10px;
+  color: var(--cp-muted);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+#finder li.toggle:hover {
+  color: var(--cp-cyan);
+}
+
+#finder li.selected {
+  background: var(--cp-raised);
+  box-shadow: inset 2px 0 var(--cp-cyan);
+}
