@@ -245,13 +245,16 @@ A general rule, then its instances: no state change moves any element that didn'
 
 ## 12. Tests (T)
 
-- **T-01** Every demand id appears in at least one test title. A script, `make coverage`, lists the ids that appear nowhere and exits non-zero if any do.
-- **T-02** Go tests cover P, C, F, W, S-02, S-03, S-05, N-01, N-05 and CH-02 to CH-04, against a temp root with a real git repository and real file writes, through the HTTP layer where the demand is about an HTTP behaviour.
-- **T-03** Vitest covers pure logic: S-10, D-04, D-05 (the corpus run is a separate `make roundtrip`), CH-05, CH-06, CH-08 grouping, N-02, N-06, N-07.
-- **T-04** Browser tests (Playwright, against the built binary and a temp root) cover D, N-01, N-03, N-04, N-06, CH-05 to CH-12, every L demand by reading computed styles and sizes against `spec/look.css`, every J demand by comparing bounding boxes, and every K row.
-- **T-05** The never-stale tests write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the browser shows.
-- **T-06** `make test` runs all three levels and `make coverage`.
+Every demand is tested at every level where it can be, not at one chosen level. The logic under a behaviour gets a unit test, the package or endpoint that carries it gets an integration test, and what the reader sees gets an end-to-end test. A browser test never stands in for the unit test of the logic underneath it, and a unit test never stands in for seeing the behaviour in the browser.
+
+- **T-01** Every demand id appears in the title of at least one test at every level that applies to it. `make coverage` lists, per id, the levels it is tested at, flags the ids missing a level they should have, and exits non-zero if any id is untested at any level. Which levels apply is declared in the coverage script, per id, so a deliberate single-level demand is visible as such.
+- **T-02** Unit level. Go: every package without the HTTP layer, against a temp root with a real git repository and real file writes. Vitest: every frontend module with logic, such as matching (S-10), source preservation (D-04), the diff and its grouping (CH-05, CH-06, CH-08), the session's save, conflict and retry (N-02, N-06, N-07), the time and label formatting (F-04, L-12).
+- **T-03** Integration level. Go: every endpoint through the HTTP layer, including the guard (P-06), etags and conditional requests (P-10), the event stream (N-01, N-05, P-09), settings validation and re-indexing (C-02, C-07). Vitest with a DOM: the sidebar, finder, header and settings components against fake data, for the structure and states they render.
+- **T-04** End-to-end level. Playwright against the built binary and a temp root: every demand in sections 5 to 11, and every demand in 2 to 4 that has a visible effect. L demands are checked by reading computed styles and sizes against `spec/look.css`, J demands by comparing bounding boxes before and after a state change, K rows by pressing the keys.
+- **T-05** The never-stale tests, at integration and end-to-end level, write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the stream sends and what the browser shows.
+- **T-06** The round-trip corpus (D-05) is its own target, `make roundtrip`, run over `~/code` and reported, not part of `make test`.
 - **T-07** A browser test asserts the script loaded before any document is opened is under 300KB.
+- **T-08** `make test` runs all three levels and `make coverage`, and is what "done" means for any change.
 
 ## Decisions
 
