@@ -65,13 +65,8 @@ margin is a local, always-running service for reading the markdown files in a se
 
 ## 5. Sidebar and finder (S)
 
-- **S-01** **OPEN: what Recent means.** Today: the files viewed in margin or modified within the active window, latest first, with a time per entry; a modification's time in cyan, a view's in muted. The last two commits restricted it to files opened in margin and then reverted that. The rewrite needs one definition, written here, before anything else in this section is tested against it.
-- **S-02** When a file counts as modified, and with what time, as computed today. **OPEN** together with S-01: these rules are what Recent is built on, and two of them are likely why it feels wrong (see the note after the list).
-  - Outside git: the file's modification time on disk, always.
-  - In the main checkout of a repository: modified only while git sees the file as changed against HEAD, or as untracked and not ignored. The time is the modification time on disk. Once committed, the file is no longer modified at all. A checkout, rebase or pull that rewrites a file does not make it modified.
-  - In a linked worktree: modified if the file differs from the merge base of the worktree's HEAD and the main checkout's HEAD (where the branch forked), or is untracked. Uncommitted: the modification time on disk. Committed: the newest commit on the branch that touched it. The file stays modified until the branch is merged into main.
-  - Recent takes, per file, the later of its modified time and its last view in margin, labels the entry with that kind, drops entries older than `activeDays` and entries dismissed since, and sorts latest first.
-  - Note: in a main checkout a commit removes the committed files from Recent unless they were viewed in margin, so a session of writing and committing leaves nothing behind; and the main checkout and a worktree follow different rules for the same workflow.
+- **S-01** Recent lists every file viewed in margin or modified within the active window, latest first, each timed by whichever happened last. A modified entry carries the unread mark (S-07); marking it read turns it into a viewed entry timed at the reading. Entries never vanish by being committed.
+- **S-02** A file is modified when its content differs from the copy margin keeps of it as last read (CH-02). The copy is replaced by marking the file read, by saving an edit in margin, or by toggling manual. The time of the modification is the file's modification time on disk, so changes made while margin was down count. Git plays no part: commits, checkouts, rebases and pulls change nothing unless they leave the file different from what was read. A file never opened in margin has no copy and so is not modified. **OPEN:** whether a file new on disk since margin last indexed it appears in Recent as modified at its creation time, so files an LLM just wrote show up without being opened; a checkout's files are changed, not new, so they would not.
 - **S-03** Views are recorded only when a file is opened in margin, and kept with their time for 365 days.
 - **S-04** Recent and Older are foldable sections with counts; Older groups files by project, each group foldable, sorted by name within. Fold state is kept per browser across reloads. Older stays folded when a file is opened from it.
 - **S-05** The × on a Recent entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals survive restarts.
@@ -233,7 +228,7 @@ A general rule, then its instances: no state change moves any element that didn'
 
 ## Open questions
 
-1. **S-01** What should Recent list? The sidebar is the most visible part and has been reworked four times.
+1. **S-02** Do files new on disk appear in Recent before they are opened?
 2. **W** Keep worktrees? Together with the HEAD watching they are about a quarter of the backend.
 3. **CH-13** Keep the manual flag?
 4. Should phones get editing, or stay read-only as now? With LAN access (P-05) phones are a real use, not a nicety.
