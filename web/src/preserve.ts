@@ -173,7 +173,8 @@ export function assemble(source: string, originals: OriginalBlock[], current: Cu
     push(originals[inv].bytes, null)
   }
   let out = parts.join('')
-  if (originals.length === 0) return current.length === 0 ? source : out + '\n'
+  // A file without blocks (empty, or whitespace) stays as it is unless something was written.
+  if (originals.length === 0) return out.trim() === '' ? source : out + '\n'
   out = leading + out
   if (current.length === 0 && invisibleOrphans.length === 0) return leading.trimEnd() === '' ? '' : leading
   return out + trailing

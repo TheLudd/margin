@@ -97,6 +97,12 @@ describe('preserve', () => {
     expect(assemble('A a.\n', blocks('A a.\n'), current('A a.'))).toBe('A a.\n')
   })
 
+  it('D-05: an empty file stays empty; text written into it gets a final newline', () => {
+    expect(assemble('', [], current(''))).toBe('')
+    expect(assemble('\n', [], current(''))).toBe('\n')
+    expect(assemble('', [], current('New.'))).toBe('New.\n')
+  })
+
   it('D-05: a block indented on its line is taken from the line start, and consecutive definitions keep their separators', () => {
     const indented = '# H\n  * a\n  * b\n'
     const custom: Tools = {
