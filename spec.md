@@ -4,7 +4,7 @@ status: draft
 
 # margin — spec
 
-What margin must do, as demands with ids. A rewrite is done when every demand has a test that names its id and passes. The look is specified by `spec/look.css`, the current stylesheet, and section 9 reads the demands out of it. Open questions are marked **OPEN** and must be settled before the list is final.
+What margin must do, as demands with ids. A rewrite is done when every demand has a test that names its id and passes. The look is specified by `spec/look.css`, the current stylesheet, and section 9 reads the demands out of it. Decisions taken while writing it are recorded at the end.
 
 Ids are stable: never renumber, never reuse a dropped one. A test names the ids it covers in its title, as in `"P-02, P-03: config falls back to ~/.config"`. A script lists the ids no test names.
 
@@ -27,7 +27,7 @@ margin is a local, always-running service for reading the markdown files in a se
 - **P-04** Flags: `-port` (default 48217), `-listen` (address to bind, default 127.0.0.1), `-config`, `-state`, `-host` (repeatable, another name margin accepts, such as `margin.local` behind a reverse proxy).
 - **P-05** Binds to loopback by default. With `-listen` on an interface address or `0.0.0.0`, margin is reachable from other devices on the LAN, phones included.
 - **P-06** Every request's `Host` header must name margin: localhost, the machine's hostname, any of its interface addresses as found at startup, or a `-host` name. This is what defeats DNS rebinding, where a web page open in the reader's own browser gets its domain pointed at margin's address and then reads every served file with plain GETs. An `Origin` header, when present, must match the `Host`. Binding to loopback does not make these checks unnecessary; the attacking page runs in the reader's browser, on the reader's machine.
-- **P-11** **OPEN: authentication.** On the LAN, anyone on it can read and write the files. Either the spec says a home LAN is trusted and there is none, or a token given once in the URL and kept in a cookie is required for every request.
+- **P-11** There is no authentication. The LAN margin is opened to is trusted; anyone on it can read and write the files.
 - **P-07** Every path is resolved, symlinks included, and anything outside its root is rejected.
 - **P-08** Runs as a systemd user service; `make install` builds into `~/.local/bin/margin`.
 - **P-09** The event stream starts with a build id. A tab connected to an older build saves its edits and reloads, so an install plus restart reaches every open tab.
@@ -35,13 +35,13 @@ margin is a local, always-running service for reading the markdown files in a se
 
 ## 3. Config and settings (C)
 
-- **C-01** Config keys: `roots` (name and path), `exclude` (patterns), `activeDays` (1–365, default 14), `unreadDays` (1–365, default 30), `changeView` (`blocks` or `words`, default `blocks`).
+- **C-01** Config keys: `roots` (name and path), `exclude` (patterns), `activeDays` (1–365, default 14), `unreadDays` (1–365, default 30).
 - **C-02** Validation: folders must exist, names must be unique, roots must not overlap. An invalid save is refused with a message and nothing changes.
 - **C-03** Hand edits to the config file are picked up live. A broken file keeps the current roots and its error shows on the settings screen.
 - **C-04** Without a usable root, margin serves nothing and the browser shows a setup screen asking for folders.
 - **C-05** The setup and settings screens suggest the visible folders in home that hold markdown, with a file count for each (a lower bound if counting ran out of time). Folders already served are not suggested.
 - **C-06** The folder field completes paths as typed; hidden folders only once a dot is typed; a leading `~` is kept. The name follows the folder's base name until edited.
-- **C-07** Saving settings validates, writes the file, re-indexes in place without a restart, and covers the app with a busy overlay while re-indexing. Changing only the active window or change view applies without re-indexing.
+- **C-07** Saving settings validates, writes the file, re-indexes in place without a restart, and covers the app with a busy overlay while re-indexing. Changing only the active window or unread days applies without re-indexing.
 - **C-08** Settings are reached by the gear at the foot of the sidebar, which stays in view however long the lists get, and at `/settings`.
 - **C-09** The settings screen shows where the config is stored.
 
@@ -54,7 +54,7 @@ margin is a local, always-running service for reading the markdown files in a se
 - **F-05** Directories are watched, not files, so atomic rename-writes are caught. The index emits added, changed and removed events.
 - **F-06** `.gitignore` changes are picked up on restart. (Live would be nicer; not demanded.)
 
-### Worktrees (W) — **OPEN: keep, simplify or drop**
+### Worktrees (W)
 
 - **W-01** A file checked out in several git worktrees is listed once, grouped by project, in the sidebar and the finder, with a `×n` copy count.
 - **W-02** A project is a main checkout plus the worktrees linked from it. Laid out as `<name>/<worktree>`, the project is called `<name>`. Separate clones are separate projects.
@@ -74,7 +74,7 @@ margin is a local, always-running service for reading the markdown files in a se
   - **The copy is created** the first time the file is opened in margin, from the content at that moment. Until then the file has no copy and is never modified.
   - **The copy is removed** after `unreadDays` without being replaced (CH-04). The file then counts as never opened.
   - **Git does nothing.** A commit, checkout, rebase, pull or merge neither starts nor ends a modification. If one of them leaves the file's content different from its copy, the file is modified, because it did change since it was read. If it leaves the content equal, it is not.
-  - **Never opened.** A file without a copy is not modified, however recently it changed. **OPEN:** whether a file that is new on disk since margin last indexed it appears in Recent as modified at its creation time, so files an LLM just wrote show up without being opened. A checkout's files are changed, not new, so they would not qualify.
+  - **Never opened.** A file without a copy is not modified, however recently it changed, and however new it is. A file an LLM just wrote is found under Older or in the finder until it is opened.
   - **Not modified** also means: a file the reader edited in margin and has not touched since; a file marked manual, whatever its content; a file whose only changes were made before it was first opened.
 - **S-03** Views are recorded only when a file is opened in margin, and kept with their time for 365 days.
 - **S-04** Recent and Older are foldable sections with counts; Older groups files by project, each group foldable, sorted by name within. Fold state is kept per browser across reloads. Older stays folded when a file is opened from it.
@@ -88,7 +88,7 @@ margin is a local, always-running service for reading the markdown files in a se
 
 ## 6. Document (D)
 
-- **D-01** A file opens for reading. Selecting text to copy it changes nothing. E, or the edit badge, starts editing where the selection or click is; Esc stops it, unless it closes a menu first. E is ignored while typing in an input.
+- **D-01** A file opens for reading. Selecting text to copy it changes nothing. E, or the edit badge, starts editing where the selection or click is; Esc stops it, unless it closes a menu first. E is ignored while typing in an input. Editing is offered on every screen size; nothing is demanded of how well it works with touch.
 - **D-02** While editing, the page says so: the block holding the cursor highlighted, a magenta cursor, the edit badge lit.
 - **D-03** Edits autosave about a second after the last edit. Only real edits save; viewing never writes.
 - **D-04** A save keeps the original bytes of every block not touched, so a one-word edit changes one block. Blocks are matched by structure, not position.
@@ -128,16 +128,16 @@ Any one mechanism is enough. All must exist.
 - **CH-06** Changed or removed blocks separated by at most one unchanged block are one change. The header counts them (`3 unread changes`) and the count is a button to the first.
 - **CH-07** Alt ↑ and Alt ↓ and the header arrows step through changes. The target is centered and pulses once reached. A change jumped to is current (`Change 2 of 3`) until it leaves the screen. From no current change, stepping goes from the middle of the view.
 - **CH-08** Beside each change, three buttons show it as it is now, as a diff, or as it was. In a diff, inserted words are highlighted and deleted words struck through; code blocks and tables show the old version above the new. A rewritten block is shown whole. The buttons sit left of the bar with room to cross the gutter and hide only after a delay.
-- **CH-09** The default view is `changeView` from the config (blocks or words); a pick for one change stays while the file is open.
+- **CH-09** Every change opens shown as it is now; a pick of another view for one change stays while the file is open. There is no setting for this.
 - **CH-10** The document stays editable with changes shown; the marks follow edits.
 - **CH-11** A file in git shows a badge: `committed`, `uncommitted`, or `untracked` if never committed. `uncommitted` is tinted and clickable: it switches the baseline to the last commit and back. Files outside git show none.
 - **CH-12** `mark read` shows only for the unread baseline.
-- **CH-13** Manual — **OPEN: keep or drop.** A `manual` badge marks a file edited by hand in another editor; its changes count as read, as margin's own edits do. Toggling either way records the current version as read. Its uncommitted changes show only when asked for.
+- **CH-13** A `manual` badge marks a file edited by hand in another editor; its changes count as read, as margin's own edits do. Toggling either way records the current version as read. Its uncommitted changes show only when asked for.
 - **CH-14** Edits made in margin never show as unread changes.
 
 ## 9. Look (L)
 
-The reference is `spec/look.css`, the stylesheet of the last build before the rewrite, copied verbatim. The rewrite may structure its CSS as it likes, but what is rendered must match the reference in everything listed here; the browser tests read computed styles and sizes. Where the reference and this list disagree, the reference wins, and the list gets fixed.
+The reference is `spec/look.css`, the stylesheet of the last build before the rewrite, copied verbatim. The rewrite may structure its CSS as it likes, but what is rendered must match the reference in everything listed here; the browser tests read computed styles and sizes. Where the reference and this list disagree, the reference wins and the list gets fixed, except where the list says it departs from the reference on purpose.
 
 ### Tokens
 
@@ -179,10 +179,10 @@ The reference is `spec/look.css`, the stylesheet of the last build before the re
 ### Document body
 
 - **L-22** Headings mono with 0.02em letter spacing. h1 magenta with a magenta glow and a magenta bottom border; h2 cyan with a cyan glow and a line bottom border; h3 in the h3 blue. Strong is white. Links cyan, magenta with glow on hover. Blockquotes have a 3px magenta left border on a faint magenta wash. A rule is a 2px magenta-to-cyan gradient. Table headers are cyan mono; even rows raised. Inline code is code green on the raised background and wraps as text (D-12).
-- **L-23** Editing: the article gets a 2px magenta left border, a faint magenta wash and a magenta glow off its left edge; the block holding the cursor has a faint magenta wash extended 10px to each side.
+- **L-23** Editing: the block holding the cursor has a faint magenta wash extended 10px to each side. The reference also accents the whole article with a magenta left border, wash and glow; that is dropped (D-02).
 - **L-24** The frontmatter panel is a `details` labelled `frontmatter` holding a textarea the height of its text.
 - **L-25** Editor surface colours map onto the tokens: panel for surfaces, raised for hover and inline areas, cyan as primary, a magenta 20% selection, cyan glows for shadows, `#ff5c7a` for errors.
-- **L-26** Phone badge symbols: manual ✎, committed ◆, uncommitted ±, untracked ?, saved ✓, unsaved •, saving …, conflict ⚠, deleted ✕, retrying ↻; 15px sans glyphs in 24px tiles, the words kept for screen readers.
+- **L-26** Phone badge symbols: edit ✎, manual ✍, committed ◆, uncommitted ±, untracked ?, saved ✓, unsaved •, saving …, conflict ⚠, deleted ✕, retrying ↻; 15px sans glyphs in 24px tiles, the words kept for screen readers.
 
 ### Changes
 
@@ -235,11 +235,14 @@ A general rule, then its instances: no state change moves any element that didn'
 - **T-05** The never-stale tests write to the file on disk in place and via rename, commit in the repo, and switch branches, and assert what the browser shows.
 - **T-06** `make test` runs all three levels and `make coverage`.
 
-## Open questions
+## Decisions
 
-1. **S-02** Do files new on disk appear in Recent before they are opened? - NO
-2. **W** Keep worktrees? Together with the HEAD watching they are about a quarter of the backend. - YES
-3. **CH-13** Keep the manual flag? - YES
-4. Should phones get editing, or stay read-only as now? With LAN access (P-05) phones are a real use, not a nicety. - Does it matter? I don't beleive I will edit from my phone but this rule seems to make it more complex.
-5. Is the three-view-per-change (now, diff, was) wanted, or is one diff view enough? - Wanted, now is default
-6. **P-11** Authentication on the LAN: none, or a token? - No authentication
+Answered 2026-10-15, folded into the demands above.
+
+1. Files new on disk do not appear in Recent before they are opened (S-02).
+2. Worktrees stay (W).
+3. The manual flag stays (CH-13).
+4. Phones get no rule of their own: editing is offered everywhere, with no demand on touch quality (D-01). Dropping the rule is less to build than keeping it.
+5. All three views of a change stay; a change opens as it is now, and the `changeView` setting goes (CH-09, C-01).
+6. No authentication on the LAN (P-11).
+7. No accent along the whole article while editing; the cursor block alone shows it (D-02, L-23).
