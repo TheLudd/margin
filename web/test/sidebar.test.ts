@@ -109,6 +109,16 @@ describe('sidebar', () => {
     expect(folds.data['recent']).toBe(false)
   })
 
+  it('S-04: a click on a summary writes the coming fold state at once, before the toggle event', () => {
+    const folds = memoryFolds()
+    const { refs, root } = render(lists(), null, folds)
+    refs.older.querySelector(':scope > summary')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(folds.data['older']).toBe(false)
+    const group = root.querySelector('details[data-project=foo]') as HTMLDetailsElement
+    group.querySelector(':scope > summary')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(folds.data['project:foo']).toBe(true)
+  })
+
   it('L-12: the open file is marked current', () => {
     const { root } = render(lists(), '/code/foo/b.md')
     expect(root.querySelector('a.current')?.getAttribute('href')).toBe('/code/foo/b.md')

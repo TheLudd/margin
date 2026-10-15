@@ -73,9 +73,21 @@ export function buildSidebar(root: HTMLElement, folds: FoldStore): SidebarRefs {
     ['older', older, true],
   ] as const) {
     details.open = folds.get(key) ?? fallback
-    details.addEventListener('toggle', () => folds.set(key, details.open))
+    rememberFold(details, key, folds)
   }
   return { root, brandRow, closeButton, unfoldButton, findButton, recent, older, recentBody, olderBody, recentCount, olderCount, settingsRow }
+}
+
+/**
+ * Keeps a section's fold in the store. The toggle event arrives a task
+ * later, so a click on the summary writes the coming state at once; a
+ * reload right after the click still finds it.
+ */
+function rememberFold(details: HTMLDetailsElement, key: string, folds: FoldStore): void {
+  details.addEventListener('toggle', () => folds.set(key, details.open))
+  details.querySelector(':scope > summary')?.addEventListener('click', (ev) => {
+    if (!ev.defaultPrevented) folds.set(key, !details.open)
+  })
 }
 
 export interface SidebarView {
@@ -108,7 +120,7 @@ export function renderSidebar(refs: SidebarRefs, view: SidebarView, folds: FoldS
     const key = 'project:' + g.project
     const group = el('details', { class: 'project', 'data-project': g.project }, el('summary', {}, el('span', { text: g.project }), el('span', { class: 'count', text: String(g.files.length) })))
     group.open = folds.get(key) ?? false
-    group.addEventListener('toggle', () => folds.set(key, group.open))
+    rememberFold(group, key, folds)
     const ul = el('ul')
     for (const e of g.files) ul.append(olderItem(e, current))
     group.append(ul)

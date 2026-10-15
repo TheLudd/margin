@@ -61,11 +61,13 @@ describe('stream', () => {
     s.close()
   })
 
-  it('N-04: a reconnect is reported after the first open, and resets the backoff', () => {
+  it('N-04, S-06: every open is reported, a reconnect only after the first, and a reconnect resets the backoff', () => {
     const reconnects = vi.fn()
-    const s = new Stream({ onEvent: () => {}, onReconnect: reconnects, onNewBuild: () => {} })
+    const opens = vi.fn()
+    const s = new Stream({ onEvent: () => {}, onOpen: opens, onReconnect: reconnects, onNewBuild: () => {} })
     s.connect()
     FakeSource.instances[0].emit('open')
+    expect(opens).toHaveBeenCalledTimes(1)
     expect(reconnects).not.toHaveBeenCalled()
     FakeSource.instances[0].emit('error')
     vi.advanceTimersByTime(1000)
@@ -73,6 +75,7 @@ describe('stream', () => {
     vi.advanceTimersByTime(2000)
     FakeSource.instances[2].emit('open')
     expect(reconnects).toHaveBeenCalledTimes(1)
+    expect(opens).toHaveBeenCalledTimes(2)
     FakeSource.instances[2].emit('error')
     vi.advanceTimersByTime(1000)
     expect(FakeSource.instances).toHaveLength(4)

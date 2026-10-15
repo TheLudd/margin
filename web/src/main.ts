@@ -265,8 +265,12 @@ const stream = new Stream({
     if (ev.name === 'config' && route.kind === 'settings') showSettings(false)
     document.dispatchEvent(new CustomEvent('margin:event', { detail: ev }))
   },
-  onReconnect: () => {
+  // The lists are fetched once the stream is open, so nothing that happens
+  // in between is missed (S-06).
+  onOpen: () => {
     refreshLists()
+  },
+  onReconnect: () => {
     document.dispatchEvent(new CustomEvent('margin:reconnect'))
   },
   onNewBuild: async () => {

@@ -287,6 +287,7 @@ test.describe('finder', () => {
 
   test('S-09, K: arrows move, Enter opens', async ({ page, margin }) => {
     await open(page, margin, 'margin/plan.md')
+    await page.waitForTimeout(1100)
     await open(page, margin, 'margin/guarded-commands-plan.md')
     await page.keyboard.press('Control+k')
     const finder = page.locator('#finder')

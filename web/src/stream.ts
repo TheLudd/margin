@@ -4,6 +4,8 @@ import type { StreamEvent } from './types'
 
 export interface StreamHandlers {
   onEvent: (ev: StreamEvent) => void
+  /** Called every time the stream opens, the first time included. */
+  onOpen?: () => void
   /** Called every time the stream (re)opens, after the first open. */
   onReconnect: () => void
   /** Called when the server runs a newer build; should save and reload. */
@@ -35,6 +37,7 @@ export class Stream {
     src.addEventListener('open', () => {
       this.backoff = BACKOFF_START
       this.opened++
+      this.handlers.onOpen?.()
       if (this.opened > 1) this.handlers.onReconnect()
     })
     src.addEventListener('build', (ev) => {

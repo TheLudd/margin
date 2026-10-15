@@ -106,8 +106,6 @@
 
 .settings button.add {
   padding: 6px 0;
-  border-color: transparent;
-  background: none;
   color: var(--cp-cyan);
 }
 
