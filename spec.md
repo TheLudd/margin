@@ -89,7 +89,7 @@ margin is a local, always-running service for reading the markdown files in a se
 ## 6. Document (D)
 
 - **D-01** A file opens for reading. Selecting text to copy it changes nothing. E, or the edit badge, starts editing where the selection or click is; Esc stops it, unless it closes a menu first. E is ignored while typing in an input.
-- **D-02** While editing, the page says so: an accent along the document, the block holding the cursor highlighted, a magenta cursor, the edit badge lit.
+- **D-02** While editing, the page says so: the block holding the cursor highlighted, a magenta cursor, the edit badge lit.
 - **D-03** Edits autosave about a second after the last edit. Only real edits save; viewing never writes.
 - **D-04** A save keeps the original bytes of every block not touched, so a one-word edit changes one block. Blocks are matched by structure, not position.
 - **D-05** Round-trip: an unchanged save reproduces the file byte for byte for at least 551 of the 554-file corpus (`make roundtrip` over `~/code`). The three known exceptions are reference-style links, a `+ ` continuation line, and images without a title. Known block-level rewrites when a block is edited: reference links become inline.
@@ -237,9 +237,9 @@ A general rule, then its instances: no state change moves any element that didn'
 
 ## Open questions
 
-1. **S-02** Do files new on disk appear in Recent before they are opened?
-2. **W** Keep worktrees? Together with the HEAD watching they are about a quarter of the backend.
-3. **CH-13** Keep the manual flag?
-4. Should phones get editing, or stay read-only as now? With LAN access (P-05) phones are a real use, not a nicety.
-5. Is the three-view-per-change (now, diff, was) wanted, or is one diff view enough?
-6. **P-11** Authentication on the LAN: none, or a token?
+1. **S-02** Do files new on disk appear in Recent before they are opened? - NO
+2. **W** Keep worktrees? Together with the HEAD watching they are about a quarter of the backend. - YES
+3. **CH-13** Keep the manual flag? - YES
+4. Should phones get editing, or stay read-only as now? With LAN access (P-05) phones are a real use, not a nicety. - Does it matter? I don't beleive I will edit from my phone but this rule seems to make it more complex.
+5. Is the three-view-per-change (now, diff, was) wanted, or is one diff view enough? - Wanted, now is default
+6. **P-11** Authentication on the LAN: none, or a token? - No authentication
