@@ -79,7 +79,7 @@ margin is a local, always-running service for reading the markdown files in a se
 - **S-03** Views are recorded only when a file is opened in margin, and kept with their time for 365 days.
 - **S-04** Recent and Older are foldable sections with counts; Older groups files by project, each group foldable, sorted by name within. Fold state is kept per browser across reloads. Older stays folded when a file is opened from it.
 - **S-05** The × on a Recent entry forgets its view and hides its activity up to now; a later view or change shows it again. Dismissals survive restarts.
-- **S-06** The active window moves with time: the sidebar re-renders every 10 minutes even without changes. (This is a timer, not polling the server.)
+- **S-06** The sidebar lists are refreshed on every event, on reconnect and when the tab becomes visible, and never on a timer. A tab left open is allowed to show stale relative times and a file past the active window until then.
 - **S-07** Files with unread changes get a green mark by their time or copy count, or at the right edge when there is neither. Under Recent, the time itself turns green.
 - **S-08** The sidebar folds to a 48px strip on wide screens and unfolds from it.
 - **S-09** Ctrl K or Ctrl P opens the finder. An empty query lists recent activity. A query searches active files only; Tab (or the line at the foot, which counts the older matches) adds an Older section. Each section shows its best 10 and says `n of m` when cut. Enter opens, arrows move, click outside closes.
