@@ -1,5 +1,5 @@
 // The JSON API, one function per endpoint.
-import type { Config, Doc, Lists, SettingsView, Suggestion } from './types'
+import type { Config, Doc, Lists, Meta, SettingsView, Suggestion } from './types'
 
 export class ApiError extends Error {
   constructor(
@@ -41,6 +41,8 @@ export const api = {
     if (res.status === 304) return null
     return json<Doc>(res)
   },
+
+  meta: (path: string): Promise<Meta> => fetch('/api/meta' + encodePath(path)).then((r) => json<Meta>(r)),
 
   async save(path: string, content: string, etag: string): Promise<string> {
     const res = await fetch('/api/file' + encodePath(path), {

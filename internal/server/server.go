@@ -35,6 +35,7 @@ func New(c *core.Core, g *guard.Guard, static fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/lists", s.lists)
 	s.mux.HandleFunc("GET /api/file/{path...}", s.readFile)
 	s.mux.HandleFunc("PUT /api/file/{path...}", s.writeFile)
+	s.mux.HandleFunc("GET /api/meta/{path...}", s.meta)
 	s.mux.HandleFunc("GET /api/baseline/{path...}", s.baseline)
 	s.mux.HandleFunc("POST /api/open", s.open)
 	s.mux.HandleFunc("POST /api/read", s.markRead)
@@ -121,6 +122,15 @@ func (s *Server) writeFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("ETag", etag)
 	writeJSON(w, map[string]string{"etag": etag})
+}
+
+func (s *Server) meta(w http.ResponseWriter, r *http.Request) {
+	m, err := s.core.Meta("/" + r.PathValue("path"))
+	if err != nil {
+		failErr(w, err)
+		return
+	}
+	writeJSON(w, m)
 }
 
 func (s *Server) baseline(w http.ResponseWriter, r *http.Request) {

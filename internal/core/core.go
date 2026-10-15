@@ -197,18 +197,18 @@ func (c *Core) apply(cfg config.Config, startup bool) error {
 		c.heads.Add(info)
 	}
 	go c.consume(ix)
-	go c.recomputeAll(model)
+	c.recomputeAll(model)
 	c.sweep()
 	return nil
 }
 
+// recomputeAll works out the copies of every project with several checkouts.
 func (c *Core) recomputeAll(model *project.Model) {
 	for _, p := range model.Projects() {
 		if p.Multi() {
 			model.Recompute(p)
 		}
 	}
-	c.hub.Broadcast("lists", nil)
 }
 
 // consume turns index events into pushes and recomputations.
@@ -403,6 +403,27 @@ func (c *Core) fileFor(root index.Root, rel, abs string) index.File {
 		f.Size = info.Size()
 	}
 	return f
+}
+
+// Meta is what the header shows about a file, without its content.
+type Meta struct {
+	Path    string     `json:"path"`
+	Git     string     `json:"git"`
+	Manual  bool       `json:"manual"`
+	HasCopy bool       `json:"hasCopy"`
+	Unread  bool       `json:"unread"`
+	Copies  []CopyView `json:"copies"`
+	Project string     `json:"project"`
+	Etag    string     `json:"etag"`
+}
+
+// Meta describes a file without reading it into the browser.
+func (c *Core) Meta(mpath string) (Meta, error) {
+	doc, err := c.Read(mpath)
+	if err != nil {
+		return Meta{}, err
+	}
+	return Meta{Path: doc.Path, Git: doc.Git, Manual: doc.Manual, HasCopy: doc.HasCopy, Unread: doc.Unread, Copies: doc.Copies, Project: doc.Project, Etag: doc.Etag}, nil
 }
 
 // Read opens a file for the browser.

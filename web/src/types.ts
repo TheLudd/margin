@@ -52,6 +52,17 @@ export interface Doc {
   project: string
 }
 
+export interface Meta {
+  path: string
+  git: GitState
+  manual: boolean
+  hasCopy: boolean
+  unread: boolean
+  copies: CopyView[]
+  project: string
+  etag: string
+}
+
 export interface ConfigRoot {
   name: string
   path: string

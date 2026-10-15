@@ -320,6 +320,16 @@ func TestFiles(t *testing.T) {
 			t.Errorf("uncommitted: %q", d.Git)
 		}
 	})
+	t.Run("W-04, CH-11: the meta of a file carries its git state, copies and flags without the content", func(t *testing.T) {
+		res, data := e.get("/api/meta/code/repo/readme.md")
+		if res.StatusCode != 200 || !strings.Contains(string(data), `"git":"uncommitted"`) || strings.Contains(string(data), `"content"`) {
+			t.Errorf("meta: %d %s", res.StatusCode, data)
+		}
+		res, _ = e.get("/api/meta/code/nope.md")
+		if res.StatusCode != 404 {
+			t.Errorf("missing meta: %d", res.StatusCode)
+		}
+	})
 	t.Run("F-02: a file left out by an exclude pattern still opens by its path", func(t *testing.T) {
 		e2 := start(t, `{"roots":[{"name":"code","path":"~/code"}],"exclude":["n.md"]}`)
 		l := e2.lists()

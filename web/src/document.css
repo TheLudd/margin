@@ -1,0 +1,579 @@
+/* Document header (L-17 to L-21) */
+.doc-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--cp-line);
+  background: color-mix(in srgb, var(--cp-bg) 90%, transparent);
+  backdrop-filter: blur(6px);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+.doc-header .path {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-header .path .name {
+  color: var(--cp-text);
+}
+
+.doc-header .worktree {
+  padding: 1px 4px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-cyan);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .worktree[hidden] {
+  display: none;
+}
+
+/* Status badges, sitting together. Each is as wide as its longest value,
+   so the header doesn't shift as values change; stable values are dim. */
+.doc-header .badges {
+  display: flex;
+  flex-shrink: 0;
+  align-self: center;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.doc-header .badge {
+  box-sizing: content-box;
+  width: calc(var(--chars) * (1ch + 0.1em));
+  padding: 1px 8px;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.doc-header .badge[hidden] {
+  display: none;
+}
+
+.doc-header .badge.unstable {
+  --tint: var(--cp-cyan);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .commit {
+  --chars: 11; /* uncommitted */
+}
+
+.doc-header .commit.unstable {
+  --tint: var(--cp-warn);
+  cursor: pointer;
+}
+
+/* Never committed: nothing to compare with */
+.doc-header .commit.untracked {
+  --tint: var(--cp-warn);
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .commit.unstable:hover,
+.doc-header .commit.active {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
+/* Editing the document: a toggle, lit while on, in the editor's colour */
+.doc-header .edit {
+  --chars: 7; /* editing */
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .edit:hover {
+  opacity: 1;
+}
+
+.doc-header .edit.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+/* Edited by hand: a toggle, lit while on */
+.doc-header .manual {
+  --chars: 6;
+  --tint: var(--cp-magenta);
+  cursor: pointer;
+}
+
+.doc-header .manual:hover {
+  opacity: 1;
+}
+
+.doc-header .manual.active {
+  background: color-mix(in srgb, var(--tint), transparent 85%);
+  color: var(--tint);
+  opacity: 1;
+}
+
+.doc-header .manual.active:hover {
+  background: color-mix(in srgb, var(--tint), transparent 70%);
+}
+
+.doc-header .status {
+  --chars: 8; /* conflict, retrying */
+}
+
+.doc-header .status:is([data-state='conflict'], [data-state='missing'], [data-state='error']) {
+  --tint: var(--change-removed);
+}
+
+/* Changes controls (L-19) */
+.doc-header .changes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes[hidden],
+.doc-header .changes [hidden] {
+  display: none;
+}
+
+.doc-header .changes button {
+  padding: 0 6px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-panel);
+  color: var(--cp-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.doc-header .changes button:hover:not(:disabled) {
+  border-color: var(--cp-cyan);
+  color: var(--cp-text);
+}
+
+.doc-header .changes button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.doc-header .changes button.count {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cp-muted);
+}
+
+.doc-header .changes button.count:hover:not(:disabled) {
+  color: var(--cp-cyan);
+  text-decoration: underline;
+}
+
+.doc-header .changes .mark-read {
+  color: var(--change-added);
+}
+
+/* Banner (L-20) */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 32px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--cp-warn);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--cp-warn) 10%, transparent);
+  font-size: 14px;
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner button {
+  padding: 4px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  background: var(--cp-raised);
+  color: var(--cp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.banner button:first-of-type {
+  margin-left: auto;
+}
+
+.banner button:hover {
+  border-color: var(--cp-cyan);
+}
+
+/* Article */
+article {
+  max-width: 920px;
+  margin: 24px auto 30vh;
+  padding: 0 16px;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+}
+
+/* Frontmatter (D-06, L-24, J-06) */
+.frontmatter {
+  margin: 0 64px 8px;
+  border: 1px solid var(--cp-line);
+  border-left: 2px solid var(--cp-magenta);
+  border-radius: 4px;
+  background: var(--cp-panel);
+  font-family: var(--cp-mono);
+  font-size: 12px;
+}
+
+.frontmatter[hidden] {
+  display: none;
+}
+
+.frontmatter summary {
+  padding: 6px 12px;
+  color: var(--cp-muted);
+  cursor: pointer;
+}
+
+.frontmatter textarea {
+  display: block;
+  width: 100%;
+  padding: 4px 12px 10px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--cp-code);
+  font: inherit;
+  line-height: 1.5;
+}
+
+/* Editor surface (L-25) */
+.editor {
+  --editor-surface: var(--cp-panel);
+  --editor-surface-low: var(--cp-raised);
+  --editor-primary: var(--cp-cyan);
+  --editor-selected: color-mix(in srgb, var(--cp-magenta) 20%, transparent);
+  --editor-shadow: 0 0 12px color-mix(in srgb, var(--cp-cyan) 12%, transparent);
+  --editor-error: var(--change-removed);
+}
+
+.editor .ProseMirror {
+  --inset-left: 64px;
+  --inset-right: 48px;
+  padding: 8px var(--inset-right) 60px var(--inset-left);
+  outline: none;
+  caret-color: var(--cp-magenta);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.editor .ProseMirror-selectednode {
+  outline: 2px solid var(--editor-selected);
+}
+
+/* Editing: the block holding the cursor */
+.editor .ProseMirror:focus .cursor-block {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cp-magenta) 6%, transparent);
+  box-shadow:
+    -10px 0 0 color-mix(in srgb, var(--cp-magenta) 6%, transparent),
+    10px 0 0 color-mix(in srgb, var(--cp-magenta) 6%, transparent);
+}
+
+/* Code blocks and tables keep to the text's width unless their lines are
+   longer: then they grow evenly to both sides, centered on the text, up to a
+   24px gutter from the edges, and only scroll beyond that. */
+.editor .ProseMirror > :is(.code-block, .table-block) {
+  position: relative;
+  left: 50%;
+  translate: -50%;
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100cqw - 48px - (2px + var(--inset-left) - var(--inset-right)));
+}
+
+.editor .table-block .table-wrapper {
+  overflow-x: auto;
+}
+
+/* Auto layout sizes the table to its cells instead of the room there is */
+.editor .table-block table {
+  table-layout: auto;
+  border-collapse: collapse;
+  background: var(--cp-bg);
+}
+
+.editor .ProseMirror :is(td, th) {
+  padding: 4px 10px;
+  border: 1px solid var(--cp-line);
+  vertical-align: top;
+}
+
+.editor .ProseMirror :is(td, th) > p {
+  margin: 0;
+}
+
+/* Markdown styling (L-22) */
+.editor .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--cp-mono);
+  letter-spacing: 0.02em;
+}
+
+.editor .ProseMirror h1 {
+  color: var(--cp-magenta);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--cp-magenta) 30%, transparent);
+  border-bottom: 1px solid var(--cp-magenta);
+  padding-bottom: 6px;
+}
+
+.editor .ProseMirror h2 {
+  color: var(--cp-cyan);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--cp-cyan) 20%, transparent);
+  border-bottom: 1px solid var(--cp-line);
+  padding-bottom: 4px;
+}
+
+.editor .ProseMirror h3 {
+  color: var(--cp-h3);
+}
+
+.editor .ProseMirror strong {
+  color: var(--cp-white);
+}
+
+.editor .ProseMirror a {
+  color: var(--cp-cyan);
+  cursor: pointer;
+}
+
+.editor .ProseMirror a:hover {
+  color: var(--cp-magenta);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--cp-magenta) 50%, transparent);
+}
+
+.editor .ProseMirror blockquote {
+  margin: 1em 0;
+  padding: 2px 16px;
+  border-left: 3px solid var(--cp-magenta);
+  background: color-mix(in srgb, var(--cp-magenta) 5%, transparent);
+}
+
+.editor .ProseMirror hr {
+  height: 2px;
+  border: 0;
+  background: linear-gradient(90deg, var(--cp-magenta), var(--cp-cyan));
+}
+
+.editor .ProseMirror th {
+  color: var(--cp-cyan);
+  font-family: var(--cp-mono);
+}
+
+.editor .ProseMirror tr:nth-child(2n) td {
+  background: var(--cp-raised);
+}
+
+/* Inline code wraps as text, not as a box (D-12) */
+.editor .ProseMirror :not(pre) > code {
+  display: inline;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--cp-raised);
+  color: var(--cp-code);
+  font-family: var(--cp-mono);
+  font-size: 0.9em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Task items (D-07) */
+.editor .ProseMirror li[data-item-type='task'] {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  list-style: none;
+}
+
+.editor .ProseMirror li[data-item-type='task'] > input {
+  margin: 0;
+  accent-color: var(--cp-cyan);
+  cursor: pointer;
+}
+
+.editor .ProseMirror li[data-item-type='task'] > .task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor .ProseMirror li[data-item-type='task'] > .task-content > p {
+  margin: 0;
+}
+
+/* Code blocks (D-08, D-09) */
+.editor .code-block {
+  margin: 1em 0;
+  border: 1px solid var(--cp-line);
+  border-left: 3px solid var(--cp-cyan);
+  background: var(--cp-code-bg);
+}
+
+.editor .code-block pre {
+  margin: 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+  font-family: var(--cp-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.editor .code-block pre code {
+  font: inherit;
+}
+
+.editor .code-block .preview {
+  display: none;
+  padding: 12px 16px;
+}
+
+.editor .code-block .preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.editor .code-block.mermaid .preview {
+  display: block;
+}
+
+/* A mermaid block: the diagram alone, the source once clicked while editing */
+.editor .code-block.mermaid:not(.source-open) pre,
+.editor .ProseMirror[contenteditable='false'] .code-block.mermaid pre {
+  display: none;
+}
+
+.editor .code-block.mermaid.source-open .preview {
+  border-top: 1px dashed var(--cp-line);
+}
+
+.mermaid-error {
+  color: var(--change-removed);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .doc-header {
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+
+  /* Badges as symbols; the words stay for screen readers (L-21, L-26) */
+  .doc-header .badges {
+    gap: 4px;
+    border: none;
+  }
+
+  .doc-header .badge:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 4px;
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .doc-header .badge::before {
+    font-family: var(--cp-sans);
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .doc-header .edit::before {
+    content: '✎';
+  }
+
+  .doc-header .manual::before {
+    content: '✍';
+  }
+
+  .doc-header .commit[data-state='committed']::before {
+    content: '◆';
+  }
+
+  .doc-header .commit[data-state='uncommitted']::before {
+    content: '±';
+  }
+
+  .doc-header .commit[data-state='untracked']::before {
+    content: '?';
+  }
+
+  .doc-header .status[data-state='clean']::before {
+    content: '✓';
+  }
+
+  .doc-header .status[data-state='dirty']::before {
+    content: '•';
+  }
+
+  .doc-header .status[data-state='saving']::before {
+    content: '…';
+  }
+
+  .doc-header .status[data-state='conflict']::before {
+    content: '⚠';
+  }
+
+  .doc-header .status[data-state='missing']::before {
+    content: '✕';
+  }
+
+  .doc-header .status[data-state='error']::before {
+    content: '↻';
+  }
+
+  .frontmatter {
+    margin: 0 16px 8px;
+  }
+
+  .editor .ProseMirror {
+    --inset-left: 16px;
+    --inset-right: 16px;
+  }
+}
