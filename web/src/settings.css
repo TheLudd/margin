@@ -1,0 +1,232 @@
+/* Settings (L-34) and the busy overlay (L-35) */
+.settings p {
+  color: var(--cp-muted);
+  line-height: 1.5;
+}
+
+.settings .roots-head,
+.settings .root {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 60px 32px;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings .roots-head {
+  margin-top: 28px;
+  padding: 0 2px 6px;
+  color: var(--cp-cyan);
+  font: 11px var(--cp-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.settings .root {
+  margin-bottom: 8px;
+}
+
+.settings input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px var(--cp-mono);
+}
+
+.settings input:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings .files {
+  color: var(--cp-muted);
+  font: 12px var(--cp-mono);
+  text-align: right;
+}
+
+.settings button {
+  padding: 7px 14px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  background: var(--cp-raised);
+  color: var(--cp-text);
+  font: 13px var(--cp-mono);
+  cursor: pointer;
+}
+
+.settings button:hover {
+  border-color: var(--cp-cyan);
+}
+
+.settings button.remove {
+  padding: 6px 0;
+  color: var(--cp-muted);
+}
+
+.settings button.primary {
+  border-color: var(--cp-magenta);
+  color: var(--cp-magenta);
+}
+
+.settings button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.settings .suggestions .loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--cp-muted);
+  font: 13px var(--cp-mono);
+}
+
+.settings .suggestions .loading .spinner {
+  --size: 16px;
+}
+
+.settings .suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 36px;
+  font: 14px var(--cp-mono);
+}
+
+.settings .suggestion .path {
+  color: var(--cp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings button.add {
+  padding: 6px 0;
+  border-color: transparent;
+  background: none;
+  color: var(--cp-cyan);
+}
+
+.settings .actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.settings .actions.save {
+  justify-content: flex-end;
+}
+
+.settings h2 {
+  margin: 40px 0 0;
+  font: 11px var(--cp-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cp-cyan);
+}
+
+.settings select {
+  margin: 0 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px var(--cp-mono);
+}
+
+.settings select:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings input.days {
+  width: 5em;
+  margin: 0 4px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
+.settings textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cp-line);
+  border-radius: 4px;
+  outline: 0;
+  resize: vertical;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  font: 14px/1.5 var(--cp-mono);
+}
+
+.settings textarea:focus {
+  border-color: var(--cp-cyan);
+}
+
+.settings .error {
+  padding: 10px 14px;
+  border: 1px solid var(--cp-warn);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--cp-warn) 10%, transparent);
+  color: var(--cp-text);
+  white-space: pre-line;
+}
+
+.settings .error[hidden] {
+  display: none;
+}
+
+.settings .file {
+  margin-top: 32px;
+  font: 12px var(--cp-mono);
+}
+
+/* Busy overlay */
+dialog.busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-text);
+  font: 13px var(--cp-mono);
+  outline: 0;
+}
+
+dialog.busy:not([open]) {
+  display: none;
+}
+
+dialog.busy::backdrop {
+  background: color-mix(in srgb, var(--cp-deep) 80%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+dialog.busy p {
+  margin: 0;
+}
+
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: var(--size, 32px);
+  height: var(--size, 32px);
+  border: 2px solid var(--cp-line);
+  border-top-color: var(--cp-magenta);
+  border-right-color: var(--cp-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

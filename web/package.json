@@ -1,0 +1,24 @@
+{
+  "name": "margin-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "roundtrip": "vitest run --config vitest.roundtrip.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "^24.19.2",
+    "jsdom": "30.1.3",
+    "typescript": "^5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@milkdown/kit": "7.22.3",
+    "mermaid": "12.2.0"
+  }
+}
