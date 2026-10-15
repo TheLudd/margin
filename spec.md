@@ -10,7 +10,7 @@ Ids are stable: never renumber, never reuse a dropped one. A test names the ids 
 
 ## How the rewrite proceeds
 
-- The rewrite happens on a branch of this repository. Its first commit deletes `internal/`, `web/src`, `main.go` and `plan.md`; the old code stays in history for reference and nothing else. `readme.md` is rewritten from this spec at the end.
+- The rewrite happens on a branch of this repository. Its first commit deletes everything except `spec.md`, `spec/`, `readme.md`, `.gitignore` and `.claude/`: all Go and TypeScript code, `main.go`, `go.mod` and `go.sum`, the whole `web/` folder including its build config, lockfile, embed file and tests, the `Makefile`, and `plan.md`. Nothing of the old code is kept, reused or copied; it stays in git history and is not consulted. The rewrite chooses its own layout, build and dependencies from this spec. `readme.md` is rewritten from this spec at the end.
 - `.claude/settings.json` holds a hook that runs `make install` and restarts margin after every commit. The first commit removes that hook, so the margin in use is not replaced by a half-built one. The last commit, once the whole Playwright suite passes, restores it unchanged.
 - `make coverage` is written before anything it would cover, so the gaps are visible from the start.
 - The order of work is the order of the sections: operation and files, then the document, then never stale, then changes, then the look and the nothing-jumps rules.
