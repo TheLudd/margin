@@ -127,7 +127,7 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
       return
     }
     for (const s of shown) {
-      const add = el('button', { class: 'add', type: 'button', text: '+ add' })
+      const add = el('button', { class: 'add plus', type: 'button', 'aria-label': `Add ${s.path}`, title: 'Add', text: '+' })
       const count = el('span', { class: 'files', text: `${s.partial ? '≥' : ''}${s.count}` })
       const row = el('div', { class: 'suggestion' }, el('span', { class: 'path', text: s.path }), count, add)
       add.addEventListener('click', () => {

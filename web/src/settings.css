@@ -60,8 +60,13 @@
   border-color: var(--cp-cyan);
 }
 
-.settings button.remove {
+.settings button.remove,
+.settings button.add.plus {
+  width: 32px;
   padding: 6px 0;
+}
+
+.settings button.remove {
   color: var(--cp-muted);
 }
 
@@ -90,7 +95,7 @@
 
 .settings .suggestion {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 60px auto;
+  grid-template-columns: minmax(0, 1fr) 60px 32px;
   gap: 10px;
   align-items: center;
   min-height: 36px;
@@ -105,7 +110,6 @@
 }
 
 .settings button.add {
-  padding: 6px 0;
   color: var(--cp-cyan);
 }
 
