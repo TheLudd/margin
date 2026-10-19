@@ -8,7 +8,22 @@ const items = [
   { path: '/code/notes/daily/2026-10-15.md', name: '2026-10-15.md', dir: 'notes/daily' },
 ]
 
+const typed = [
+  { path: '/code/margin/CLAUDE.md', name: 'margin', dir: '', type: { name: 'claude' } },
+  { path: '/code/margin/.claude/skills/commit/SKILL.md', name: 'commit', dir: 'margin', type: { name: 'skill' } },
+  { path: '/code/margin/docs/commit-flow.md', name: 'commit-flow.md', dir: 'margin/docs' },
+  { path: '/code/margin/AGENTS.md', name: 'margin', dir: '', type: { name: 'rules' } },
+]
+
 describe('match', () => {
+  it('F-07, S-10: a typed file matches on its shown name, its type name as a name, and its real file name', () => {
+    expect(rank('claude margin', typed).map((m) => m.item.path)).toEqual(['/code/margin/CLAUDE.md'])
+    expect(rank('skill commit', typed).map((m) => m.item.path)).toEqual(['/code/margin/.claude/skills/commit/SKILL.md'])
+    expect(rank('agents', typed).map((m) => m.item.path)).toEqual(['/code/margin/AGENTS.md'])
+    expect(rank('commit', typed).map((m) => m.item.path).sort()).toEqual(['/code/margin/.claude/skills/commit/SKILL.md', '/code/margin/docs/commit-flow.md'])
+    expect(scoreItem(['claude'], typed[0])).toBeGreaterThan(scoreItem(['claude'], typed[1]))
+  })
+
   it('S-10: a segment splits into words on dashes, underscores, dots and spaces', () => {
     expect(segmentWords('guarded-commands-plan')).toEqual(['guarded', 'commands', 'plan'])
     expect(segmentWords('my_notes.v2 draft')).toEqual(['my', 'notes', 'v2', 'draft'])

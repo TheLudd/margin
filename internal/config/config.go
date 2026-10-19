@@ -22,17 +22,28 @@ type Root struct {
 	Path string `json:"path"`
 }
 
+// Type is a file type (F-07): files matching the pattern are shown with
+// the mark and named by the part of their path the pattern does not fix.
+// The pattern has the grammar of an exclude pattern. An empty mark is the
+// name.
+type Type struct {
+	Name  string `json:"name"`
+	Match string `json:"match"`
+	Mark  string `json:"mark,omitempty"`
+}
+
 // Config is the config file.
 type Config struct {
 	Roots      []Root   `json:"roots"`
 	Exclude    []string `json:"exclude"`
+	Types      []Type   `json:"types"`
 	ActiveDays int      `json:"activeDays"`
 	UnreadDays int      `json:"unreadDays"`
 }
 
 // Default is the config without a file.
 func Default() Config {
-	return Config{Roots: []Root{}, Exclude: []string{}, ActiveDays: 14, UnreadDays: 30}
+	return Config{Roots: []Root{}, Exclude: []string{}, Types: []Type{}, ActiveDays: 14, UnreadDays: 30}
 }
 
 // Reserved are the names a root cannot have, being routes of margin's own.
@@ -52,6 +63,9 @@ func Parse(data []byte) (Config, error) {
 	}
 	if c.Exclude == nil {
 		c.Exclude = []string{}
+	}
+	if c.Types == nil {
+		c.Types = []Type{}
 	}
 	if c.ActiveDays == 0 {
 		c.ActiveDays = 14
@@ -102,8 +116,9 @@ func ExpandHome(p, home string) string {
 }
 
 // Validate checks the config: folders must exist, names must be unique and
-// not routes of margin's own, roots must not overlap, and the day counts
-// must be 1–365. Every problem found is in the message.
+// not routes of margin's own, roots must not overlap, types must have
+// unique names and a pattern, and the day counts must be 1–365. Every
+// problem found is in the message.
 func (c Config) Validate(home string) error {
 	var problems []string
 	names := map[string]bool{}
@@ -149,6 +164,20 @@ func (c Config) Validate(home string) error {
 			if a == b || strings.HasPrefix(b, strings.TrimSuffix(a, "/")+"/") {
 				problems = append(problems, fmt.Sprintf("roots %q and %q overlap", paths[i].name, paths[j].name))
 			}
+		}
+	}
+	typeNames := map[string]bool{}
+	for i, t := range c.Types {
+		name := strings.TrimSpace(t.Name)
+		switch {
+		case name == "":
+			problems = append(problems, fmt.Sprintf("type %d has no name", i+1))
+		case typeNames[strings.ToLower(name)]:
+			problems = append(problems, fmt.Sprintf("type %q is used twice", name))
+		}
+		typeNames[strings.ToLower(name)] = true
+		if strings.Trim(strings.TrimSpace(t.Match), "/") == "" {
+			problems = append(problems, fmt.Sprintf("type %q has no pattern", name))
 		}
 	}
 	if c.ActiveDays < 1 || c.ActiveDays > 365 {

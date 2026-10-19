@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"margin/internal/config"
+	"margin/internal/filetype"
 	"margin/internal/index"
 	"margin/internal/project"
 )
@@ -147,6 +149,39 @@ func TestLists(t *testing.T) {
 		l = Build(in)
 		if l.Older[0].Project != "code" || l.Older[1].Project != "code/foo" || l.Older[1].Files[0].Dir != "code/foo/docs" {
 			t.Fatalf("multi-root %+v", l.Older)
+		}
+	})
+
+	t.Run("F-07: a typed file is named by its path and carries its type, alone and with copies, with one root or several", func(t *testing.T) {
+		types := filetype.New([]config.Type{{Name: "claude", Match: "CLAUDE.md"}, {Name: "skill", Match: ".claude/skills/*/SKILL.md", Mark: "✦"}})
+		cl := file("code", "foo/CLAUDE.md", "h", day(40))
+		sk := file("code", "foo/.claude/skills/commit/SKILL.md", "h", day(40))
+		in := base(solo(cl, fooProj), solo(sk, fooProj))
+		in.Types = types
+		files := Build(in).Older[0].Files
+		if len(files) != 2 || files[0].Name != "commit" || files[0].Dir != "foo" || files[0].Type == nil || files[0].Type.Mark != "✦" {
+			t.Fatalf("skill %+v", files[0])
+		}
+		if files[1].Name != "foo" || files[1].Dir != "" || files[1].Type == nil || files[1].Type.Name != "claude" || files[1].Type.Mark != "claude" {
+			t.Fatalf("claude %+v", files[1])
+		}
+		in.SingleRoot = false
+		files = Build(in).Older[0].Files
+		if files[0].Dir != "code/foo" || files[1].Dir != "code" {
+			t.Fatalf("multi-root %+v %+v", files[0], files[1])
+		}
+		proj := &project.Project{Key: "git", Root: "code", Rel: "bar", Git: true}
+		main := &project.Checkout{Dir: "/code/bar/main", Label: "main", Main: true}
+		feat := &project.Checkout{Dir: "/code/bar/feat", Label: "feat"}
+		proj.Checkouts = []*project.Checkout{main, feat}
+		mk := func(rel string, c *project.Checkout) FileInfo {
+			return FileInfo{File: file("code", rel, "h", day(40)), Placement: project.Placement{Project: proj, Checkout: c, Rel: "CLAUDE.md"}}
+		}
+		in = base(mk("bar/main/CLAUDE.md", main), mk("bar/feat/CLAUDE.md", feat))
+		in.Types = types
+		e := Build(in).Older[0].Files[0]
+		if e.Copies != 2 || e.Name != "CLAUDE.md" || e.Dir != "bar" || e.Type == nil || e.Type.Name != "claude" {
+			t.Fatalf("copies %+v", e)
 		}
 	})
 

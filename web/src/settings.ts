@@ -1,8 +1,8 @@
 // The setup and settings screens (C): roots with suggestions and path
-// completion, exclude patterns, the day counts, errors and where the config
-// is stored.
+// completion, exclude patterns, file types, the day counts, errors and
+// where the config is stored.
 import { el } from './shell'
-import type { Config, ConfigRoot, SettingsView, Suggestion } from './types'
+import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion } from './types'
 
 export interface SettingsActions {
   save(config: Config): Promise<void>
@@ -33,6 +33,14 @@ interface RootRow {
   nameEdited: boolean
 }
 
+interface TypeRow {
+  name: HTMLInputElement
+  match: HTMLInputElement
+  mark: HTMLInputElement
+  remove: HTMLButtonElement
+  row: HTMLElement
+}
+
 export interface SettingsRefs {
   form: HTMLFormElement
   rootsBody: HTMLElement
@@ -40,8 +48,10 @@ export interface SettingsRefs {
   error: HTMLElement
   saveButton: HTMLButtonElement
   rows: RootRow[]
+  typeRows: TypeRow[]
   config(): Config
   addRoot(root: ConfigRoot, nameEdited?: boolean): RootRow
+  addType(type: ConfigType): TypeRow
 }
 
 let completionId = 0
@@ -146,6 +156,41 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   exclude.value = view.config.exclude.join('\n')
   form.append(el('p', { text: 'One pattern per line. Without a slash it matches file names anywhere; with one, the end of a path. Case is ignored. Files left out still open by their address.' }), exclude)
 
+  form.append(el('h2', { text: 'Types' }))
+  form.append(
+    el('p', {
+      text: 'Files whose name says little, like every CLAUDE.md. A file matching the pattern is marked and named by the part of its path the pattern leaves open: with .claude/skills/*/SKILL.md the skill folder is the name. The mark is the name unless given.',
+    }),
+  )
+  const typesHead = el('div', { class: 'types-head' }, el('span', { text: 'Name' }), el('span', { text: 'Pattern' }), el('span', { text: 'Mark' }), el('span'))
+  const typesBody = el('div', { class: 'types' })
+  form.append(typesHead, typesBody)
+  const typeRows: TypeRow[] = []
+  const addType = (type: ConfigType): TypeRow => {
+    const name = el('input', { type: 'text', name: 'typeName', placeholder: 'claude', 'aria-label': 'Type name', autocomplete: 'off' })
+    name.value = type.name
+    const match = el('input', { type: 'text', name: 'typeMatch', placeholder: 'CLAUDE.md', 'aria-label': 'Type pattern', autocomplete: 'off' })
+    match.value = type.match
+    const mark = el('input', { type: 'text', name: 'typeMark', placeholder: 'mark', 'aria-label': 'Type mark', autocomplete: 'off' })
+    mark.value = type.mark ?? ''
+    const remove = el('button', { class: 'remove', type: 'button', 'aria-label': `Remove type ${type.name || ''}`.trim(), title: 'Remove', text: '×' })
+    const row = el('div', { class: 'type' }, name, match, mark, remove)
+    const r: TypeRow = { name, match, mark, remove, row }
+    remove.addEventListener('click', () => {
+      typeRows.splice(typeRows.indexOf(r), 1)
+      row.remove()
+    })
+    typeRows.push(r)
+    typesBody.append(row)
+    return r
+  }
+  for (const t of view.config.types) addType(t)
+  const addTypeButton = el('button', { class: 'add', type: 'button', text: '+ add a type' })
+  addTypeButton.addEventListener('click', () => {
+    addType({ name: '', match: '' }).name.focus()
+  })
+  form.append(el('div', { class: 'actions' }, addTypeButton))
+
   form.append(el('h2', { text: 'Windows' }))
   activeDays = el('input', { class: 'days', type: 'number', name: 'activeDays', min: '1', max: '365', 'aria-label': 'Active days' })
   activeDays.value = String(view.config.activeDays)
@@ -165,6 +210,12 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean),
+    types: typeRows.map((r) => {
+      const t: ConfigType = { name: r.name.value.trim(), match: r.match.value.trim() }
+      const mark = r.mark.value.trim()
+      if (mark) t.mark = mark
+      return t
+    }),
     activeDays: Number(activeDays?.value ?? 14),
     unreadDays: Number(unreadDays?.value ?? 30),
   })
@@ -183,7 +234,7 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   })
 
   container.append(el('p', { class: 'file' }, 'Stored in ', el('code', { text: view.file })))
-  return { form, rootsBody, suggestions, error, saveButton, rows, config, addRoot }
+  return { form, rootsBody, suggestions, error, saveButton, rows, typeRows, config, addRoot, addType }
 }
 
 function formatCount(n: number | undefined): string {

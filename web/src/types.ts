@@ -5,10 +5,17 @@ export interface RootView {
   path: string
 }
 
+/** A file type (F-07): its name and the mark drawn before the file name. */
+export interface FileType {
+  name: string
+  mark: string
+}
+
 export interface Entry {
   path: string
   name: string
   dir: string
+  type?: FileType
   time?: number
   kind?: 'view' | 'modified'
   unread: boolean
@@ -41,6 +48,7 @@ export interface Doc {
   path: string
   name: string
   dir: string
+  type?: FileType
   content: string
   etag: string
   mtime: number
@@ -68,9 +76,16 @@ export interface ConfigRoot {
   path: string
 }
 
+export interface ConfigType {
+  name: string
+  match: string
+  mark?: string
+}
+
 export interface Config {
   roots: ConfigRoot[]
   exclude: string[]
+  types: ConfigType[]
   activeDays: number
   unreadDays: number
 }

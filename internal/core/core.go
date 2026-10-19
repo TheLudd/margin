@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"margin/internal/config"
+	"margin/internal/filetype"
 	"margin/internal/gitx"
 	"margin/internal/index"
 	"margin/internal/lists"
@@ -171,6 +171,7 @@ func (c *Core) apply(cfg config.Config, startup bool) error {
 		c.cfgErr = ""
 		c.mu.Unlock()
 		c.sweep()
+		c.hub.Broadcast("lists", nil) // the labels may have changed (F-07)
 		return nil
 	}
 	var roots []index.Root
@@ -352,7 +353,7 @@ func (c *Core) Lists() ListsView {
 		return view
 	}
 	files := ix.Files()
-	in := lists.Input{Views: c.st.Views(), Dismissals: c.st.Dismissals(), Manual: c.st.ManualSet(), CopyHash: map[string]string{}, Now: time.Now(), ActiveDays: cfg.ActiveDays, SingleRoot: len(roots) == 1}
+	in := lists.Input{Views: c.st.Views(), Dismissals: c.st.Dismissals(), Manual: c.st.ManualSet(), CopyHash: map[string]string{}, Now: time.Now(), ActiveDays: cfg.ActiveDays, SingleRoot: len(roots) == 1, Types: filetype.New(cfg.Types)}
 	for _, f := range files {
 		pl := model.Place(f)
 		in.Files = append(in.Files, lists.FileInfo{File: f, Placement: pl, State: model.State(pl)})
@@ -375,18 +376,19 @@ type CopyView struct {
 
 // Doc is a file as the browser opens it.
 type Doc struct {
-	Path    string     `json:"path"`
-	Name    string     `json:"name"`
-	Dir     string     `json:"dir"`
-	Content string     `json:"content"`
-	Etag    string     `json:"etag"`
-	Mtime   int64      `json:"mtime"`
-	Git     string     `json:"git"`
-	Manual  bool       `json:"manual"`
-	HasCopy bool       `json:"hasCopy"`
-	Unread  bool       `json:"unread"`
-	Copies  []CopyView `json:"copies"`
-	Project string     `json:"project"`
+	Path    string         `json:"path"`
+	Name    string         `json:"name"`
+	Dir     string         `json:"dir"`
+	Type    *filetype.Type `json:"type,omitempty"`
+	Content string         `json:"content"`
+	Etag    string         `json:"etag"`
+	Mtime   int64          `json:"mtime"`
+	Git     string         `json:"git"`
+	Manual  bool           `json:"manual"`
+	HasCopy bool           `json:"hasCopy"`
+	Unread  bool           `json:"unread"`
+	Copies  []CopyView     `json:"copies"`
+	Project string         `json:"project"`
 }
 
 func (c *Core) fileFor(root index.Root, rel, abs string) index.File {
@@ -457,19 +459,16 @@ func (c *Core) Read(mpath string, open ...bool) (Doc, error) {
 	f := c.fileFor(root, rel, abs)
 	f.Hash = hash
 	c.mu.RLock()
-	model, roots := c.model, c.roots
+	model, roots, types := c.model, c.roots, c.cfg.Types
 	c.mu.RUnlock()
-	doc := Doc{Path: "/" + root.Name + "/" + rel, Name: path.Base(rel), Content: string(content), Etag: etagOf(hash), Mtime: f.Mtime.Unix(), Manual: c.st.Manual(abs), Copies: []CopyView{}}
-	dir := path.Dir(rel)
-	if dir == "." {
-		dir = ""
-	}
+	label := filetype.New(types).Label(rel)
+	doc := Doc{Path: "/" + root.Name + "/" + rel, Name: label.Name, Type: label.Type, Content: string(content), Etag: etagOf(hash), Mtime: f.Mtime.Unix(), Manual: c.st.Manual(abs), Copies: []CopyView{}}
 	if len(roots) == 1 {
-		doc.Dir = dir
-	} else if dir == "" {
+		doc.Dir = label.Dir
+	} else if label.Dir == "" {
 		doc.Dir = root.Name
 	} else {
-		doc.Dir = root.Name + "/" + dir
+		doc.Dir = root.Name + "/" + label.Dir
 	}
 	if h, ok := c.st.CopyHash(abs); ok {
 		doc.HasCopy = true
@@ -711,6 +710,9 @@ func (c *Core) SaveSettings(cfg config.Config) (bool, error) {
 	}
 	if cfg.Exclude == nil {
 		cfg.Exclude = []string{}
+	}
+	if cfg.Types == nil {
+		cfg.Types = []config.Type{}
 	}
 	for i := range cfg.Roots {
 		cfg.Roots[i].Name = strings.TrimSpace(cfg.Roots[i].Name)

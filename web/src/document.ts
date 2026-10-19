@@ -383,7 +383,7 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
     open = o
     const singleRoot = (h.lists()?.roots.length ?? 1) === 1
     void singleRoot
-    setHeaderLabel(header!, doc.name, doc.dir)
+    setHeaderLabel(header!, doc.name, doc.dir, { type: doc.type, path: doc.path })
     setCopies(header!, doc.copies, doc.path)
     setCommit(header!, doc.git)
     setManual(header!, doc.manual)
@@ -392,7 +392,7 @@ export async function openDocument(s: Shell, path: string, h: DocumentHost): Pro
     document.body.classList.remove('editing')
     hideBanner()
     showFrontmatter(o)
-    document.title = doc.name
+    document.title = doc.type ? `${doc.name} · ${doc.type.name}` : doc.name
     h.onOpened()
     rebuildToc()
     if (location.hash) scrollToHeading(decodeURIComponent(location.hash.slice(1)), false)

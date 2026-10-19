@@ -71,7 +71,7 @@ export function renderFinder(refs: FinderRefs, view: FinderView, state: FinderSt
   list.replaceChildren()
   let index = 0
   const row = (r: FinderRow): HTMLLIElement => {
-    const a = el('a', { href: r.entry.path }, fileLabel(r.entry.name, r.entry.dir))
+    const a = el('a', { href: r.entry.path }, fileLabel(r.entry.name, r.entry.dir, { type: r.entry.type, path: r.entry.path }))
     if (r.entry.copies && r.entry.copies > 1) a.append(el('span', { class: 'copies', text: `×${r.entry.copies}` }))
     if (r.entry.time && !r.older) a.append(el('time', { text: relativeTime(r.entry.time, now) }))
     const li = el('li', { class: 'row' + (r.older ? ' older' : ''), role: 'option' }, a)

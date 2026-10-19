@@ -343,6 +343,36 @@ func TestFiles(t *testing.T) {
 			t.Errorf("missing meta: %d", res.StatusCode)
 		}
 	})
+	t.Run("F-07: typed files are listed and served with their type and the name taken from the path", func(t *testing.T) {
+		e2 := start(t, `{"roots":[{"name":"code","path":"~/code"}],"types":[{"name":"note","match":"notes/*.md","mark":"✎"},{"name":"readme","match":"readme.md"}]}`)
+		var readme, note core.Doc
+		for _, g := range e2.lists().Older {
+			for _, f := range g.Files {
+				switch f.Path {
+				case "/code/repo/readme.md":
+					if f.Name != "repo" || f.Dir != "" || f.Type == nil || f.Type.Name != "readme" || f.Type.Mark != "readme" {
+						t.Errorf("readme entry %+v %+v", f, f.Type)
+					}
+					readme = e2.doc(f.Path)
+				case "/code/notes/n.md":
+					if f.Name != "n.md" || f.Dir != "" || f.Type == nil || f.Type.Mark != "✎" {
+						t.Errorf("note entry %+v %+v", f, f.Type)
+					}
+					note = e2.doc(f.Path)
+				}
+			}
+		}
+		if readme.Name != "repo" || readme.Dir != "" || readme.Type == nil || readme.Type.Name != "readme" {
+			t.Errorf("readme doc %+v %+v", readme, readme.Type)
+		}
+		if note.Name != "n.md" || note.Type == nil || note.Type.Name != "note" {
+			t.Errorf("note doc %+v %+v", note, note.Type)
+		}
+		res, data := e2.do("PUT", "/api/settings", `{"roots":[{"name":"code","path":"~/code"}],"types":[{"name":"","match":"x.md"}],"activeDays":14,"unreadDays":30}`, nil)
+		if res.StatusCode != 400 || !strings.Contains(string(data), "no name") {
+			t.Errorf("invalid type accepted: %d %s", res.StatusCode, data)
+		}
+	})
 	t.Run("F-02: a file left out by an exclude pattern still opens by its path", func(t *testing.T) {
 		e2 := start(t, `{"roots":[{"name":"code","path":"~/code"}],"exclude":["n.md"]}`)
 		l := e2.lists()

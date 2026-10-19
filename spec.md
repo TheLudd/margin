@@ -51,8 +51,8 @@ Decided 2026-10-15. Not up for reopening during the rewrite.
 
 ## 3. Config and settings (C)
 
-- **C-01** Config keys: `roots` (name and path), `exclude` (patterns), `activeDays` (1–365, default 14), `unreadDays` (1–365, default 30).
-- **C-02** Validation: folders must exist, names must be unique, roots must not overlap. An invalid save is refused with a message and nothing changes.
+- **C-01** Config keys: `roots` (name and path), `exclude` (patterns), `types` (name, match and an optional mark, F-07), `activeDays` (1–365, default 14), `unreadDays` (1–365, default 30).
+- **C-02** Validation: folders must exist, names must be unique, roots must not overlap, types must have a pattern and a name unique ignoring case. An invalid save is refused with a message and nothing changes.
 - **C-03** Hand edits to the config file are picked up live. A broken file keeps the current roots and its error shows on the settings screen.
 - **C-04** Without a usable root, margin serves nothing and the browser shows a setup screen asking for folders.
 - **C-05** The setup and settings screens suggest the visible folders in home that hold markdown, with a file count for each (a lower bound if counting ran out of time). Folders already served are not suggested.
@@ -69,6 +69,7 @@ Decided 2026-10-15. Not up for reopening during the rewrite.
 - **F-04** A file is shown the same way everywhere, in the sidebar, the finder and the document header: name first, then its folder in muted, slightly smaller text. The folder shrinks first; the name is cut only when it alone doesn't fit. In the sidebar both give way to the time and copy count.
 - **F-05** Directories are watched, not files, so atomic rename-writes are caught. The index emits added, changed and removed events.
 - **F-06** `.gitignore` changes are picked up on restart. (Live would be nicer; not demanded.)
+- **F-07** File types. A type is a name, a pattern with the grammar of F-02, and a mark that defaults to the name; the first type whose pattern matches a file is its type. A typed file is shown with the mark before the name, and is named by its path with the pattern's fixed segments dropped: the name is the rightmost segment left, the folder the rest, and a fixed segment is one without a wildcard. So `CLAUDE.md` names `margin/CLAUDE.md` `margin`, and `.claude/skills/*/SKILL.md` names `margin/.claude/skills/commit/SKILL.md` `commit` under `margin`; with nothing left the file name stays. The tooltip gives the type and the real address; the page title adds the type. In the finder the type's name matches like the file name, and the real file name like a folder. The settings screen edits the types as a grid; a change applies without re-indexing.
 
 ### Worktrees (W)
 
@@ -175,7 +176,7 @@ The reference is `spec/look.css`, the stylesheet of the last build before the re
 - **L-09** Magenta 2px top border, line right border, translucent bg (`#0a0b17cc`), 13px text, 14px top padding. The brand `margin` is magenta mono beside a muted × that turns cyan on hover.
 - **L-10** The search field shows `Open file…` and a `Ctrl K` kbd (hidden on phones).
 - **L-11** Sections Recent and Older: uppercase letter-spaced mono 12px headings in a `details` summary with a ▸/▾ marker, a muted count at the right, 12px above each section. Project groups within Older use the same summary, indented 14px per level, with a raised background on hover.
-- **L-12** A file entry: name in text colour, folder muted at 0.9em, a mono 11px time or `×n` copy count right-aligned. A view's time is muted, a modification's cyan. A changed copy count is cyan with a ● before it. The open file has a raised background and a magenta left border. The × that dismisses an entry shows on hover (always on phones) and turns magenta.
+- **L-12** A file entry: a typed file's mark first (F-07), a 10px mono uppercase letter-spaced tag in muted text with a line border, 3px radius and 5px side padding, a one-character mark at 13px without the spacing, departing from the reference which has no types; then the name in text colour, folder muted at 0.9em, a mono 11px time or `×n` copy count right-aligned. A view's time is muted, a modification's cyan. A changed copy count is cyan with a ● before it. The open file has a raised background and a magenta left border. The × that dismisses an entry shows on hover (always on phones) and turns magenta.
 - **L-13** Unread: the time or count turns code green with a 4px glowing dot to its left, or the dot sits 6px from the right edge when there is neither (J-02).
 - **L-14** Empty sections say `Nothing in the last 14 days` or `Nothing yet` in muted text.
 - **L-15** The settings row sits at the foot, in view however long the lists get.
@@ -215,7 +216,7 @@ The reference is `spec/look.css`, the stylesheet of the last build before the re
 ### Pages and settings
 
 - **L-33** Home, missing and setup pages are a 640px column 18vh from the top in muted text with a magenta glowing mono h1; settings is 820px, 10vh, in text colour.
-- **L-34** Settings: cyan uppercase mono 11px section headings 40px apart; a roots grid of name 160px, folder, files 60px, remove 32px; inputs, selects and textarea in panel bg, line border, 4px radius, 14px mono, cyan border on focus; buttons raised with a line border, cyan on hover, the primary one magenta; the error box warn-bordered on a warn 10% wash; the file location in mono 12px at the foot.
+- **L-34** Settings: cyan uppercase mono 11px section headings 40px apart; a roots grid of name 160px, folder, files 60px, remove 32px; a types grid of name 160px, pattern, mark 120px, remove 32px; inputs, selects and textarea in panel bg, line border, 4px radius, 14px mono, cyan border on focus; buttons raised with a line border, cyan on hover, the primary one magenta; the error box warn-bordered on a warn 10% wash; the file location in mono 12px at the foot.
 - **L-35** Busy overlay: a dialog with a 32px spinner (line ring, magenta top, cyan right, 0.8s spin) and a mono 13px label over a blurred `#05060fcc` backdrop.
 
 ## 10. Nothing jumps (J)

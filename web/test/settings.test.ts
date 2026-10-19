@@ -4,7 +4,7 @@ import type { SettingsView } from '../src/types'
 
 function view(over: Partial<SettingsView> = {}): SettingsView {
   return {
-    config: { roots: [{ name: 'code', path: '~/code' }], exclude: ['CHANGELOG.md'], activeDays: 14, unreadDays: 30 },
+    config: { roots: [{ name: 'code', path: '~/code' }], exclude: ['CHANGELOG.md'], types: [{ name: 'claude', match: 'CLAUDE.md' }], activeDays: 14, unreadDays: 30 },
     file: '/home/u/.config/margin/config.json',
     state: '/home/u/.local/state/margin',
     error: '',
@@ -45,8 +45,33 @@ describe('settings', () => {
     expect(error.textContent).toBe('folder ~/x does not exist')
   })
 
+  it('F-07, C-01: types are a grid of name, pattern and mark; rows are added and removed and saved with the mark only when given', async () => {
+    const { container, refs, save } = render(view())
+    expect(container.querySelectorAll('.type')).toHaveLength(1)
+    expect((container.querySelector('.type input[name=typeName]') as HTMLInputElement).value).toBe('claude')
+    expect((container.querySelector('.type input[name=typeMatch]') as HTMLInputElement).value).toBe('CLAUDE.md')
+    expect((container.querySelector('.type input[name=typeMark]') as HTMLInputElement).value).toBe('')
+    const buttons = Array.from(container.querySelectorAll('button.add')).filter((b) => b.textContent === '+ add a type')
+    expect(buttons).toHaveLength(1)
+    ;(buttons[0] as HTMLButtonElement).click()
+    expect(container.querySelectorAll('.type')).toHaveLength(2)
+    const row = refs.typeRows[1]
+    row.name.value = ' skill '
+    row.match.value = '.claude/skills/*/SKILL.md'
+    row.mark.value = '✦'
+    expect(refs.config().types).toEqual([
+      { name: 'claude', match: 'CLAUDE.md' },
+      { name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' },
+    ])
+    refs.typeRows[0].remove.click()
+    expect(container.querySelectorAll('.type')).toHaveLength(1)
+    refs.form.requestSubmit()
+    await tick()
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ types: [{ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' }] }))
+  })
+
   it('C-04: without roots it is the setup screen', () => {
-    const { container } = render(view({ config: { roots: [], exclude: [], activeDays: 14, unreadDays: 30 } }))
+    const { container } = render(view({ config: { roots: [], exclude: [], types: [], activeDays: 14, unreadDays: 30 } }))
     expect(container.querySelector('h1')?.textContent).toBe('Welcome to margin')
     expect(container.querySelector('button.primary')?.textContent).toBe('Start')
   })
@@ -94,7 +119,7 @@ describe('settings', () => {
     ;(container.querySelector('input[name=activeDays]') as HTMLInputElement).value = '7'
     refs.form.dispatchEvent(new Event('submit'))
     await tick()
-    expect(save).toHaveBeenCalledWith({ roots: [{ name: 'code', path: '~/code' }], exclude: ['a.md', 'gen/*.md'], activeDays: 7, unreadDays: 30 })
+    expect(save).toHaveBeenCalledWith({ roots: [{ name: 'code', path: '~/code' }], exclude: ['a.md', 'gen/*.md'], types: [{ name: 'claude', match: 'CLAUDE.md' }], activeDays: 7, unreadDays: 30 })
     save.mockRejectedValueOnce(new Error('name "code" is used twice'))
     refs.form.dispatchEvent(new Event('submit'))
     await tick()

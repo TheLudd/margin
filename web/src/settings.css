@@ -5,14 +5,22 @@
 }
 
 .settings .roots-head,
-.settings .root {
+.settings .root,
+.settings .types-head,
+.settings .type {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 60px 32px;
   gap: 10px;
   align-items: center;
 }
 
-.settings .roots-head {
+.settings .types-head,
+.settings .type {
+  grid-template-columns: 160px minmax(0, 1fr) 120px 32px;
+}
+
+.settings .roots-head,
+.settings .types-head {
   margin-top: 28px;
   padding: 0 2px 6px;
   color: var(--cp-cyan);
@@ -21,7 +29,8 @@
   letter-spacing: 0.1em;
 }
 
-.settings .root {
+.settings .root,
+.settings .type {
   margin-bottom: 8px;
 }
 

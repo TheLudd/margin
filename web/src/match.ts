@@ -1,12 +1,14 @@
 // Finder matching (S-10): every query word must match within one path
 // segment, as a substring or as an abbreviation of its words; words shorter
 // than three letters only match at a word start. Matches in the file name
-// rank above matches in folders.
+// rank above matches in folders. A typed file (F-07) also matches on its
+// type's name, ranked as the name, and on its real file name.
 
 export interface Candidate {
   path: string
   name: string
   dir: string
+  type?: { name: string }
 }
 
 export interface Match<T extends Candidate> {
@@ -45,17 +47,22 @@ function abbreviates(w: string, words: string[]): boolean {
 
 /** Scores one item against the query words; 0 when any word fails. */
 export function scoreItem(words: string[], item: Candidate): number {
-  const nameSegment = item.name.replace(/\.md$/i, '')
-  const dirs = item.dir ? item.dir.split('/') : []
+  const names = [item.name.replace(/\.md$/i, '')]
+  const others = item.dir ? item.dir.split('/') : []
+  if (item.type) {
+    names.push(item.type.name)
+    others.push(item.path.split('/').pop()?.replace(/\.md$/i, '') ?? '')
+  }
   let total = 0
   for (const word of words) {
-    const inName = matchSegment(word, nameSegment)
+    let inName = 0
+    for (const n of names) inName = Math.max(inName, matchSegment(word, n))
     if (inName > 0) {
       total += 10 + inName
       continue
     }
     let best = 0
-    for (const d of dirs) best = Math.max(best, matchSegment(word, d))
+    for (const d of others) best = Math.max(best, matchSegment(word, d))
     if (best === 0) return 0
     total += best
   }

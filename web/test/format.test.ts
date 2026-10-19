@@ -30,6 +30,20 @@ describe('format', () => {
     expect(fileLabel('top.md', '').children.length).toBe(1)
   })
 
+  it('F-07: a typed file has its mark before the name, named for screen readers, and the type and address in the tooltip', () => {
+    const label = fileLabel('margin', '', { type: { name: 'claude', mark: 'claude' }, path: '/code/margin/CLAUDE.md' })
+    expect(Array.from(label.children).map((c) => c.className)).toEqual(['mark', 'name'])
+    expect(label.children[0].textContent).toBe('claude')
+    expect(label.children[0].getAttribute('aria-label')).toBe('claude')
+    expect(label.children[1].textContent).toBe('margin')
+    expect(label.title).toBe('claude · code/margin/CLAUDE.md')
+    const glyph = fileLabel('commit', 'margin', { type: { name: 'skill', mark: '✦' } })
+    expect(glyph.children[0].textContent).toBe('✦')
+    expect(glyph.children[0].className).toBe('mark glyph')
+    expect(label.children[0].className).toBe('mark')
+    expect(glyph.title).toBe('skill · margin/commit')
+  })
+
   it('F-03: a path splits into root, name and folder, the root left out of the folder with a single root', () => {
     expect(splitPath('/code/margin/plan.md', true)).toEqual({ root: 'code', name: 'plan.md', dir: 'margin' })
     expect(splitPath('/code/margin/plan.md', false)).toEqual({ root: 'code', name: 'plan.md', dir: 'code/margin' })

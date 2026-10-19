@@ -207,6 +207,27 @@ body.setup #sidebar > :not(.brand-row, .unfold-sidebar) {
   text-overflow: ellipsis;
 }
 
+/* A file type's mark (F-07): a small tag before the name in the badge
+   style (L-18), kept whole however narrow the entry gets. */
+.file-label .mark {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid var(--cp-line);
+  border-radius: 3px;
+  color: var(--cp-muted);
+  font: 10px var(--cp-mono);
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* A one-character mark is a glyph: drawn larger, without the spacing. */
+.file-label .mark.glyph {
+  padding: 0 4px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
 #sidebar .recent-entry {
   display: flex;
   align-items: center;

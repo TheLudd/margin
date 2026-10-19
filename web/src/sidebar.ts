@@ -129,7 +129,7 @@ export function renderSidebar(refs: SidebarRefs, view: SidebarView, folds: FoldS
 }
 
 function link(e: Entry, current: string | null): HTMLAnchorElement {
-  const a = el('a', { href: e.path }, fileLabel(e.name, e.dir))
+  const a = el('a', { href: e.path }, fileLabel(e.name, e.dir, { type: e.type, path: e.path }))
   if (e.unread) a.classList.add('unread')
   if (e.path === current) a.classList.add('current')
   return a

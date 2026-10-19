@@ -3,24 +3,25 @@
 package lists
 
 import (
-	"path"
 	"sort"
 	"time"
 
+	"margin/internal/filetype"
 	"margin/internal/index"
 	"margin/internal/project"
 )
 
 // Entry is a file as listed: once, with its copies counted (W-01).
 type Entry struct {
-	Path          string `json:"path"`
-	Name          string `json:"name"`
-	Dir           string `json:"dir"`
-	Time          int64  `json:"time,omitempty"`
-	Kind          string `json:"kind,omitempty"`
-	Unread        bool   `json:"unread"`
-	Copies        int    `json:"copies,omitempty"`
-	CopiesChanged bool   `json:"copiesChanged,omitempty"`
+	Path          string         `json:"path"`
+	Name          string         `json:"name"`
+	Dir           string         `json:"dir"`
+	Time          int64          `json:"time,omitempty"`
+	Kind          string         `json:"kind,omitempty"`
+	Unread        bool           `json:"unread"`
+	Copies        int            `json:"copies,omitempty"`
+	CopiesChanged bool           `json:"copiesChanged,omitempty"`
+	Type          *filetype.Type `json:"type,omitempty"`
 	project       string
 	sortKey       string
 }
@@ -54,6 +55,7 @@ type Input struct {
 	Now        time.Time
 	ActiveDays int
 	SingleRoot bool
+	Types      filetype.Set
 }
 
 // Modified reports whether a file's content differs from its copy as last
@@ -145,16 +147,21 @@ func Build(in Input) Lists {
 func (in Input) entry(members []member, cutoff time.Time) (Entry, bool) {
 	first := members[0]
 	pl := first.info.Placement
-	e := Entry{Name: path.Base(first.info.File.Rel), project: pl.Project.Display(in.SingleRoot)}
+	e := Entry{project: pl.Project.Display(in.SingleRoot)}
+	// The label (F-04, F-07): with copies, from the path within the project
+	// under the project's name; alone, from the path within the root.
 	if len(members) > 1 {
 		e.Copies = len(members)
-		e.Dir = joinDir(pl.Project.Display(in.SingleRoot), path.Dir(pl.Rel))
+		l := in.Types.Label(pl.Rel)
+		e.Name, e.Type = l.Name, l.Type
+		e.Dir = joinDir(pl.Project.Display(in.SingleRoot), l.Dir)
 	} else {
-		dir := path.Dir(first.info.File.Rel)
+		l := in.Types.Label(first.info.File.Rel)
+		e.Name, e.Type = l.Name, l.Type
 		if in.SingleRoot {
-			e.Dir = dirOrEmpty(dir)
+			e.Dir = l.Dir
 		} else {
-			e.Dir = joinDir(first.info.File.Root, dir)
+			e.Dir = joinDir(first.info.File.Root, l.Dir)
 		}
 	}
 	e.sortKey = e.Dir
@@ -206,15 +213,8 @@ func choose(members []member) FileInfo {
 }
 
 func joinDir(prefix, dir string) string {
-	if dir == "." || dir == "" {
+	if dir == "" {
 		return prefix
 	}
 	return prefix + "/" + dir
-}
-
-func dirOrEmpty(dir string) string {
-	if dir == "." {
-		return ""
-	}
-	return dir
 }

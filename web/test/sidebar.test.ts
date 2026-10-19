@@ -55,6 +55,23 @@ describe('sidebar', () => {
     expect(refs.older.open).toBe(true)
   })
 
+  it('F-07: a typed entry draws the mark before the name in both sections', () => {
+    const typed = { type: { name: 'claude', mark: 'claude' } }
+    const { root } = render(
+      lists({
+        recent: [{ path: '/code/zed/CLAUDE.md', name: 'zed', dir: '', time: now - 60, kind: 'view', unread: false, ...typed }],
+        older: [{ project: 'foo', files: [{ path: '/code/foo/CLAUDE.md', name: 'foo', dir: '', unread: false, ...typed }] }],
+      }),
+    )
+    for (const href of ['/code/zed/CLAUDE.md', '/code/foo/CLAUDE.md']) {
+      const label = root.querySelector(`a[href="${href}"] .file-label`) as HTMLElement
+      expect(label.firstElementChild?.className).toBe('mark')
+      expect(label.firstElementChild?.textContent).toBe('claude')
+      expect(label.querySelector('.name')?.textContent).toBe(href.split('/')[2])
+      expect(label.title).toBe('claude · ' + href.slice(1))
+    }
+  })
+
   it('S-11, F-04, L-12: entries are real links with the name, the folder, and a time or copy count', () => {
     const { root } = render(lists())
     const links = root.querySelectorAll('details[data-section=recent] a')

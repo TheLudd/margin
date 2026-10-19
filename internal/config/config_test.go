@@ -107,9 +107,36 @@ func TestConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("C-01, F-07: types parse with their name, pattern and mark, and default to none", func(t *testing.T) {
+		c, err := Parse([]byte(`{"types":[{"name":"skill","match":".claude/skills/*/SKILL.md","mark":"✦"}]}`))
+		if err != nil || len(c.Types) != 1 || c.Types[0] != (Type{Name: "skill", Match: ".claude/skills/*/SKILL.md", Mark: "✦"}) {
+			t.Fatalf("got %+v, %v", c, err)
+		}
+		if c, _ := Parse([]byte(`{}`)); c.Types == nil || len(c.Types) != 0 {
+			t.Fatalf("got %+v", c)
+		}
+	})
+
+	t.Run("C-02, F-07: types need a name, unique ignoring case, and a pattern", func(t *testing.T) {
+		c := Config{Roots: []Root{{"code", "~/code"}}, Types: []Type{{Name: "", Match: "a.md"}, {Name: "x", Match: " "}, {Name: "y", Match: "y.md"}, {Name: "Y", Match: "z.md"}}, ActiveDays: 14, UnreadDays: 30}
+		err := c.Validate(home)
+		if err == nil {
+			t.Fatal("no error")
+		}
+		for _, want := range []string{"type 1 has no name", `type "x" has no pattern`, `type "Y" is used twice`} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("missing %q in %q", want, err)
+			}
+		}
+		c.Types = []Type{{Name: "claude", Match: "CLAUDE.md"}}
+		if err := c.Validate(home); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("P-02, C-07: saving writes the file, creating its folder, and loading reads it back", func(t *testing.T) {
 		file := filepath.Join(t.TempDir(), "deep", "margin", "config.json")
-		c := Config{Roots: []Root{{"code", "~/code"}}, Exclude: []string{}, ActiveDays: 10, UnreadDays: 20}
+		c := Config{Roots: []Root{{"code", "~/code"}}, Exclude: []string{}, Types: []Type{{Name: "claude", Match: "CLAUDE.md"}}, ActiveDays: 10, UnreadDays: 20}
 		if err := Save(file, c); err != nil {
 			t.Fatal(err)
 		}

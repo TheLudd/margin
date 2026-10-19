@@ -149,6 +149,10 @@ test.describe('config', () => {
     await page.locator('.settings textarea[name=exclude]').fill('CHANGELOG.md')
     await page.locator('.settings input[name=activeDays]').fill('7')
     await page.locator('.settings input[name=unreadDays]').fill('60')
+    await page.locator('.settings button.add', { hasText: 'add a type' }).click()
+    const type = page.locator('.settings .type').last()
+    await type.locator('input[name=typeName]').fill('claude')
+    await type.locator('input[name=typeMatch]').fill('CLAUDE.md')
     // Hold the save so the overlay can be seen.
     await page.route('**/api/settings', async (route) => {
       if (route.request().method() !== 'PUT') return route.continue()
@@ -166,6 +170,7 @@ test.describe('config', () => {
         { name: 'notes', path: '~/notes' },
       ],
       exclude: ['CHANGELOG.md'],
+      types: [{ name: 'claude', match: 'CLAUDE.md' }],
       activeDays: 7,
       unreadDays: 60,
     })

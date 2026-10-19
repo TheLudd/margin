@@ -1,7 +1,7 @@
 // The document header (L-17 to L-19, J-01, J-05, W-04): the file label, the
 // copies select, the changes controls and the badges, each as wide as its
 // longest value so nothing moves as values change.
-import { fileLabel, relativeWords } from './format'
+import { fileLabel, relativeWords, type LabelOptions } from './format'
 import { el } from './shell'
 import type { CopyView, GitState } from './types'
 import type { Status } from './session'
@@ -44,8 +44,8 @@ export function buildHeader(): HeaderRefs {
   return { root, path, worktree, changes, count, prev, next, markRead, badges }
 }
 
-export function setHeaderLabel(refs: HeaderRefs, name: string, dir: string): void {
-  refs.path.replaceChildren(fileLabel(name, dir))
+export function setHeaderLabel(refs: HeaderRefs, name: string, dir: string, opts: LabelOptions = {}): void {
+  refs.path.replaceChildren(fileLabel(name, dir, opts))
 }
 
 /** Lists every copy; choosing one opens it (W-04). */

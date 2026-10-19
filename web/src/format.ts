@@ -1,4 +1,5 @@
-// How files and times are shown (F-04, L-12).
+// How files and times are shown (F-04, F-07, L-12).
+import type { FileType } from './types'
 
 /** A relative time, short, for the sidebar: now, 5m, 3h, 2d, 3w. */
 export function relativeTime(unixSeconds: number, now: number = Date.now() / 1000): string {
@@ -23,14 +24,29 @@ export function relativeWords(unixSeconds: number, now: number = Date.now() / 10
   return `${n} ${names[unit]}${n === '1' ? '' : 's'} ago`
 }
 
+export interface LabelOptions {
+  /** The file's type (F-07): its mark is drawn before the name. */
+  type?: FileType
+  /** The file's address, for the tooltip of a typed file, whose name is not its file name. */
+  path?: string
+}
+
 /**
  * A file label (F-04): the name first, then its folder in muted, smaller
  * text. The folder shrinks first; the name is cut only when it alone
- * doesn't fit.
+ * doesn't fit. A typed file (F-07) has its mark before the name.
  */
-export function fileLabel(name: string, dir: string): HTMLSpanElement {
+export function fileLabel(name: string, dir: string, opts: LabelOptions = {}): HTMLSpanElement {
   const label = document.createElement('span')
   label.className = 'file-label'
+  if (opts.type) {
+    const m = document.createElement('span')
+    m.className = 'mark'
+    m.textContent = opts.type.mark
+    if ([...opts.type.mark].length === 1) m.classList.add('glyph')
+    m.setAttribute('aria-label', opts.type.name)
+    label.append(m)
+  }
   const n = document.createElement('span')
   n.className = 'name'
   n.textContent = name
@@ -41,7 +57,8 @@ export function fileLabel(name: string, dir: string): HTMLSpanElement {
     d.textContent = dir
     label.append(d)
   }
-  label.title = dir ? `${dir}/${name}` : name
+  const at = dir ? `${dir}/${name}` : name
+  label.title = opts.type ? `${opts.type.name} · ${opts.path?.replace(/^\//, '') ?? at}` : at
   return label
 }
 
