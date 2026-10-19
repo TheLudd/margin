@@ -141,6 +141,8 @@ test.describe('config', () => {
 
   test('F-08: the settings suggest a type for a recurring file name; adding it fills a row and saving applies it', async ({ page, margin }) => {
     for (const p of ['a/CLAUDE.md', 'b/CLAUDE.md', 'c/CLAUDE.md']) margin.write(p, '# Rules\n')
+    await page.goto(margin.url + '/')
+    await expect(page.locator('#sidebar details[data-section=older] details.project')).toHaveCount(3)
     await page.goto(margin.url + '/settings')
     const suggestion = page.locator('.settings .type-suggestion')
     await expect(suggestion).toHaveCount(1)
