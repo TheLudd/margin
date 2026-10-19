@@ -89,7 +89,8 @@
   cursor: wait;
 }
 
-.settings .suggestions .loading {
+.settings .suggestions .loading,
+.settings .type-suggestions .loading {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -98,11 +99,22 @@
   font: 13px var(--cp-mono);
 }
 
-.settings .suggestions .loading .spinner {
+.settings .suggestions .loading .spinner,
+.settings .type-suggestions .loading .spinner {
   --size: 16px;
 }
 
-.settings .suggestion {
+.settings .type-suggestions {
+  margin-top: 16px;
+}
+
+.settings .type-suggestions .hint {
+  margin: 0 0 4px;
+  font: 12px var(--cp-mono);
+}
+
+.settings .suggestion,
+.settings .type-suggestion {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 60px 32px;
   gap: 10px;
@@ -111,7 +123,8 @@
   font: 14px var(--cp-mono);
 }
 
-.settings .suggestion .path {
+.settings .suggestion .path,
+.settings .type-suggestion .pattern {
   color: var(--cp-muted);
   overflow: hidden;
   text-overflow: ellipsis;

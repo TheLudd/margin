@@ -726,6 +726,28 @@ func TestSettings(t *testing.T) {
 			t.Fatalf("got %s", data)
 		}
 	})
+	t.Run("F-08: type suggestions are the recurring file names the types do not cover, with their pattern and count", func(t *testing.T) {
+		e := start(t, `{"roots":[{"name":"code","path":"~/code"}],"types":[{"name":"readme","match":"readme.md"}]}`)
+		for _, p := range []string{"a/CLAUDE.md", "b/CLAUDE.md", "c/CLAUDE.md", "a/readme.md", "b/readme.md", "c/readme.md"} {
+			write(t, filepath.Join(e.root, filepath.FromSlash(p)), "x")
+		}
+		var s []map[string]any
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			_, data := e.get("/api/types/suggest")
+			json.Unmarshal(data, &s)
+			if len(s) == 1 && s[0]["count"] == 3.0 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("got %s", data)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if s[0]["name"] != "claude" || s[0]["match"] != "CLAUDE.md" {
+			t.Fatalf("got %+v", s)
+		}
+	})
 	t.Run("C-06: the folder field completes paths as typed", func(t *testing.T) {
 		e := start(t, "")
 		_, data := e.get("/api/complete?q=~/co")

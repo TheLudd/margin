@@ -72,6 +72,7 @@ async function showSettings(setup: boolean): Promise<void> {
     actions: {
       complete: (typed) => api.complete(typed).catch(() => []),
       loadSuggestions: () => api.suggest().catch(() => []),
+      loadTypeSuggestions: () => api.suggestTypes().catch(() => []),
       save: async (config: Config) => {
         const reindex = rootsChanged(view.config, config)
         if (reindex) showBusy('Re-indexing…')

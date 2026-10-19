@@ -43,6 +43,7 @@ func New(c *core.Core, g *guard.Guard, static fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/settings", s.settings)
 	s.mux.HandleFunc("PUT /api/settings", s.saveSettings)
 	s.mux.HandleFunc("GET /api/suggest", s.suggest)
+	s.mux.HandleFunc("GET /api/types/suggest", s.suggestTypes)
 	s.mux.HandleFunc("GET /api/complete", s.complete)
 	s.mux.HandleFunc("GET /api/events", s.events)
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { fail(w, http.StatusNotFound, "no such endpoint") })
@@ -214,6 +215,10 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]bool{"reindexed": reindexed})
+}
+
+func (s *Server) suggestTypes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, s.core.SuggestTypes())
 }
 
 func (s *Server) suggest(w http.ResponseWriter, r *http.Request) {

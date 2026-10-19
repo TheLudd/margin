@@ -12,11 +12,23 @@ function view(over: Partial<SettingsView> = {}): SettingsView {
   }
 }
 
-function render(v: SettingsView, counts: Record<string, number> = {}, suggestions = [{ path: '~/notes', count: 3, partial: false }]) {
+function render(
+  v: SettingsView,
+  counts: Record<string, number> = {},
+  suggestions = [{ path: '~/notes', count: 3, partial: false }],
+  typeSuggestions = [
+    { name: 'claude', match: 'CLAUDE.md', count: 3 },
+    { name: 'skill', match: '.claude/skills/*/SKILL.md', count: 12 },
+  ],
+) {
   const container = document.createElement('section')
   const save = vi.fn(async () => {})
   const complete = vi.fn(async (q: string) => (q.startsWith('~/n') ? ['~/notes'] : []))
-  const refs = renderSettings(container, { view: v, counts, actions: { save, complete, loadSuggestions: async () => suggestions } })
+  const refs = renderSettings(container, {
+    view: v,
+    counts,
+    actions: { save, complete, loadSuggestions: async () => suggestions, loadTypeSuggestions: async () => typeSuggestions },
+  })
   return { container, refs, save, complete }
 }
 
@@ -68,6 +80,29 @@ describe('settings', () => {
     refs.form.requestSubmit()
     await tick()
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ types: [{ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' }] }))
+  })
+
+  it('F-08: type suggestions show the pattern and count, leave out patterns already configured, and add a filled type row', async () => {
+    const { container, refs } = render(view())
+    expect(container.querySelector('.type-suggestions .loading')).not.toBeNull()
+    await tick()
+    const rows = container.querySelectorAll('.type-suggestion')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].querySelector('.pattern')?.textContent).toBe('.claude/skills/*/SKILL.md')
+    expect(rows[0].querySelector('.files')?.textContent).toBe('12')
+    ;(rows[0].querySelector('button.add') as HTMLButtonElement).click()
+    expect(refs.typeRows).toHaveLength(2)
+    expect(refs.typeRows[1].name.value).toBe('skill')
+    expect(refs.typeRows[1].match.value).toBe('.claude/skills/*/SKILL.md')
+    expect(refs.typeRows[1].mark.value).toBe('')
+    expect(container.querySelectorAll('.type-suggestion')).toHaveLength(0)
+    expect(container.querySelector('.type-suggestions .none')?.textContent).toBe('No recurring file names without a type.')
+  })
+
+  it('F-08: the setup screen has no type suggestions', async () => {
+    const { container } = render(view({ config: { roots: [], exclude: [], types: [], activeDays: 14, unreadDays: 30 } }))
+    await tick()
+    expect(container.querySelector('.type-suggestions')).toBeNull()
   })
 
   it('C-04: without roots it is the setup screen', () => {

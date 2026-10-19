@@ -72,3 +72,86 @@ func TestFileType(t *testing.T) {
 		}
 	})
 }
+
+func TestSuggest(t *testing.T) {
+	skills := []string{
+		"margin/.claude/skills/commit/SKILL.md",
+		"gaius/.claude/skills/commit/SKILL.md",
+		"gaius/.claude/skills/fassa-api/SKILL.md",
+		"mediatool/.claude/skills/test-stubs/SKILL.md",
+		"mediatool/staging/ui/cds/SKILL.md",
+	}
+	claudes := []string{"margin/CLAUDE.md", "gaius/CLAUDE.md", "mediatool/web/CLAUDE.md"}
+	readmes := []string{"margin/readme.md", "gaius/README.md", "a/b/c/readme.md", "x/Readme.md"}
+	all := append(append(append([]string{}, skills...), claudes...), readmes...)
+	all = append(all, "margin/plan.md", "gaius/plan.md", "notes/one.md")
+
+	t.Run("F-08: names recurring in enough places are suggested, best counts first, named in lower case without .md", func(t *testing.T) {
+		got := New(nil).Suggest(all, 3, 10)
+		want := []Suggestion{
+			{Name: "readme", Match: "readme.md", Count: 4},
+			{Name: "skill", Match: ".claude/skills/*/SKILL.md", Count: 4},
+			{Name: "claude", Match: "CLAUDE.md", Count: 3},
+		}
+		if len(got) != len(want) {
+			t.Fatalf("got %+v", got)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("got %+v, want %+v", got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("F-08: the pattern fixes the segments a majority share and wildcards the rest; the count is the files it matches", func(t *testing.T) {
+		got := New(nil).Suggest(skills, 3, 10)
+		if len(got) != 1 || got[0].Match != ".claude/skills/*/SKILL.md" || got[0].Count != 4 {
+			t.Fatalf("got %+v", got)
+		}
+		got = New(nil).Suggest(claudes, 3, 10)
+		if len(got) != 1 || got[0].Match != "CLAUDE.md" || got[0].Count != 3 {
+			t.Fatalf("got %+v", got)
+		}
+	})
+
+	t.Run("F-08: the pattern reaches at most three segments above the file; a split group whose pattern matches too few is not suggested", func(t *testing.T) {
+		deep := []string{"one/platform/ai/mcp/lib/tools/a/description.md", "one/platform/ai/mcp/lib/tools/b/description.md", "one/platform/ai/mcp/lib/tools/c/description.md"}
+		got := New(nil).Suggest(deep, 3, 10)
+		if len(got) != 1 || got[0].Match != "lib/tools/*/description.md" || got[0].Count != 3 {
+			t.Fatalf("got %+v", got)
+		}
+		split := []string{"infra/services/a/BACKLOG.md", "infra/services/b/BACKLOG.md", "elsewhere/BACKLOG.md"}
+		if got := New(nil).Suggest(split, 3, 10); len(got) != 0 {
+			t.Fatalf("got %+v", got)
+		}
+	})
+
+	t.Run("F-08: a name a type or an earlier suggestion has is made unique by the nearest fixed folder, else a number", func(t *testing.T) {
+		typed := New([]config.Type{{Name: "skill", Match: ".claude/skills/*/SKILL.md"}})
+		rest := []string{"demo/registry/a/SKILL.md", "demo/registry/b/SKILL.md", "demo/registry/c/SKILL.md"}
+		got := typed.Suggest(append(append([]string{}, skills...), rest...), 3, 10)
+		if len(got) != 1 || got[0].Name != "registry-skill" || got[0].Match != "demo/registry/*/SKILL.md" || got[0].Count != 3 {
+			t.Fatalf("got %+v", got)
+		}
+		flat := New([]config.Type{{Name: "claude", Match: "x.md"}})
+		got = flat.Suggest(claudes, 3, 10)
+		if len(got) != 1 || got[0].Name != "claude-2" {
+			t.Fatalf("got %+v", got)
+		}
+	})
+
+	t.Run("F-08: files already typed are not suggested; the limit cuts the list; no paths is an empty list", func(t *testing.T) {
+		typed := New([]config.Type{{Name: "skill", Match: "SKILL.md"}})
+		for _, s := range typed.Suggest(all, 3, 10) {
+			if s.Name == "skill" {
+				t.Fatalf("typed name suggested: %+v", s)
+			}
+		}
+		if got := New(nil).Suggest(all, 3, 1); len(got) != 1 || got[0].Name != "readme" {
+			t.Fatalf("got %+v", got)
+		}
+		if got := New(nil).Suggest(nil, 3, 10); got == nil || len(got) != 0 {
+			t.Fatalf("got %#v", got)
+		}
+	})
+}

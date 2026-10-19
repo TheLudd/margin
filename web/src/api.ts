@@ -1,5 +1,5 @@
 // The JSON API, one function per endpoint.
-import type { Config, Doc, Lists, Meta, SettingsView, Suggestion } from './types'
+import type { Config, Doc, Lists, Meta, SettingsView, Suggestion, TypeSuggestion } from './types'
 
 export class ApiError extends Error {
   constructor(
@@ -82,6 +82,7 @@ export const api = {
   },
 
   suggest: (): Promise<Suggestion[]> => fetch('/api/suggest').then((r) => json<Suggestion[]>(r)),
+  suggestTypes: (): Promise<TypeSuggestion[]> => fetch('/api/types/suggest').then((r) => json<TypeSuggestion[]>(r)),
   complete: (q: string): Promise<string[]> =>
     fetch('/api/complete?q=' + encodeURIComponent(q)).then((r) => json<string[]>(r)),
 }

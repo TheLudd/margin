@@ -97,6 +97,12 @@ export interface SettingsView {
   error: string
 }
 
+export interface TypeSuggestion {
+  name: string
+  match: string
+  count: number
+}
+
 export interface Suggestion {
   path: string
   count: number

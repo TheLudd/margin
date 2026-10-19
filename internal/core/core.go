@@ -734,6 +734,32 @@ func (c *Core) SaveSettings(cfg config.Config) (bool, error) {
 	return reindex, nil
 }
 
+// SuggestTypes lists the file names recurring in the index that no type
+// covers, with the pattern fitting them (F-08). Copies in worktrees count
+// once.
+func (c *Core) SuggestTypes() []filetype.Suggestion {
+	c.mu.RLock()
+	ix, model, types := c.ix, c.model, c.cfg.Types
+	c.mu.RUnlock()
+	if ix == nil {
+		return []filetype.Suggestion{}
+	}
+	seen := map[string]bool{}
+	var paths []string
+	for _, f := range ix.Files() {
+		key := model.Place(f).GroupKey()
+		if key == "" {
+			key = f.Abs
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		paths = append(paths, f.Rel)
+	}
+	return filetype.New(types).Suggest(paths, filetype.MinPlaces, filetype.SuggestLimit)
+}
+
 // Suggest lists the folders in home holding markdown (C-05).
 func (c *Core) Suggest() []suggest.Suggestion {
 	c.mu.RLock()

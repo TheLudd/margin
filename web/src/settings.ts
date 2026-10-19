@@ -2,12 +2,13 @@
 // completion, exclude patterns, file types, the day counts, errors and
 // where the config is stored.
 import { el } from './shell'
-import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion } from './types'
+import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion, TypeSuggestion } from './types'
 
 export interface SettingsActions {
   save(config: Config): Promise<void>
   complete(typed: string): Promise<string[]>
   loadSuggestions(): Promise<Suggestion[]>
+  loadTypeSuggestions(): Promise<TypeSuggestion[]>
 }
 
 export interface SettingsOptions {
@@ -46,6 +47,7 @@ export interface SettingsRefs {
   rootsBody: HTMLElement
   suggestions: HTMLElement
   error: HTMLElement
+  typeSuggestions: HTMLElement
   saveButton: HTMLButtonElement
   rows: RootRow[]
   typeRows: TypeRow[]
@@ -191,6 +193,33 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   })
   form.append(el('div', { class: 'actions' }, addTypeButton))
 
+  // Suggested types (F-08): the recurring file names no type covers.
+  const typeSuggestions = el('div', { class: 'type-suggestions' })
+  if (!setup) {
+    typeSuggestions.append(el('div', { class: 'loading' }, el('span', { class: 'spinner' }), el('span', { text: 'Looking for recurring file names…' })))
+    form.append(typeSuggestions)
+    actions.loadTypeSuggestions().then((list) => {
+      typeSuggestions.replaceChildren()
+      const shown = list.filter((s) => !typeRows.some((r) => r.match.value.trim().toLowerCase() === s.match.toLowerCase()))
+      const none = () => typeSuggestions.replaceChildren(el('p', { class: 'none', text: 'No recurring file names without a type.' }))
+      if (shown.length === 0) {
+        none()
+        return
+      }
+      typeSuggestions.append(el('p', { class: 'hint', text: 'File names found in several places:' }))
+      for (const s of shown) {
+        const add = el('button', { class: 'add plus', type: 'button', 'aria-label': `Add type ${s.name}`, title: 'Add', text: '+' })
+        const row = el('div', { class: 'type-suggestion' }, el('span', { class: 'pattern', text: s.match }), el('span', { class: 'files', text: String(s.count) }), add)
+        add.addEventListener('click', () => {
+          addType({ name: s.name, match: s.match })
+          row.remove()
+          if (!typeSuggestions.querySelector('.type-suggestion')) none()
+        })
+        typeSuggestions.append(row)
+      }
+    })
+  }
+
   form.append(el('h2', { text: 'Windows' }))
   activeDays = el('input', { class: 'days', type: 'number', name: 'activeDays', min: '1', max: '365', 'aria-label': 'Active days' })
   activeDays.value = String(view.config.activeDays)
@@ -234,7 +263,7 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   })
 
   container.append(el('p', { class: 'file' }, 'Stored in ', el('code', { text: view.file })))
-  return { form, rootsBody, suggestions, error, saveButton, rows, typeRows, config, addRoot, addType }
+  return { form, rootsBody, suggestions, error, typeSuggestions, saveButton, rows, typeRows, config, addRoot, addType }
 }
 
 function formatCount(n: number | undefined): string {

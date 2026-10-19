@@ -139,6 +139,23 @@ test.describe('config', () => {
     await expect(name).toHaveValue('mine')
   })
 
+  test('F-08: the settings suggest a type for a recurring file name; adding it fills a row and saving applies it', async ({ page, margin }) => {
+    for (const p of ['a/CLAUDE.md', 'b/CLAUDE.md', 'c/CLAUDE.md']) margin.write(p, '# Rules\n')
+    await page.goto(margin.url + '/settings')
+    const suggestion = page.locator('.settings .type-suggestion')
+    await expect(suggestion).toHaveCount(1)
+    await expect(suggestion.locator('.pattern')).toHaveText('CLAUDE.md')
+    await expect(suggestion.locator('.files')).toHaveText('3')
+    await suggestion.locator('button.add').click()
+    await expect(page.locator('.settings .type-suggestion')).toHaveCount(0)
+    const row = page.locator('.settings .type').last()
+    await expect(row.locator('input[name=typeName]')).toHaveValue('claude')
+    await expect(row.locator('input[name=typeMatch]')).toHaveValue('CLAUDE.md')
+    await page.locator('.settings button.primary').click()
+    await expect(page.locator('.settings .type-suggestions .none')).toBeVisible()
+    await expect(page.locator('#sidebar a[href="/code/a/CLAUDE.md"] .file-label .mark')).toHaveText('claude')
+  })
+
   test('C-07, C-01: saving writes the file, re-indexes without a restart behind a busy overlay, and the new root shows in the sidebar', async ({ page, margin }) => {
     fs.mkdirSync(path.join(margin.home, 'notes'), { recursive: true })
     fs.writeFileSync(path.join(margin.home, 'notes', 'todo.md'), '# Todo\n')
