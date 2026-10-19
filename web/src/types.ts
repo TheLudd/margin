@@ -6,7 +6,7 @@ export interface RootView {
 }
 
 /** A file type (F-07): its name and the mark drawn before the file name. */
-export type TypeColor = 'cyan' | 'magenta' | 'green' | 'amber' | 'blue'
+export type TypeColor = 'cyan' | 'magenta' | 'green' | 'amber' | 'blue' | 'red' | 'orange' | 'yellow' | 'violet' | 'grey'
 
 export interface FileType {
   name: string

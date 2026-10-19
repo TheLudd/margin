@@ -63,7 +63,10 @@ describe('settings', () => {
     expect((container.querySelector('.type input[name=typeName]') as HTMLInputElement).value).toBe('claude')
     expect((container.querySelector('.type input[name=typeMatch]') as HTMLInputElement).value).toBe('CLAUDE.md')
     expect((container.querySelector('.type input[name=typeMark]') as HTMLInputElement).value).toBe('')
-    expect((container.querySelector('.type select[name=typeColor]') as HTMLSelectElement).value).toBe('amber')
+    expect((container.querySelector('.type input[name=typeColor]') as HTMLInputElement).value).toBe('amber')
+    expect(container.querySelector('.type .swatch[aria-checked=true]')?.getAttribute('data-color')).toBe('amber')
+    expect(container.querySelectorAll('.type .swatch')).toHaveLength(11)
+    expect((container.querySelector('.type input[name=typeMark]') as HTMLInputElement).list?.options.length).toBeGreaterThan(20)
     const buttons = Array.from(container.querySelectorAll('button.add')).filter((b) => b.textContent === '+ add a type')
     expect(buttons).toHaveLength(1)
     ;(buttons[0] as HTMLButtonElement).click()
@@ -76,9 +79,10 @@ describe('settings', () => {
       { name: 'claude', match: 'CLAUDE.md', color: 'amber' },
       { name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' },
     ])
-    row.color.value = 'blue'
-    expect(refs.config().types[1]).toEqual({ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦', color: 'blue' })
-    row.color.value = ''
+    ;(row.swatches.querySelector('.swatch[data-color=red]') as HTMLButtonElement).click()
+    expect(refs.config().types[1]).toEqual({ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦', color: 'red' })
+    expect(row.swatches.querySelector('.swatch[aria-checked=true]')?.getAttribute('data-color')).toBe('red')
+    ;(row.swatches.querySelector('.swatch[data-color=""]') as HTMLButtonElement).click()
     expect(refs.config().types[1]).toEqual({ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' })
     refs.typeRows[0].remove.click()
     expect(container.querySelectorAll('.type')).toHaveLength(1)

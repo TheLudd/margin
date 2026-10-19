@@ -16,7 +16,39 @@
 
 .settings .types-head,
 .settings .type {
-  grid-template-columns: 160px minmax(0, 1fr) 100px 110px 32px;
+  grid-template-columns: 140px minmax(0, 1fr) 80px 228px 32px;
+}
+
+/* The colour swatches (L-34): a dashed ring for the palette in turn, then
+   a filled circle per token; the chosen one is ringed and glows. */
+.settings .swatches {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.settings button.swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--type-color);
+  box-sizing: border-box;
+}
+
+.settings button.swatch[data-color=''] {
+  border: 1px dashed var(--cp-muted);
+  background: transparent;
+}
+
+.settings button.swatch:hover {
+  border-color: var(--cp-text);
+}
+
+.settings button.swatch[aria-checked='true'] {
+  border-color: var(--cp-text);
+  box-shadow: 0 0 6px var(--type-color, var(--cp-muted));
 }
 
 .settings .roots-head,

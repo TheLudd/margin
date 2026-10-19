@@ -11,6 +11,10 @@
   --cp-h3: #8fa8ff;
   --cp-code: #5cffa8;
   --cp-warn: #ffb347;
+  --cp-red: #ff3b3b;
+  --cp-orange: #ff8c42;
+  --cp-yellow: #ffe94a;
+  --cp-violet: #b56bff;
   --cp-deep: #05060f;
   --cp-code-bg: #07081a;
   --cp-white: #fff;
@@ -21,6 +25,48 @@
   --cp-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   color-scheme: dark;
+}
+
+/* Type colours (F-07): a mark or a swatch takes its colour from the token
+   its data-color names. */
+[data-color='cyan'] {
+  --type-color: var(--cp-cyan);
+}
+
+[data-color='magenta'] {
+  --type-color: var(--cp-magenta);
+}
+
+[data-color='green'] {
+  --type-color: var(--cp-code);
+}
+
+[data-color='amber'] {
+  --type-color: var(--cp-warn);
+}
+
+[data-color='blue'] {
+  --type-color: var(--cp-h3);
+}
+
+[data-color='red'] {
+  --type-color: var(--cp-red);
+}
+
+[data-color='orange'] {
+  --type-color: var(--cp-orange);
+}
+
+[data-color='yellow'] {
+  --type-color: var(--cp-yellow);
+}
+
+[data-color='violet'] {
+  --type-color: var(--cp-violet);
+}
+
+[data-color='grey'] {
+  --type-color: var(--cp-muted);
 }
 
 * {

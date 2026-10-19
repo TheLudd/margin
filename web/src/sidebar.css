@@ -211,7 +211,7 @@ body.setup #sidebar > :not(.brand-row, .unfold-sidebar) {
    type's colour like a lit badge (L-18), in a slot two characters wide so
    short marks line the names up, kept whole however narrow the entry gets. */
 .file-label .mark {
-  --mark: var(--cp-muted);
+  --mark: var(--type-color, var(--cp-muted));
   flex-shrink: 0;
   box-sizing: content-box;
   min-width: 2ch;
@@ -224,26 +224,6 @@ body.setup #sidebar > :not(.brand-row, .unfold-sidebar) {
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.file-label .mark[data-color='cyan'] {
-  --mark: var(--cp-cyan);
-}
-
-.file-label .mark[data-color='magenta'] {
-  --mark: var(--cp-magenta);
-}
-
-.file-label .mark[data-color='green'] {
-  --mark: var(--cp-code);
-}
-
-.file-label .mark[data-color='amber'] {
-  --mark: var(--cp-warn);
-}
-
-.file-label .mark[data-color='blue'] {
-  --mark: var(--cp-h3);
 }
 
 /* A one-character mark is a glyph: drawn larger, without the spacing. */

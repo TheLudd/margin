@@ -33,8 +33,9 @@ type Type struct {
 	Color string `json:"color,omitempty"`
 }
 
-// Colors are the palette tokens a type can be given.
-var Colors = []string{"cyan", "magenta", "green", "amber", "blue"}
+// Colors are the palette tokens a type can be given, in the order they
+// are handed out in turn.
+var Colors = []string{"cyan", "magenta", "green", "amber", "blue", "red", "orange", "yellow", "violet", "grey"}
 
 // IsColor reports whether a colour is a palette token.
 func IsColor(c string) bool {

@@ -4,7 +4,39 @@
 import { el } from './shell'
 import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion, TypeColor, TypeSuggestion } from './types'
 
-export const TYPE_COLORS: TypeColor[] = ['cyan', 'magenta', 'green', 'amber', 'blue']
+export const TYPE_COLORS: TypeColor[] = ['cyan', 'magenta', 'green', 'amber', 'blue', 'red', 'orange', 'yellow', 'violet', 'grey']
+
+/** Glyphs offered for a mark (F-07): one character each, with a name. */
+export const GLYPHS: [string, string][] = [
+  ['✦', 'star'],
+  ['✧', 'hollow star'],
+  ['★', 'solid star'],
+  ['◆', 'diamond'],
+  ['◇', 'hollow diamond'],
+  ['◈', 'framed diamond'],
+  ['●', 'dot'],
+  ['○', 'ring'],
+  ['◉', 'target'],
+  ['■', 'square'],
+  ['□', 'hollow square'],
+  ['▲', 'triangle'],
+  ['▼', 'down triangle'],
+  ['⬢', 'hexagon'],
+  ['⬡', 'hollow hexagon'],
+  ['⚑', 'flag'],
+  ['✓', 'check'],
+  ['✗', 'cross'],
+  ['✎', 'pencil'],
+  ['⚙', 'gear'],
+  ['⚡', 'bolt'],
+  ['☰', 'lines'],
+  ['⌘', 'command'],
+  ['λ', 'lambda'],
+  ['§', 'section'],
+  ['¶', 'pilcrow'],
+  ['∞', 'infinity'],
+  ['※', 'reference'],
+]
 
 export interface SettingsActions {
   save(config: Config): Promise<void>
@@ -40,9 +72,11 @@ interface TypeRow {
   name: HTMLInputElement
   match: HTMLInputElement
   mark: HTMLInputElement
-  color: HTMLSelectElement
+  color: HTMLInputElement
+  swatches: HTMLElement
   remove: HTMLButtonElement
   row: HTMLElement
+  setColor(color: string): void
 }
 
 export interface SettingsRefs {
@@ -164,7 +198,7 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   form.append(el('h2', { text: 'Types' }))
   form.append(
     el('p', {
-      text: 'Files whose name says little, like every CLAUDE.md. A file matching the pattern is marked and named by the part of its path the pattern leaves open: with .claude/skills/*/SKILL.md the skill folder is the name. The mark is the name unless given, and coloured from the palette in turn unless chosen.',
+      text: 'Files whose name says little, like every CLAUDE.md. A file matching the pattern is marked and named by the part of its path the pattern leaves open: with .claude/skills/*/SKILL.md the skill folder is the name. The mark is the name unless given, a word or one character: the mark field offers glyphs, and any character can be pasted. The mark is coloured from the palette in turn unless chosen.',
     }),
   )
   const typesHead = el('div', { class: 'types-head' }, el('span', { text: 'Name' }), el('span', { text: 'Pattern' }), el('span', { text: 'Mark' }), el('span', { text: 'Colour' }), el('span'))
@@ -176,13 +210,24 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
     name.value = type.name
     const match = el('input', { type: 'text', name: 'typeMatch', placeholder: 'CLAUDE.md', 'aria-label': 'Type pattern', autocomplete: 'off' })
     match.value = type.match
-    const mark = el('input', { type: 'text', name: 'typeMark', placeholder: 'mark', 'aria-label': 'Type mark', autocomplete: 'off' })
+    const glyphs = el('datalist', { id: `glyphs-${++completionId}` }, ...GLYPHS.map(([g, label]) => el('option', { value: g, label })))
+    const mark = el('input', { type: 'text', name: 'typeMark', placeholder: 'mark', 'aria-label': 'Type mark', autocomplete: 'off', list: glyphs.id })
     mark.value = type.mark ?? ''
-    const color = el('select', { name: 'typeColor', 'aria-label': 'Type colour' }, el('option', { value: '', text: 'in turn' }), ...TYPE_COLORS.map((c) => el('option', { value: c, text: c })))
-    color.value = type.color ?? ''
+    const color = el('input', { type: 'hidden', name: 'typeColor' })
+    const swatches = el('div', { class: 'swatches', role: 'radiogroup', 'aria-label': 'Type colour' })
+    const setColor = (c: string) => {
+      color.value = c
+      for (const b of swatches.children) b.setAttribute('aria-checked', b.getAttribute('data-color') === c ? 'true' : 'false')
+    }
+    for (const c of ['', ...TYPE_COLORS]) {
+      const b = el('button', { class: 'swatch', type: 'button', role: 'radio', 'data-color': c, 'aria-label': c || 'in turn', title: c || 'in turn' })
+      b.addEventListener('click', () => setColor(c))
+      swatches.append(b)
+    }
+    setColor(type.color ?? '')
     const remove = el('button', { class: 'remove', type: 'button', 'aria-label': `Remove type ${type.name || ''}`.trim(), title: 'Remove', text: '×' })
-    const row = el('div', { class: 'type' }, name, match, mark, color, remove)
-    const r: TypeRow = { name, match, mark, color, remove, row }
+    const row = el('div', { class: 'type' }, name, match, mark, swatches, remove, color, glyphs)
+    const r: TypeRow = { name, match, mark, color, swatches, remove, row, setColor }
     remove.addEventListener('click', () => {
       typeRows.splice(typeRows.indexOf(r), 1)
       row.remove()
