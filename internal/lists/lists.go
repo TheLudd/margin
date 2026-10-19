@@ -1,9 +1,10 @@
 // Package lists builds the sidebar's Recent and Older lists (S-01, S-02,
-// S-04) and the finder's data from the index, the views and the copies.
+// S-04, sorted by name ignoring case) and the finder's data from the index, the views and the copies.
 package lists
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"margin/internal/filetype"
@@ -127,6 +128,10 @@ func Build(in Input) Lists {
 	for _, n := range names {
 		files := older[n]
 		sort.Slice(files, func(i, j int) bool {
+			a, b := strings.ToLower(files[i].Name), strings.ToLower(files[j].Name)
+			if a != b {
+				return a < b
+			}
 			if files[i].Name != files[j].Name {
 				return files[i].Name < files[j].Name
 			}

@@ -4,7 +4,7 @@ import type { SettingsView } from '../src/types'
 
 function view(over: Partial<SettingsView> = {}): SettingsView {
   return {
-    config: { roots: [{ name: 'code', path: '~/code' }], exclude: ['CHANGELOG.md'], types: [{ name: 'claude', match: 'CLAUDE.md' }], activeDays: 14, unreadDays: 30 },
+    config: { roots: [{ name: 'code', path: '~/code' }], exclude: ['CHANGELOG.md'], types: [{ name: 'claude', match: 'CLAUDE.md', color: 'amber' }], activeDays: 14, unreadDays: 30 },
     file: '/home/u/.config/margin/config.json',
     state: '/home/u/.local/state/margin',
     error: '',
@@ -63,6 +63,7 @@ describe('settings', () => {
     expect((container.querySelector('.type input[name=typeName]') as HTMLInputElement).value).toBe('claude')
     expect((container.querySelector('.type input[name=typeMatch]') as HTMLInputElement).value).toBe('CLAUDE.md')
     expect((container.querySelector('.type input[name=typeMark]') as HTMLInputElement).value).toBe('')
+    expect((container.querySelector('.type select[name=typeColor]') as HTMLSelectElement).value).toBe('amber')
     const buttons = Array.from(container.querySelectorAll('button.add')).filter((b) => b.textContent === '+ add a type')
     expect(buttons).toHaveLength(1)
     ;(buttons[0] as HTMLButtonElement).click()
@@ -72,9 +73,13 @@ describe('settings', () => {
     row.match.value = '.claude/skills/*/SKILL.md'
     row.mark.value = '✦'
     expect(refs.config().types).toEqual([
-      { name: 'claude', match: 'CLAUDE.md' },
+      { name: 'claude', match: 'CLAUDE.md', color: 'amber' },
       { name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' },
     ])
+    row.color.value = 'blue'
+    expect(refs.config().types[1]).toEqual({ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦', color: 'blue' })
+    row.color.value = ''
+    expect(refs.config().types[1]).toEqual({ name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' })
     refs.typeRows[0].remove.click()
     expect(container.querySelectorAll('.type')).toHaveLength(1)
     refs.form.requestSubmit()
@@ -97,6 +102,7 @@ describe('settings', () => {
     expect(refs.typeRows[1].mark.value).toBe('')
     expect(container.querySelectorAll('.type-suggestion')).toHaveLength(0)
     expect(container.querySelector('.type-suggestions .none')?.textContent).toBe('No recurring file names without a type.')
+    expect(refs.typeRows[1].color.value).toBe('')
   })
 
   it('F-08: the setup screen has no type suggestions', async () => {
@@ -154,7 +160,7 @@ describe('settings', () => {
     ;(container.querySelector('input[name=activeDays]') as HTMLInputElement).value = '7'
     refs.form.dispatchEvent(new Event('submit'))
     await tick()
-    expect(save).toHaveBeenCalledWith({ roots: [{ name: 'code', path: '~/code' }], exclude: ['a.md', 'gen/*.md'], types: [{ name: 'claude', match: 'CLAUDE.md' }], activeDays: 7, unreadDays: 30 })
+    expect(save).toHaveBeenCalledWith({ roots: [{ name: 'code', path: '~/code' }], exclude: ['a.md', 'gen/*.md'], types: [{ name: 'claude', match: 'CLAUDE.md', color: 'amber' }], activeDays: 7, unreadDays: 30 })
     save.mockRejectedValueOnce(new Error('name "code" is used twice'))
     refs.form.dispatchEvent(new Event('submit'))
     await tick()

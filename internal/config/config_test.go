@@ -123,12 +123,14 @@ func TestConfig(t *testing.T) {
 		if err == nil {
 			t.Fatal("no error")
 		}
-		for _, want := range []string{"type 1 has no name", `type "x" has no pattern`, `type "Y" is used twice`} {
+		c.Types = append(c.Types, Type{Name: "z", Match: "z.md", Color: "pink"})
+		err = c.Validate(home)
+		for _, want := range []string{"type 1 has no name", `type "x" has no pattern`, `type "Y" is used twice`, `type "z" has an unknown colour "pink"`} {
 			if !strings.Contains(err.Error(), want) {
 				t.Errorf("missing %q in %q", want, err)
 			}
 		}
-		c.Types = []Type{{Name: "claude", Match: "CLAUDE.md"}}
+		c.Types = []Type{{Name: "claude", Match: "CLAUDE.md", Color: "amber"}}
 		if err := c.Validate(home); err != nil {
 			t.Fatal(err)
 		}

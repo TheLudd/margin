@@ -207,23 +207,47 @@ body.setup #sidebar > :not(.brand-row, .unfold-sidebar) {
   text-overflow: ellipsis;
 }
 
-/* A file type's mark (F-07): a small tag before the name in the badge
-   style (L-18), kept whole however narrow the entry gets. */
+/* A file type's mark (F-07): a small tag before the name, lit in the
+   type's colour like a lit badge (L-18), in a slot two characters wide so
+   short marks line the names up, kept whole however narrow the entry gets. */
 .file-label .mark {
+  --mark: var(--cp-muted);
   flex-shrink: 0;
-  padding: 0 5px;
-  border: 1px solid var(--cp-line);
+  box-sizing: content-box;
+  min-width: 2ch;
+  padding: 0 4px;
   border-radius: 3px;
-  color: var(--cp-muted);
+  background: color-mix(in srgb, var(--mark) 15%, transparent);
+  color: var(--mark);
   font: 10px var(--cp-mono);
   line-height: 16px;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
+.file-label .mark[data-color='cyan'] {
+  --mark: var(--cp-cyan);
+}
+
+.file-label .mark[data-color='magenta'] {
+  --mark: var(--cp-magenta);
+}
+
+.file-label .mark[data-color='green'] {
+  --mark: var(--cp-code);
+}
+
+.file-label .mark[data-color='amber'] {
+  --mark: var(--cp-warn);
+}
+
+.file-label .mark[data-color='blue'] {
+  --mark: var(--cp-h3);
+}
+
 /* A one-character mark is a glyph: drawn larger, without the spacing. */
 .file-label .mark.glyph {
-  padding: 0 4px;
   font-size: 13px;
   letter-spacing: 0;
 }

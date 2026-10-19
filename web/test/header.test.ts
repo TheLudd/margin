@@ -11,9 +11,9 @@ describe('header', () => {
 
   it('F-07: the header label carries the type mark', () => {
     const h = buildHeader()
-    setHeaderLabel(h, 'margin', '', { type: { name: 'claude', mark: 'claude' }, path: '/code/margin/CLAUDE.md' })
+    setHeaderLabel(h, 'Margin', '', { type: { name: 'claude', mark: 'claude', color: 'cyan' }, path: '/code/margin/CLAUDE.md' })
     expect(h.path.querySelector('.file-label .mark')?.textContent).toBe('claude')
-    expect(h.path.querySelector('.file-label .name')?.textContent).toBe('margin')
+    expect(h.path.querySelector('.file-label .name')?.textContent).toBe('Margin')
   })
 
   it('W-04: every copy is listed as main, unchanged or changed when, the open one selected', () => {

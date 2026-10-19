@@ -350,22 +350,22 @@ func TestFiles(t *testing.T) {
 			for _, f := range g.Files {
 				switch f.Path {
 				case "/code/repo/readme.md":
-					if f.Name != "repo" || f.Dir != "" || f.Type == nil || f.Type.Name != "readme" || f.Type.Mark != "readme" {
+					if f.Name != "Repo" || f.Dir != "" || f.Type == nil || f.Type.Name != "readme" || f.Type.Mark != "readme" || f.Type.Color != "magenta" {
 						t.Errorf("readme entry %+v %+v", f, f.Type)
 					}
 					readme = e2.doc(f.Path)
 				case "/code/notes/n.md":
-					if f.Name != "n.md" || f.Dir != "" || f.Type == nil || f.Type.Mark != "✎" {
+					if f.Name != "N" || f.Dir != "" || f.Type == nil || f.Type.Mark != "✎" || f.Type.Color != "cyan" {
 						t.Errorf("note entry %+v %+v", f, f.Type)
 					}
 					note = e2.doc(f.Path)
 				}
 			}
 		}
-		if readme.Name != "repo" || readme.Dir != "" || readme.Type == nil || readme.Type.Name != "readme" {
+		if readme.Name != "Repo" || readme.Dir != "" || readme.Type == nil || readme.Type.Name != "readme" {
 			t.Errorf("readme doc %+v %+v", readme, readme.Type)
 		}
-		if note.Name != "n.md" || note.Type == nil || note.Type.Name != "note" {
+		if note.Name != "N" || note.Type == nil || note.Type.Name != "note" {
 			t.Errorf("note doc %+v %+v", note, note.Type)
 		}
 		res, data := e2.do("PUT", "/api/settings", `{"roots":[{"name":"code","path":"~/code"}],"types":[{"name":"","match":"x.md"}],"activeDays":14,"unreadDays":30}`, nil)

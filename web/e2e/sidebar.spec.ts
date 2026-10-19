@@ -215,7 +215,7 @@ test.describe('sidebar', () => {
       roots: [{ name: 'code', path: '~/code' }],
       types: [
         { name: 'claude', match: 'CLAUDE.md' },
-        { name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦' },
+        { name: 'skill', match: '.claude/skills/*/SKILL.md', mark: '✦', color: 'amber' },
       ],
     })
     margin.write('margin/CLAUDE.md', '# Rules\n')
@@ -225,25 +225,27 @@ test.describe('sidebar', () => {
     await group.locator('summary').click()
     const claude = group.locator('a[href="/code/margin/CLAUDE.md"] .file-label')
     await expect(claude.locator('.mark')).toHaveText('claude')
-    await expect(claude.locator('.name')).toHaveText('margin')
+    await expect(claude.locator('.mark')).toHaveAttribute('data-color', 'cyan')
+    await expect(claude.locator('.name')).toHaveText('Margin')
     await expect(claude.locator('.dir')).toHaveCount(0)
     await expect(claude).toHaveAttribute('title', 'claude · code/margin/CLAUDE.md')
     const skill = group.locator('a[href="/code/margin/.claude/skills/commit/SKILL.md"] .file-label')
     await expect(skill.locator('.mark')).toHaveText('✦')
-    await expect(skill.locator('.name')).toHaveText('commit')
+    await expect(skill.locator('.mark')).toHaveAttribute('data-color', 'amber')
+    await expect(skill.locator('.name')).toHaveText('Commit')
     await expect(skill.locator('.dir')).toHaveText('margin')
     await page.keyboard.press('Control+k')
     const finder = page.locator('#finder')
     await finder.locator('input').fill('skill commit')
     await page.keyboard.press('Tab')
-    await expect(finder.locator('li.row a .name')).toHaveText(['commit'])
+    await expect(finder.locator('li.row a .name')).toHaveText(['Commit'])
     await expect(finder.locator('li.row a .mark')).toHaveText(['✦'])
     await page.keyboard.press('Escape')
     await claude.click()
     await expect(page).toHaveURL(margin.url + '/code/margin/CLAUDE.md')
     await expect(page.locator('.doc-header .file-label .mark')).toHaveText('claude')
-    await expect(page.locator('.doc-header .file-label .name')).toHaveText('margin')
-    await expect(page).toHaveTitle('margin · claude')
+    await expect(page.locator('.doc-header .file-label .name')).toHaveText('Margin')
+    await expect(page).toHaveTitle('Margin · claude')
   })
 
   test('F-01, F-02: ignored, excluded, .git and node_modules files are not listed', async ({ page, margin }) => {

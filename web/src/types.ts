@@ -6,9 +6,12 @@ export interface RootView {
 }
 
 /** A file type (F-07): its name and the mark drawn before the file name. */
+export type TypeColor = 'cyan' | 'magenta' | 'green' | 'amber' | 'blue'
+
 export interface FileType {
   name: string
   mark: string
+  color: TypeColor
 }
 
 export interface Entry {
@@ -80,6 +83,7 @@ export interface ConfigType {
   name: string
   match: string
   mark?: string
+  color?: TypeColor
 }
 
 export interface Config {

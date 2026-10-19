@@ -25,11 +25,25 @@ type Root struct {
 // Type is a file type (F-07): files matching the pattern are shown with
 // the mark and named by the part of their path the pattern does not fix.
 // The pattern has the grammar of an exclude pattern. An empty mark is the
-// name.
+// name; an empty colour is taken from the palette in turn.
 type Type struct {
 	Name  string `json:"name"`
 	Match string `json:"match"`
 	Mark  string `json:"mark,omitempty"`
+	Color string `json:"color,omitempty"`
+}
+
+// Colors are the palette tokens a type can be given.
+var Colors = []string{"cyan", "magenta", "green", "amber", "blue"}
+
+// IsColor reports whether a colour is a palette token.
+func IsColor(c string) bool {
+	for _, k := range Colors {
+		if c == k {
+			return true
+		}
+	}
+	return false
 }
 
 // Config is the config file.
@@ -178,6 +192,9 @@ func (c Config) Validate(home string) error {
 		typeNames[strings.ToLower(name)] = true
 		if strings.Trim(strings.TrimSpace(t.Match), "/") == "" {
 			problems = append(problems, fmt.Sprintf("type %q has no pattern", name))
+		}
+		if t.Color != "" && !IsColor(t.Color) {
+			problems = append(problems, fmt.Sprintf("type %q has an unknown colour %q", name, t.Color))
 		}
 	}
 	if c.ActiveDays < 1 || c.ActiveDays > 365 {

@@ -2,7 +2,9 @@
 // completion, exclude patterns, file types, the day counts, errors and
 // where the config is stored.
 import { el } from './shell'
-import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion, TypeSuggestion } from './types'
+import type { Config, ConfigRoot, ConfigType, SettingsView, Suggestion, TypeColor, TypeSuggestion } from './types'
+
+export const TYPE_COLORS: TypeColor[] = ['cyan', 'magenta', 'green', 'amber', 'blue']
 
 export interface SettingsActions {
   save(config: Config): Promise<void>
@@ -38,6 +40,7 @@ interface TypeRow {
   name: HTMLInputElement
   match: HTMLInputElement
   mark: HTMLInputElement
+  color: HTMLSelectElement
   remove: HTMLButtonElement
   row: HTMLElement
 }
@@ -161,10 +164,10 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
   form.append(el('h2', { text: 'Types' }))
   form.append(
     el('p', {
-      text: 'Files whose name says little, like every CLAUDE.md. A file matching the pattern is marked and named by the part of its path the pattern leaves open: with .claude/skills/*/SKILL.md the skill folder is the name. The mark is the name unless given.',
+      text: 'Files whose name says little, like every CLAUDE.md. A file matching the pattern is marked and named by the part of its path the pattern leaves open: with .claude/skills/*/SKILL.md the skill folder is the name. The mark is the name unless given, and coloured from the palette in turn unless chosen.',
     }),
   )
-  const typesHead = el('div', { class: 'types-head' }, el('span', { text: 'Name' }), el('span', { text: 'Pattern' }), el('span', { text: 'Mark' }), el('span'))
+  const typesHead = el('div', { class: 'types-head' }, el('span', { text: 'Name' }), el('span', { text: 'Pattern' }), el('span', { text: 'Mark' }), el('span', { text: 'Colour' }), el('span'))
   const typesBody = el('div', { class: 'types' })
   form.append(typesHead, typesBody)
   const typeRows: TypeRow[] = []
@@ -175,9 +178,11 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
     match.value = type.match
     const mark = el('input', { type: 'text', name: 'typeMark', placeholder: 'mark', 'aria-label': 'Type mark', autocomplete: 'off' })
     mark.value = type.mark ?? ''
+    const color = el('select', { name: 'typeColor', 'aria-label': 'Type colour' }, el('option', { value: '', text: 'in turn' }), ...TYPE_COLORS.map((c) => el('option', { value: c, text: c })))
+    color.value = type.color ?? ''
     const remove = el('button', { class: 'remove', type: 'button', 'aria-label': `Remove type ${type.name || ''}`.trim(), title: 'Remove', text: '×' })
-    const row = el('div', { class: 'type' }, name, match, mark, remove)
-    const r: TypeRow = { name, match, mark, remove, row }
+    const row = el('div', { class: 'type' }, name, match, mark, color, remove)
+    const r: TypeRow = { name, match, mark, color, remove, row }
     remove.addEventListener('click', () => {
       typeRows.splice(typeRows.indexOf(r), 1)
       row.remove()
@@ -243,6 +248,7 @@ export function renderSettings(container: HTMLElement, opts: SettingsOptions): S
       const t: ConfigType = { name: r.name.value.trim(), match: r.match.value.trim() }
       const mark = r.mark.value.trim()
       if (mark) t.mark = mark
+      if (r.color.value) t.color = r.color.value as TypeColor
       return t
     }),
     activeDays: Number(activeDays?.value ?? 14),

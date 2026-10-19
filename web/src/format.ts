@@ -43,6 +43,7 @@ export function fileLabel(name: string, dir: string, opts: LabelOptions = {}): H
     const m = document.createElement('span')
     m.className = 'mark'
     m.textContent = opts.type.mark
+    m.dataset.color = opts.type.color
     if ([...opts.type.mark].length === 1) m.classList.add('glyph')
     m.setAttribute('aria-label', opts.type.name)
     label.append(m)

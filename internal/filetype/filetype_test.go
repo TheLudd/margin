@@ -27,25 +27,44 @@ func TestFileType(t *testing.T) {
 		}
 	})
 
-	t.Run("F-07: a fixed file name is dropped, the folder above becomes the name; case is ignored", func(t *testing.T) {
+	t.Run("F-07: a fixed file name is dropped, the folder above becomes the name as a title; case is ignored", func(t *testing.T) {
 		l := set.Label("margin/CLAUDE.md")
-		if l.Name != "margin" || l.Dir != "" || l.Type == nil || l.Type.Name != "claude" || l.Type.Mark != "claude" {
+		if l.Name != "Margin" || l.Dir != "" || l.Type == nil || l.Type.Name != "claude" || l.Type.Mark != "claude" {
 			t.Fatalf("got %+v %+v", l, l.Type)
 		}
 		l = set.Label("margin/web/claude.md")
-		if l.Name != "web" || l.Dir != "margin" || l.Type.Name != "claude" {
+		if l.Name != "Web" || l.Dir != "margin" || l.Type.Name != "claude" {
+			t.Fatalf("got %+v", l)
+		}
+		l = set.Label("gaius/cross-module_reactions.v2/CLAUDE.md")
+		if l.Name != "Cross Module Reactions V2" {
 			t.Fatalf("got %+v", l)
 		}
 	})
 
-	t.Run("F-07: every fixed segment of a longer pattern is dropped, wildcard segments are kept", func(t *testing.T) {
+	t.Run("F-07: every fixed segment of a longer pattern is dropped, wildcard segments are kept; a file-named type loses .md", func(t *testing.T) {
 		l := set.Label("margin/.claude/skills/commit/SKILL.md")
-		if l.Name != "commit" || l.Dir != "margin" || l.Type.Name != "skill" || l.Type.Mark != "✦" {
+		if l.Name != "Commit" || l.Dir != "margin" || l.Type.Name != "skill" || l.Type.Mark != "✦" {
 			t.Fatalf("got %+v %+v", l, l.Type)
 		}
-		l = set.Label("margin/.claude/agents/reviewer.md")
-		if l.Name != "reviewer.md" || l.Dir != "margin" || l.Type.Name != "agent" {
+		l = set.Label("margin/.claude/agents/code-reviewer.md")
+		if l.Name != "Code Reviewer" || l.Dir != "margin" || l.Type.Name != "agent" {
 			t.Fatalf("got %+v", l)
+		}
+	})
+
+	t.Run("F-07: a title keeps the case after a word's first letter; colours come from the palette in turn unless given", func(t *testing.T) {
+		if got := Title("fassaAPI-notes.md"); got != "FassaAPI Notes" {
+			t.Fatalf("got %q", got)
+		}
+		if got := Title("---"); got != "---" {
+			t.Fatalf("got %q", got)
+		}
+		colours := New([]config.Type{{Name: "a", Match: "a.md"}, {Name: "b", Match: "b.md", Color: "amber"}, {Name: "c", Match: "c.md"}})
+		for path, want := range map[string]string{"a.md": "cyan", "b.md": "amber", "c.md": "green"} {
+			if got := colours.Type(path).Color; got != want {
+				t.Errorf("%s: got %q, want %q", path, got, want)
+			}
 		}
 	})
 
@@ -54,11 +73,11 @@ func TestFileType(t *testing.T) {
 			t.Fatalf("got %+v", l)
 		}
 		first := New([]config.Type{{Name: "a", Match: "*.md"}, {Name: "b", Match: "x.md"}})
-		if l := first.Label("x.md"); l.Type.Name != "a" || l.Name != "x.md" {
+		if l := first.Label("x.md"); l.Type.Name != "a" || l.Name != "X" {
 			t.Fatalf("got %+v", l)
 		}
 		l := set.Label("ideate.md")
-		if l.Name != "ideate.md" || l.Dir != "" || l.Type.Name != "ideate" {
+		if l.Name != "Ideate" || l.Dir != "" || l.Type.Name != "ideate" {
 			t.Fatalf("got %+v", l)
 		}
 	})

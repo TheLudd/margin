@@ -11,15 +11,18 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"margin/internal/config"
 )
 
-// Type is a configured file type as shown: its name and the mark drawn
-// before the file name.
+// Type is a configured file type as shown: its name, the mark drawn before
+// the file name, and the mark's colour, a palette token.
 type Type struct {
-	Name string `json:"name"`
-	Mark string `json:"mark"`
+	Name  string `json:"name"`
+	Mark  string `json:"mark"`
+	Color string `json:"color"`
 }
 
 // Label is how a file is shown: the name, the folder above it, and the type
@@ -41,17 +44,22 @@ type Set struct {
 	patterns []pattern
 }
 
-// New compiles the configured types. A mark left empty is the name.
+// New compiles the configured types. A mark left empty is the name; a
+// colour left empty is the palette's in turn, by the type's place in the
+// list.
 func New(types []config.Type) Set {
 	var s Set
-	for _, t := range types {
+	for i, t := range types {
 		m := strings.ToLower(strings.Trim(strings.TrimSpace(t.Match), "/"))
 		if m == "" || strings.TrimSpace(t.Name) == "" {
 			continue
 		}
-		typ := Type{Name: strings.TrimSpace(t.Name), Mark: strings.TrimSpace(t.Mark)}
+		typ := Type{Name: strings.TrimSpace(t.Name), Mark: strings.TrimSpace(t.Mark), Color: t.Color}
 		if typ.Mark == "" {
 			typ.Mark = typ.Name
+		}
+		if typ.Color == "" {
+			typ.Color = config.Colors[i%len(config.Colors)]
 		}
 		segs := strings.Split(m, "/")
 		s.patterns = append(s.patterns, pattern{typ: typ, segments: segs, anywhere: len(segs) == 1})
@@ -63,7 +71,8 @@ func New(types []config.Type) Set {
 // is the file name and the dir what is above it, "" at the top. With one,
 // the pattern's fixed segments are dropped from the path: the name is the
 // rightmost segment left, the dir the rest. A fixed segment has no
-// wildcard. Nothing left falls back to the file name.
+// wildcard. Nothing left falls back to the file name. A typed name is a
+// title: .md dropped, every word capitalised.
 func (s Set) Label(rel string) Label {
 	parts := strings.Split(strings.Trim(rel, "/"), "/")
 	plain := Label{Name: parts[len(parts)-1], Dir: dirOf(parts[:len(parts)-1])}
@@ -72,15 +81,30 @@ func (s Set) Label(rel string) Label {
 		if !p.matches(parts) {
 			continue
 		}
+		typ := p.typ
 		kept := p.strip(parts)
 		if len(kept) == 0 {
-			plain.Type = &p.typ
-			return plain
+			return Label{Name: Title(plain.Name), Dir: plain.Dir, Type: &typ}
 		}
-		typ := p.typ
-		return Label{Name: kept[len(kept)-1], Dir: dirOf(kept[:len(kept)-1]), Type: &typ}
+		return Label{Name: Title(kept[len(kept)-1]), Dir: dirOf(kept[:len(kept)-1]), Type: &typ}
 	}
 	return plain
+}
+
+// Title turns a path segment into a title: .md dropped, words split on
+// dashes, underscores, dots and spaces, each with its first letter in upper
+// case and the rest as it was.
+func Title(segment string) string {
+	segment = strings.TrimSuffix(segment, ".md")
+	words := strings.FieldsFunc(segment, func(r rune) bool { return r == '-' || r == '_' || r == '.' || r == ' ' })
+	for i, w := range words {
+		r, n := utf8.DecodeRuneInString(w)
+		words[i] = string(unicode.ToUpper(r)) + w[n:]
+	}
+	if len(words) == 0 {
+		return segment
+	}
+	return strings.Join(words, " ")
 }
 
 // Type reports the type of a path, nil without one.

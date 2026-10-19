@@ -31,17 +31,19 @@ describe('format', () => {
   })
 
   it('F-07: a typed file has its mark before the name, named for screen readers, and the type and address in the tooltip', () => {
-    const label = fileLabel('margin', '', { type: { name: 'claude', mark: 'claude' }, path: '/code/margin/CLAUDE.md' })
+    const label = fileLabel('Margin', '', { type: { name: 'claude', mark: 'claude', color: 'cyan' }, path: '/code/margin/CLAUDE.md' })
     expect(Array.from(label.children).map((c) => c.className)).toEqual(['mark', 'name'])
     expect(label.children[0].textContent).toBe('claude')
     expect(label.children[0].getAttribute('aria-label')).toBe('claude')
-    expect(label.children[1].textContent).toBe('margin')
+    expect(label.children[1].textContent).toBe('Margin')
     expect(label.title).toBe('claude · code/margin/CLAUDE.md')
-    const glyph = fileLabel('commit', 'margin', { type: { name: 'skill', mark: '✦' } })
+    expect((label.children[0] as HTMLElement).dataset.color).toBe('cyan')
+    const glyph = fileLabel('Commit', 'margin', { type: { name: 'skill', mark: '✦', color: 'amber' } })
     expect(glyph.children[0].textContent).toBe('✦')
     expect(glyph.children[0].className).toBe('mark glyph')
+    expect((glyph.children[0] as HTMLElement).dataset.color).toBe('amber')
     expect(label.children[0].className).toBe('mark')
-    expect(glyph.title).toBe('skill · margin/commit')
+    expect(glyph.title).toBe('skill · margin/Commit')
   })
 
   it('F-03: a path splits into root, name and folder, the root left out of the folder with a single root', () => {

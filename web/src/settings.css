@@ -16,7 +16,7 @@
 
 .settings .types-head,
 .settings .type {
-  grid-template-columns: 160px minmax(0, 1fr) 120px 32px;
+  grid-template-columns: 160px minmax(0, 1fr) 100px 110px 32px;
 }
 
 .settings .roots-head,

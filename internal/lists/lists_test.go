@@ -119,14 +119,15 @@ func TestLists(t *testing.T) {
 			solo(file("code", "zeta/b.md", "h", day(40)), &project.Project{Key: "z", Root: "code", Rel: "zeta"}),
 			solo(file("code", "alpha/z.md", "h", day(40)), &project.Project{Key: "a", Root: "code", Rel: "alpha"}),
 			solo(file("code", "alpha/a.md", "h", day(40)), &project.Project{Key: "a", Root: "code", Rel: "alpha"}),
+			solo(file("code", "alpha/M.md", "h", day(40)), &project.Project{Key: "a", Root: "code", Rel: "alpha"}),
 			solo(file("code", "top.md", "h", day(40)), plain),
 		)
 		l := Build(in)
 		if len(l.Older) != 3 || l.Older[0].Project != "alpha" || l.Older[1].Project != "code" || l.Older[2].Project != "zeta" {
 			t.Fatalf("groups %+v", l.Older)
 		}
-		if l.Older[0].Files[0].Name != "a.md" || l.Older[0].Files[1].Name != "z.md" {
-			t.Fatalf("order %+v", l.Older[0].Files)
+		if l.Older[0].Files[0].Name != "a.md" || l.Older[0].Files[1].Name != "M.md" || l.Older[0].Files[2].Name != "z.md" {
+			t.Fatalf("order ignoring case %+v", l.Older[0].Files)
 		}
 	})
 
@@ -159,11 +160,11 @@ func TestLists(t *testing.T) {
 		in := base(solo(cl, fooProj), solo(sk, fooProj))
 		in.Types = types
 		files := Build(in).Older[0].Files
-		if len(files) != 2 || files[0].Name != "commit" || files[0].Dir != "foo" || files[0].Type == nil || files[0].Type.Mark != "✦" {
-			t.Fatalf("skill %+v", files[0])
+		if len(files) != 2 || files[0].Name != "Commit" || files[0].Dir != "foo" || files[0].Type == nil || files[0].Type.Mark != "✦" || files[0].Type.Color != "magenta" {
+			t.Fatalf("skill %+v %+v", files[0], files[0].Type)
 		}
-		if files[1].Name != "foo" || files[1].Dir != "" || files[1].Type == nil || files[1].Type.Name != "claude" || files[1].Type.Mark != "claude" {
-			t.Fatalf("claude %+v", files[1])
+		if files[1].Name != "Foo" || files[1].Dir != "" || files[1].Type == nil || files[1].Type.Name != "claude" || files[1].Type.Mark != "claude" || files[1].Type.Color != "cyan" {
+			t.Fatalf("claude %+v %+v", files[1], files[1].Type)
 		}
 		in.SingleRoot = false
 		files = Build(in).Older[0].Files
@@ -180,7 +181,7 @@ func TestLists(t *testing.T) {
 		in = base(mk("bar/main/CLAUDE.md", main), mk("bar/feat/CLAUDE.md", feat))
 		in.Types = types
 		e := Build(in).Older[0].Files[0]
-		if e.Copies != 2 || e.Name != "CLAUDE.md" || e.Dir != "bar" || e.Type == nil || e.Type.Name != "claude" {
+		if e.Copies != 2 || e.Name != "CLAUDE" || e.Dir != "bar" || e.Type == nil || e.Type.Name != "claude" {
 			t.Fatalf("copies %+v", e)
 		}
 	})

@@ -56,7 +56,7 @@ describe('sidebar', () => {
   })
 
   it('F-07: a typed entry draws the mark before the name in both sections', () => {
-    const typed = { type: { name: 'claude', mark: 'claude' } }
+    const typed = { type: { name: 'claude', mark: 'claude', color: 'green' as const } }
     const { root } = render(
       lists({
         recent: [{ path: '/code/zed/CLAUDE.md', name: 'zed', dir: '', time: now - 60, kind: 'view', unread: false, ...typed }],
@@ -67,6 +67,7 @@ describe('sidebar', () => {
       const label = root.querySelector(`a[href="${href}"] .file-label`) as HTMLElement
       expect(label.firstElementChild?.className).toBe('mark')
       expect(label.firstElementChild?.textContent).toBe('claude')
+      expect((label.firstElementChild as HTMLElement).dataset.color).toBe('green')
       expect(label.querySelector('.name')?.textContent).toBe(href.split('/')[2])
       expect(label.title).toBe('claude · ' + href.slice(1))
     }
