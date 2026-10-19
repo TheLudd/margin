@@ -117,6 +117,7 @@ func Build(in Input) Lists {
 			older[e.project] = append(older[e.project], e)
 		}
 	}
+	// Last edited at the top; a view puts a file here but does not lift it.
 	sort.SliceStable(recent, func(i, j int) bool { return recent[i].Time > recent[j].Time })
 	var out Lists
 	out.Recent = recent
@@ -170,7 +171,8 @@ func (in Input) entry(members []member, cutoff time.Time) (Entry, bool) {
 		}
 	}
 	e.sortKey = e.Dir
-	// Activity: the latest of any copy; the entry opens that copy (W-05).
+	// Activity decides membership (S-01): the latest of any copy, and the
+	// entry opens that copy (W-05). The time is the file's last edit.
 	var latest member
 	for _, m := range members {
 		if m.act.modified {
@@ -185,12 +187,23 @@ func (in Input) entry(members []member, cutoff time.Time) (Entry, bool) {
 	}
 	if !latest.act.time.IsZero() && latest.act.time.After(cutoff) {
 		e.Path = latest.info.File.Path()
-		e.Time = latest.act.time.Unix()
+		e.Time = lastEdit(members).Unix()
 		e.Kind = latest.act.kind
 		return e, true
 	}
 	e.Path = choose(members).File.Path()
 	return e, false
+}
+
+// lastEdit is the newest modification time on disk among the copies.
+func lastEdit(members []member) time.Time {
+	var t time.Time
+	for _, m := range members {
+		if m.info.File.Mtime.After(t) {
+			t = m.info.File.Mtime
+		}
+	}
+	return t
 }
 
 // choose picks the copy that opens (W-03): the one changed last, else the

@@ -83,7 +83,7 @@ Decided 2026-10-15. Not up for reopening during the rewrite.
 
 ## 5. Sidebar and finder (S)
 
-- **S-01** Recent lists every file viewed in margin or modified within the active window, latest first, each timed by whichever happened last. A modified entry carries the unread mark (S-07); marking it read turns it into a viewed entry timed at the reading. Entries never vanish by being committed.
+- **S-01** Recent lists every file viewed in margin or modified within the active window. Each entry is timed by the file's last edit on disk, and the list is sorted by that, last edited at the top; viewing a file adds it to the list and does not lift it. A modified entry carries the unread mark (S-07); marking it read turns it into a viewed entry timed at the reading. Entries never vanish by being committed.
 - **S-02** When a file counts as modified, and with what time. Git plays no part in any of it.
   - **The copy.** margin keeps a copy of every file as last read in margin (CH-02). A file has at most one copy.
   - **Modified** means the file's content on disk differs from its copy. Equal content, however the file got there, is not modified.

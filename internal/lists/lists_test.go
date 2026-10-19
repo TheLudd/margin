@@ -30,24 +30,29 @@ func base(files ...FileInfo) Input {
 }
 
 func TestLists(t *testing.T) {
-	t.Run("S-01: Recent lists files viewed or modified within the active window, latest first, timed by whichever happened last", func(t *testing.T) {
+	t.Run("S-01: Recent lists files viewed or modified within the active window, timed and sorted by their last edit; a view adds a file but does not lift it", func(t *testing.T) {
 		a := file("code", "foo/a.md", "h1", day(20))
 		b := file("code", "foo/b.md", "h2", day(1))
 		c := file("code", "foo/c.md", "h3", day(30))
-		in := base(solo(a, fooProj), solo(b, fooProj), solo(c, fooProj))
-		in.Views[a.Abs] = day(2)
+		d := file("code", "foo/d.md", "h4", day(10))
+		in := base(solo(a, fooProj), solo(b, fooProj), solo(c, fooProj), solo(d, fooProj))
+		in.Views[a.Abs] = day(0) // viewed just now, edited 20 days ago: listed, but last
 		in.CopyHash[b.Abs] = "old"
 		in.Views[b.Abs] = day(3)
 		in.Views[c.Abs] = day(15)
+		in.Views[d.Abs] = day(2)
 		l := Build(in)
-		if len(l.Recent) != 2 || l.Recent[0].Name != "b.md" || l.Recent[1].Name != "a.md" {
+		if len(l.Recent) != 3 || l.Recent[0].Name != "b.md" || l.Recent[1].Name != "d.md" || l.Recent[2].Name != "a.md" {
 			t.Fatalf("recent %+v", l.Recent)
 		}
 		if l.Recent[0].Kind != "modified" || l.Recent[0].Time != day(1).Unix() || !l.Recent[0].Unread {
 			t.Fatalf("b %+v", l.Recent[0])
 		}
-		if l.Recent[1].Kind != "view" || l.Recent[1].Time != day(2).Unix() || l.Recent[1].Unread {
-			t.Fatalf("a %+v", l.Recent[1])
+		if l.Recent[1].Kind != "view" || l.Recent[1].Time != day(10).Unix() || l.Recent[1].Unread {
+			t.Fatalf("d %+v", l.Recent[1])
+		}
+		if l.Recent[2].Kind != "view" || l.Recent[2].Time != day(20).Unix() || l.Recent[2].Unread {
+			t.Fatalf("a %+v", l.Recent[2])
 		}
 		if len(l.Older) != 1 || l.Older[0].Project != "foo" || len(l.Older[0].Files) != 1 || l.Older[0].Files[0].Name != "c.md" {
 			t.Fatalf("older %+v", l.Older)
