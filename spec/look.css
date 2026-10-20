@@ -1179,8 +1179,8 @@ article:has(.ProseMirror:focus) {
   position: absolute;
   top: 2px;
   bottom: 2px;
-  /* List items are indented; the bar stays in the gutter */
-  left: calc(-14px - var(--list-depth, 0) * 34px);
+  /* Bullets and quotes are indented; the bar stays in the gutter */
+  left: calc(-14px - var(--indent, 0px));
   width: 3px;
   border-radius: 2px;
   background: var(--change-added);
@@ -1214,7 +1214,7 @@ article:has(.ProseMirror:focus) {
   z-index: 1;
   top: 0;
   /* Left of the bar, with room to move the pointer across to it */
-  left: calc(-14px - var(--list-depth, 0) * 34px - 34px);
+  left: calc(-14px - var(--indent, 0px) - 34px);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1227,7 +1227,7 @@ article:has(.ProseMirror:focus) {
     visibility 0s 0.55s;
 }
 
-.milkdown .ProseMirror .change-controls:is(.current, :hover, :has(+ :is(.change-block, .change-removed):hover)) > span {
+.milkdown .ProseMirror .change-controls:is(.current, :hover, :has(+ :is(.change-block, .change-removed, .change-old, .change-holder):hover)) > span {
   opacity: 1;
   visibility: visible;
   transition:
@@ -1257,20 +1257,32 @@ article:has(.ProseMirror:focus) {
   color: var(--cp-cyan);
 }
 
-/* A block shown as it was: the document's block is hidden */
+.milkdown .ProseMirror li:is(.change-controls, .change-removed) {
+  list-style: none;
+}
+
+/* A unit shown as it was: the document's unit is hidden */
 .milkdown .ProseMirror .change-hidden {
   display: none;
 }
 
 .milkdown .ProseMirror .change-old {
   position: relative;
+  margin: 4px 0;
+  padding: 0 10px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--change-removed), transparent 92%);
   user-select: none;
 }
 
-.milkdown .ProseMirror .change-old::after,
-.milkdown .ProseMirror .change-removed.change-plain::after {
+.milkdown .ProseMirror .change-old::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: calc(-14px - var(--indent, 0px));
+  width: 3px;
+  border-radius: 2px;
   background: var(--change-removed);
   box-shadow: 0 0 6px var(--change-removed);
 }
@@ -1284,7 +1296,7 @@ article:has(.ProseMirror:focus) {
   font-style: italic;
 }
 
-/* Removed blocks shown as it is now: a sliver, still a place to step to,
+/* Removed units shown as it is now: a sliver, still a place to step to,
    with a notch in the gutter as long as a short bar */
 .milkdown .ProseMirror .change-removed.change-collapsed {
   height: 6px;
@@ -1292,16 +1304,13 @@ article:has(.ProseMirror:focus) {
   padding: 0;
 }
 
+.milkdown .ProseMirror .change-removed.change-collapsed > * {
+  display: none;
+}
+
 .milkdown .ProseMirror .change-removed.change-collapsed::after {
   top: -4px;
   bottom: -4px;
-}
-
-/* Removed blocks shown as they were, without strike-through */
-.milkdown .ProseMirror .change-removed.change-plain {
-  color: inherit;
-  text-decoration: none;
-  opacity: 1;
 }
 
 /* The change nearest the middle of the view */
@@ -1337,6 +1346,10 @@ article:has(.ProseMirror:focus) {
   outline-offset: 4px;
 }
 
+.milkdown .ProseMirror hr.change-block::after {
+  display: none;
+}
+
 .milkdown .ProseMirror hr.change-block.change-modified {
   outline-color: var(--change-modified);
 }
@@ -1347,25 +1360,109 @@ article:has(.ProseMirror:focus) {
   box-shadow: 0 1px 0 var(--change-added);
 }
 
-.milkdown .ProseMirror .change-deleted {
-  margin: 0 1px;
+/* Where words were removed: a small red mark, the words in its tooltip */
+.milkdown .ProseMirror .change-gone {
+  display: inline-block;
+  width: 8px;
+  height: 3px;
+  margin: 0 2px;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--change-removed), transparent 85%);
-  color: var(--change-removed);
-  text-decoration: line-through;
+  background: var(--change-removed);
+  box-shadow: 0 0 4px var(--change-removed);
+  vertical-align: middle;
   user-select: none;
 }
 
+/* Code blocks and tables with changes inside: the lines or rows carry the
+   marks, inside the block since it scrolls; the block has the buttons */
+.milkdown .ProseMirror .change-line {
+  position: relative;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--change-added), transparent 82%);
+}
+
+.milkdown .ProseMirror .change-line.change-line-modified {
+  background: color-mix(in srgb, var(--change-modified), transparent 82%);
+}
+
+.milkdown .ProseMirror .change-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--change-added);
+  box-shadow: 0 0 6px var(--change-added);
+}
+
+.milkdown .ProseMirror .change-line.change-line-modified::before {
+  background: var(--change-modified);
+  box-shadow: 0 0 6px var(--change-modified);
+}
+
+.milkdown .ProseMirror .change-line.change-line-empty {
+  display: inline-block;
+  width: 1px;
+  height: 1.5em;
+  vertical-align: top;
+}
+
+.milkdown .ProseMirror .change-gone-lines {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1.5em;
+  vertical-align: top;
+}
+
+.milkdown .ProseMirror .change-gone-lines::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -14px;
+  width: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--change-removed);
+  box-shadow: 0 0 4px var(--change-removed);
+}
+
+.milkdown .ProseMirror .change-line.change-current {
+  background: color-mix(in srgb, var(--cp-cyan), transparent 86%);
+}
+
+.milkdown .ProseMirror .change-line.change-current::before {
+  width: 5px;
+  margin-left: -1px;
+  background: var(--cp-cyan);
+  box-shadow: 0 0 8px var(--cp-cyan);
+}
+
+.milkdown .ProseMirror tr.change-row-gone > :is(td, th) {
+  box-shadow: inset 0 2px 0 var(--change-removed);
+}
+
+.milkdown .ProseMirror tr.change-row-gone-after > :is(td, th) {
+  box-shadow: inset 0 -2px 0 var(--change-removed);
+}
+
+.milkdown .ProseMirror tr:nth-child(n).change-current > :is(td, th) {
+  background: color-mix(in srgb, var(--cp-cyan), transparent 86%);
+}
+
+.milkdown .ProseMirror tr.change-pulse > :is(td, th) {
+  animation: change-pulse 1.2s ease-out;
+}
+
+/* Removed units shown as they were: in place, on a faint red wash with a red bar */
 .milkdown .ProseMirror .change-removed {
   position: relative;
   margin: 4px 0;
   padding: 0 10px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--change-removed), transparent 90%);
-  color: color-mix(in srgb, var(--change-removed), var(--cp-text) 40%);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--change-removed), transparent 40%);
-  opacity: 0.75;
   user-select: none;
 }
 
@@ -1374,66 +1471,24 @@ article:has(.ProseMirror:focus) {
   position: absolute;
   top: 2px;
   bottom: 2px;
-  left: -14px;
+  left: calc(-14px - var(--indent, 0px));
   width: 3px;
   border-radius: 2px;
   background: var(--change-removed);
 }
 
-.milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+.milkdown .ProseMirror :is(.change-removed, .change-old) pre {
+  margin: 0.5em 0;
+  padding: 8px 12px;
+  border: 1px solid var(--cp-line);
+  background: var(--cp-code-bg);
   font-family: var(--cp-mono);
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  white-space: pre-wrap;
 }
 
-.milkdown .ProseMirror h1 {
-  color: var(--cp-magenta);
-  text-shadow: 0 0 6px #ff2bd64d;
-  border-bottom: 1px solid var(--cp-magenta);
-  padding-bottom: 6px;
-}
-
-.milkdown .ProseMirror h2 {
-  color: var(--cp-cyan);
-  text-shadow: 0 0 5px #00e5ff33;
-  border-bottom: 1px solid var(--cp-line);
-  padding-bottom: 4px;
-}
-
-.milkdown .ProseMirror h3 {
-  color: var(--cp-h3);
-}
-
-.milkdown .ProseMirror strong {
-  color: #fff;
-}
-
-.milkdown .ProseMirror a {
-  color: var(--cp-cyan);
-}
-
-.milkdown .ProseMirror a:hover {
-  color: var(--cp-magenta);
-  text-shadow: 0 0 8px #ff2bd680;
-}
-
-.milkdown .ProseMirror blockquote {
-  border-left: 3px solid var(--cp-magenta);
-  background: #ff2bd60d;
-}
-
-.milkdown .ProseMirror hr {
-  height: 2px;
-  border: 0;
-  background: linear-gradient(90deg, var(--cp-magenta), var(--cp-cyan));
-}
-
-.milkdown .ProseMirror th {
-  color: var(--cp-cyan);
-  font-family: var(--cp-mono);
-}
-
-.milkdown .ProseMirror tr:nth-child(2n) td {
-  background: var(--cp-raised);
+.milkdown .ProseMirror :is(.change-removed, .change-old) table {
+  border-collapse: collapse;
 }
 
 /* Crepe makes inline code an inline-block, which wraps as a box of its own:

@@ -1,7 +1,7 @@
 // Section 8 as seen from the browser: changes (CH).
 import fs from 'node:fs'
 import path from 'node:path'
-import { expect, open, recent, test, type Margin } from './fixtures'
+import { expect, here, open, recent, test, type Margin } from './fixtures'
 import type { Page } from '@playwright/test'
 
 const paras = (n: number, over: Record<number, string> = {}) =>
@@ -21,25 +21,126 @@ async function openThenChange(page: Page, margin: Margin, rel: string, before: s
 }
 
 test.describe('changes', () => {
-  test('CH-01, CH-02, CH-05, CH-06: outside changes since the copy show as bars: green for new, amber for changed, a red notch where removed; nearby changes are one change', async ({ page, margin }) => {
+  test('CH-01, CH-02, CH-05, CH-06, CH-08: outside changes since the copy show as bars: green for new, amber for changed, a red notch where removed; new words lit, a new paragraph lit whole', async ({ page, margin }) => {
     const before = paras(8)
     const after = paras(8, { 2: 'Paragraph 2 with some different words in it.', 4: 'Paragraph 4 with some words in it.\n\nA brand new paragraph.', 7: '' })
     await openThenChange(page, margin, 'a.md', before, after)
-    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveCount(1)
-    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveText('Paragraph 2 with some different words in it.')
-    await expect(page.locator('.ProseMirror .change-block.change-added')).toHaveText('A brand new paragraph.')
+    const modified = page.locator('.ProseMirror .change-block.change-modified')
+    await expect(modified).toHaveCount(1)
+    await expect(modified).toHaveText('Paragraph 2 with some different words in it.')
+    await expect(modified.locator('.change-inserted')).toHaveText('different')
+    await expect(page.locator('.ProseMirror .change-gone')).toHaveCount(0)
+    const added = page.locator('.ProseMirror .change-block.change-added')
+    await expect(added).toHaveText('A brand new paragraph.')
+    await expect(added.locator('.change-inserted')).toHaveText('A brand new paragraph.')
     await expect(page.locator('.ProseMirror .change-removed')).toHaveCount(1)
     await expect(page.locator('.ProseMirror .change-removed')).toHaveClass(/change-collapsed/)
     await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
     await expect(page.locator('.doc-header .changes .mark-read')).toBeVisible()
   })
 
-  test('CH-06: changed or removed blocks separated by at most one unchanged block are one change', async ({ page, margin }) => {
+  test('CH-06: every changed paragraph is a change of its own, whatever lies between; a paragraph rewritten in place is one change', async ({ page, margin }) => {
     const before = paras(6)
-    const after = paras(6, { 2: 'Paragraph 2 changed a lot of its words.', 4: 'Paragraph 4 changed a lot of its words.' })
+    const after = paras(6, { 2: 'Paragraph 2 changed a lot of its words.', 3: 'Something else entirely stands here now.', 4: 'Paragraph 4 changed a lot of its words.' })
     await openThenChange(page, margin, 'a.md', before, after)
-    await expect(page.locator('.ProseMirror .change-block')).toHaveCount(2)
-    await expect(page.locator('.doc-header .changes .count')).toHaveText('1 unread change')
+    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveCount(3)
+    await expect(page.locator('.ProseMirror .change-removed')).toHaveCount(0)
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
+  })
+
+  test('CH-05, CH-06, CH-08: each bullet is a unit: changed ones barred with their words lit, a removed one a notch between the items, a new one lit whole; bars stay in the gutter at any depth', async ({ page, margin }) => {
+    const before = '# L\n\n- one apple\n- two pears\n  - nested one\n  - nested two\n- three plums\n- four figs\n'
+    const after = '# L\n\n- one apple\n- two ripe pears\n  - nested one\n  - nested two changed\n- four figs\n- five dates\n'
+    await openThenChange(page, margin, 'a.md', before, after)
+    const blocks = page.locator('.ProseMirror li p.change-block')
+    await expect(blocks).toHaveCount(3)
+    await expect(blocks.nth(0)).toHaveText('two ripe pears')
+    await expect(blocks.nth(0).locator('.change-inserted')).toHaveText('ripe')
+    await expect(blocks.nth(1)).toHaveText('nested two changed')
+    await expect(blocks.nth(2)).toHaveText('five dates')
+    await expect(blocks.nth(2)).toHaveClass(/change-added/)
+    await expect(blocks.nth(2).locator('.change-inserted')).toHaveText('five dates')
+    const removed = page.locator('.ProseMirror li.change-removed')
+    await expect(removed).toHaveCount(1)
+    await expect(removed).toHaveClass(/change-collapsed/)
+    await expect(page.locator('.ProseMirror ul.change-block')).toHaveCount(0)
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('4 unread changes')
+    const text = (await page.locator('.ProseMirror > h1').boundingBox())!
+    for (const i of [0, 1, 2]) {
+      const bar = await blocks.nth(i).evaluate((el) => {
+        const s = getComputedStyle(el, '::after')
+        const r = el.getBoundingClientRect()
+        return { left: r.left + parseFloat(s.left), width: parseFloat(s.width) }
+      })
+      expect(Math.abs(bar.left - (text.x - 14))).toBeLessThan(1)
+      expect(bar.width).toBe(3)
+    }
+    const notch = await removed.evaluate((el) => {
+      const s = getComputedStyle(el, '::after')
+      return el.getBoundingClientRect().left + parseFloat(s.left)
+    })
+    expect(Math.abs(notch - (text.x - 14))).toBeLessThan(1)
+  })
+
+  test('CH-05, CH-06: each hunk of a code block is a change: changed lines tinted amber, new ones green, a red notch where lines went', async ({ page, margin }) => {
+    const before = '# T\n\n```js\na\nb\nc\nd\ne\n```\n\nBetween.\n\n```\none\ntwo\nthree\nfour\n```\n'
+    const after = '# T\n\n```js\na\nB\nc\nd\ne\nf\n```\n\nBetween.\n\n```\none\nfour\n```\n'
+    await openThenChange(page, margin, 'a.md', before, after)
+    await expect(page.locator('.ProseMirror .change-line.change-line-modified')).toHaveText('B')
+    await expect(page.locator('.ProseMirror .change-line.change-line-added')).toHaveText('f')
+    const gone = page.locator('.ProseMirror .change-gone-lines')
+    await expect(gone).toHaveCount(1)
+    await expect(gone).toHaveAttribute('title', 'removed:\ntwo\nthree')
+    await expect(page.locator('.ProseMirror .code-block.change-holder')).toHaveCount(2)
+    await expect(page.locator('.ProseMirror .code-block.change-block')).toHaveCount(0)
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
+    // Stepping lands on lines inside the block.
+    await page.locator('.doc-header .changes .count').click()
+    await expect(page.locator('.ProseMirror .change-line.change-current')).toHaveText('B')
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(page.locator('.ProseMirror .change-line.change-current')).toHaveText('f')
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(page.locator('.ProseMirror .change-gone-lines.change-current')).toHaveCount(1)
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 3 of 3')
+  })
+
+  test('CH-05, CH-06, L-30: each row of a table is a change: changed cells tinted, new rows green, a red line where a row went; the block has one pair of buttons', async ({ page, margin }) => {
+    const before = '# T\n\n| name | n |\n|---|---|\n| one | 1 |\n| two | 2 |\n| three | 3 |\n'
+    const after = '# T\n\n| name | n |\n|---|---|\n| two | 22 |\n| three | 3 |\n| four | 4 |\n'
+    await openThenChange(page, margin, 'a.md', before, after)
+    await expect(page.locator('.ProseMirror .table-block.change-holder')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror td.change-cell:not(.change-cell-added)')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror td.change-cell:not(.change-cell-added)')).toHaveText('22')
+    await expect(page.locator('.ProseMirror td.change-cell-added')).toHaveCount(2)
+    await expect(page.locator('.ProseMirror tr.change-row')).toHaveCount(2)
+    const gone = page.locator('.ProseMirror tr.change-row-gone')
+    await expect(gone).toHaveCount(1)
+    await expect(gone).toContainText('two')
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
+    await page.locator('.doc-header .changes .count').click()
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 1 of 3')
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(page.locator('.ProseMirror tr.change-current')).toContainText('22')
+    await page.locator('.ProseMirror .table-block').hover()
+    const controls = page.locator('.ProseMirror .change-controls')
+    await expect(controls).toHaveCount(1)
+    await controls.locator('button[data-view=was]').click()
+    await expect(page.locator('.ProseMirror .change-old table')).toContainText('one')
+    await expect(page.locator('.ProseMirror .table-block.change-hidden')).toHaveCount(1)
+  })
+
+  test('CH-05, CH-06, CH-08: a real pair of versions of a skill file reads as its edits', async ({ page, margin }) => {
+    const sample = path.join(here, '..', '..', 'samples', 'plan-skill')
+    const before = fs.readFileSync(path.join(sample, 'before.md'), 'utf8')
+    const after = fs.readFileSync(path.join(sample, 'after.md'), 'utf8')
+    await openThenChange(page, margin, 'SKILL.md', before, after)
+    await expect(page.locator('.doc-header .changes .count')).toHaveText('9 unread changes')
+    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveCount(6)
+    await expect(page.locator('.ProseMirror .change-block.change-added')).toHaveText(/^Rigor other than/)
+    await expect(page.locator('.ProseMirror li.change-removed')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-gone-lines')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-inserted').first()).toHaveText('shape')
+    await expect(page.locator('.ProseMirror .change-gone').first()).toHaveAttribute('title', 'removed: approach')
   })
 
   test('CH-02: a never-opened file has no unread changes; changes made while the browser is closed show on the next open', async ({ page, margin }) => {
@@ -88,34 +189,6 @@ test.describe('changes', () => {
     await expect(page.locator('.doc-header .changes')).toBeHidden()
   })
 
-  test('CH-05, L-30: a code block or table counts as one block; changed table cells are tinted and new rows green', async ({ page, margin }) => {
-    const before = '# T\n\n```js\nconst a = 1\nconst b = 2\n```\n\n| name | n |\n|---|---|\n| one | 1 |\n| two | 2 |\n'
-    const after = '# T\n\n```js\nconst a = 1\nconst b = 3\n```\n\n| name | n |\n|---|---|\n| one | 1 |\n| two | 22 |\n| three | 3 |\n'
-    await openThenChange(page, margin, 'a.md', before, after)
-    await expect(page.locator('.ProseMirror .code-block.change-block.change-modified')).toHaveCount(1)
-    await expect(page.locator('.ProseMirror .table-block.change-block.change-modified')).toHaveCount(1)
-    await expect(page.locator('.ProseMirror td.change-cell:not(.change-cell-added)')).toHaveCount(1)
-    await expect(page.locator('.ProseMirror td.change-cell:not(.change-cell-added)')).toHaveText('22')
-    await expect(page.locator('.ProseMirror td.change-cell-added')).toHaveCount(2)
-    await expect(page.locator('.doc-header .changes .count')).toHaveText('1 unread change')
-  })
-
-  test('CH-05: bars stay in the gutter at any list depth', async ({ page, margin }) => {
-    const before = '# L\n\n- one\n  - nested one\n  - nested two\n- two\n'
-    const after = '# L\n\n- one\n  - nested one\n  - nested two changed\n- two\n'
-    await openThenChange(page, margin, 'a.md', before, after)
-    const block = page.locator('.ProseMirror .change-block')
-    await expect(block).toHaveCount(1)
-    const text = (await page.locator('.ProseMirror > h1').boundingBox())!
-    const bar = await block.evaluate((el) => {
-      const s = getComputedStyle(el, '::after')
-      const r = el.getBoundingClientRect()
-      return { left: r.left + parseFloat(s.left), width: parseFloat(s.width) }
-    })
-    expect(bar.left).toBeLessThan(text.x)
-    expect(bar.width).toBe(3)
-  })
-
   test('CH-06, CH-07, K: the count is a button to the first change; Alt ↑ ↓ and the arrows step through, centering and pulsing the target', async ({ page, margin }) => {
     const before = paras(40)
     const after = paras(40, { 5: 'Paragraph 5 changed with other words.', 20: 'Paragraph 20 changed with other words.', 35: 'Paragraph 35 changed with other words.' })
@@ -158,28 +231,30 @@ test.describe('changes', () => {
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 3 of 3')
   })
 
-  test('CH-08, CH-09: three buttons beside a change show it as now, as a diff or as it was; a pick stays while the file is open', async ({ page, margin }) => {
+  test('CH-08, CH-09: new words are lit and removed ones marked; two buttons beside a change show it as now or as it was; a pick stays while the file is open', async ({ page, margin }) => {
     const before = '# D\n\nThe quick brown fox jumps over the lazy dog.\n\nSecond paragraph stays.\n\nThird paragraph stays too.\n\n```\nold code\n```\n'
     const after = '# D\n\nThe quick red fox jumps over the lazy dog today.\n\nSecond paragraph stays.\n\nThird paragraph stays too.\n\n```\nnew code\n```\n'
     await openThenChange(page, margin, 'a.md', before, after)
     const first = page.locator('.ProseMirror .change-block').first()
+    await expect(page.locator('.ProseMirror .change-inserted')).toHaveCount(2)
+    await expect(page.locator('.ProseMirror .change-inserted').first()).toHaveText('red')
+    await expect(page.locator('.ProseMirror .change-inserted').last()).toHaveText(' today')
+    await expect(page.locator('.ProseMirror .change-gone')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-gone')).toHaveAttribute('title', 'removed: brown')
     await first.hover()
     const controls = page.locator('.ProseMirror .change-controls').first()
-    await expect(controls.locator('button')).toHaveCount(3)
+    await expect(controls.locator('button')).toHaveCount(2)
     await expect(controls.locator('button[data-view=now]')).toHaveClass(/active/)
-    await controls.locator('button[data-view=diff]').click()
-    await expect(page.locator('.ProseMirror .change-inserted')).toHaveCount(2)
-    await expect(page.locator('.ProseMirror .change-deleted')).toHaveText('brown')
-    await expect(page.locator('.ProseMirror .change-inserted').first()).toHaveText('red')
-    await first.hover()
     await controls.locator('button[data-view=was]').click()
     await expect(page.locator('.ProseMirror .change-hidden')).toHaveCount(1)
     await expect(page.locator('.ProseMirror .change-old')).toContainText('The quick brown fox jumps over the lazy dog.')
     await expect(page.locator('.ProseMirror .change-old .change-note')).toHaveText('as it was')
-    // The code block, a separate change, still shows as it is now; as a diff the old version sits above.
-    await expect(page.locator('.ProseMirror .code-block.change-block')).toHaveCount(1)
-    await page.locator('.ProseMirror .code-block.change-block').hover()
-    await page.locator('.ProseMirror .change-controls').last().locator('button[data-view=diff]').click()
+    await expect(page.locator('.ProseMirror .change-inserted')).toHaveCount(0)
+    // The code block, a change of its own, still shows as it is now; as it was, the old block stands in its place.
+    await expect(page.locator('.ProseMirror .code-block.change-holder')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-line')).toHaveText('new code')
+    await page.locator('.ProseMirror .code-block').hover()
+    await page.locator('.ProseMirror .change-controls').last().locator('button[data-view=was]').click()
     await expect(page.locator('.ProseMirror .change-old pre')).toContainText('old code')
     // Picks stay through an edit elsewhere (the marks follow edits, CH-10).
     await page.locator('.ProseMirror > p', { hasText: 'Second paragraph' }).click()
@@ -187,7 +262,7 @@ test.describe('changes', () => {
     await page.keyboard.press('End')
     await page.keyboard.type(' edited')
     await page.waitForTimeout(400)
-    await expect(page.locator('.ProseMirror .change-hidden')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-hidden')).toHaveCount(2)
     await expect(page.locator('.ProseMirror .change-old pre')).toContainText('old code')
     // And reset when the file is opened again (CH-09).
     await page.goto(margin.url + '/')

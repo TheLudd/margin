@@ -469,14 +469,15 @@ test.describe('document body', () => {
 })
 
 test.describe('changes', () => {
-  const before = '# C\n\nParagraph one with words.\n\nParagraph two with words.\n\nParagraph three with words.\n\nParagraph four with words.\n\n---\n\n| h |\n|---|\n| a |\n'
-  const after = '# C\n\nParagraph one with words.\n\nParagraph two with other terms.\n\nParagraph three with words.\n\nParagraph four with words.\n\nAdded paragraph.\n\n| h |\n|---|\n| b |\n| c |\n'
+  const before = '# C\n\nParagraph one with words.\n\nParagraph two with words.\n\nParagraph three with words.\n\nParagraph four with words.\n\n---\n\n| h |\n|---|\n| a |\n| x |\n'
+  const after = '# C\n\nParagraph one with words.\n\nParagraph two with other terms.\n\nParagraph three with words.\n\nParagraph four with words.\n\nAdded paragraph.\n\n| h |\n|---|\n| b |\n| x |\n| c |\n'
 
-  test('L-27, L-28: bars 3px in the gutter 14px left, 2px inside, glowing; removed blocks struck through at 0.75 opacity on a red wash, collapsed to 6px; the current change washed cyan with a 5px bar and a pulse', async ({ page, margin }) => {
+  test('L-27, L-28: bars 3px in the gutter 14px left, 2px inside, glowing; removed units a 6px sliver, as they were on a red wash; the current change washed cyan with a 5px bar and a pulse', async ({ page, margin }) => {
     margin.write('a.md', before)
     await open(page, margin, 'a.md')
     margin.write('a.md', after)
-    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveCount(2)
+    await expect(page.locator('.ProseMirror .change-block.change-modified')).toHaveCount(1)
+    await expect(page.locator('.ProseMirror .change-holder')).toHaveCount(1)
     const modified = page.locator('.ProseMirror > p.change-block.change-modified')
     expect(await css(modified, 'width', '::after')).toBe('3px')
     expect(await css(modified, 'left', '::after')).toBe('-14px')
@@ -493,8 +494,9 @@ test.describe('changes', () => {
     expect((await removed.boundingBox())!.height).toBe(6)
     sameColor(await css(removed, 'background-color', '::after'), tokens.removed)
     await removed.hover()
-    await page.locator('.ProseMirror .change-controls').nth(1).locator('button[data-view=diff]').click()
-    await expectCss(removed, { 'text-decoration-line': 'line-through', opacity: '0.75', 'user-select': 'none' })
+    await page.locator('.ProseMirror .change-controls').nth(1).locator('button[data-view=was]').click()
+    await expect(removed).not.toHaveClass(/change-collapsed/)
+    await expectCss(removed, { 'user-select': 'none' })
     await expectColor(removed, 'background-color', tokens.removed, 0.1)
     await page.locator('.doc-header .changes .count').click()
     const current = page.locator('.ProseMirror .change-current').first()
@@ -508,15 +510,27 @@ test.describe('changes', () => {
     expect(await css(current, 'box-shadow')).toContain('10px')
   })
 
-  test('L-29, L-30, L-31: word diffs, blocks as they were, tinted table cells, and the three view buttons', async ({ page, margin }) => {
+  test('L-29, L-30, L-31: lit words and the red mark, units as they were, tinted table cells, and the two view buttons', async ({ page, margin }) => {
     margin.write('a.md', before)
     await open(page, margin, 'a.md')
     margin.write('a.md', after)
     const modified = page.locator('.ProseMirror > p.change-block.change-modified')
+    const inserted = modified.locator('.change-inserted')
+    await expect(inserted).toHaveText('other terms')
+    await expectColor(inserted, 'background-color', tokens.code, 0.18)
+    expect(await css(inserted, 'box-shadow')).toContain('1px')
+    const gone = page.locator('.ProseMirror .change-gone')
+    await expect(gone).toHaveCount(1)
+    await expect(gone).toHaveAttribute('title', 'removed: words')
+    const g = (await gone.boundingBox())!
+    expect(g.width).toBe(8)
+    expect(g.height).toBe(3)
+    await expectCss(gone, { 'user-select': 'none' })
+    await expectColor(gone, 'background-color', tokens.removed)
     await modified.hover()
     const controls = page.locator('.ProseMirror .change-controls').first()
     const buttons = controls.locator('button')
-    await expect(buttons).toHaveCount(3)
+    await expect(buttons).toHaveCount(2)
     const b = (await buttons.first().boundingBox())!
     expect(b.width).toBe(20)
     expect(b.height).toBe(18)
@@ -532,15 +546,6 @@ test.describe('changes', () => {
     const bar = (await modified.boundingBox())!
     expect(b.x + b.width).toBeLessThan(bar.x - 14)
     await buttons.nth(1).click()
-    const inserted = page.locator('.ProseMirror .change-inserted')
-    await expectColor(inserted, 'background-color', tokens.code, 0.18)
-    expect(await css(inserted, 'box-shadow')).toContain('1px')
-    const deleted = page.locator('.ProseMirror .change-deleted')
-    await expectCss(deleted, { 'text-decoration-line': 'line-through', 'user-select': 'none' })
-    await expectColor(deleted, 'color', tokens.removed)
-    await expectColor(deleted, 'background-color', tokens.removed, 0.15)
-    await modified.hover()
-    await buttons.nth(2).click()
     const old = page.locator('.ProseMirror .change-old')
     await expectColor(old, 'background-color', tokens.removed, 0.08)
     await expectCss(old, { 'user-select': 'none' })

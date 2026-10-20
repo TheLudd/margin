@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>plan-skill mockup: bars per paragraph and bullet, new words lit</title>
+<style>
+  :root { --bg:#0a0b17; --text:#d6dbff; --muted:#7f86c2; --line:#2a2f63; --code:#5cffa8; --h3:#8fa8ff;
+          --green:#5cffa8; --amber:#ffb347; --red:#ff5c7a; --mono:'Source Code Pro',monospace; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; line-height:1.55; margin:0; }
+  article { max-width:720px; margin:2rem auto; padding:0 2rem 0 3rem; }
+  h1,h2 { font-weight:600; } h2 { color:var(--h3); font-size:1.15rem; margin-top:2rem; }
+  code { font-family:var(--mono); color:var(--code); font-size:.92em; }
+  pre { background:#10122a; border:1px solid var(--line); padding:.75rem 1rem; overflow:auto; }
+  pre code { color:var(--text); }
+  details { color:var(--muted); font-family:var(--mono); font-size:.85rem; border:1px solid var(--line); padding:.3rem .6rem; }
+  ul { padding-left:1.4rem; }
+  li { position:relative; }
+  p { position:relative; }
+  .mod, .add, .rm { position:relative; }
+  .mod::before, .add::before { content:''; position:absolute; left:-2.2rem; top:.2em; bottom:.2em; width:3px; border-radius:2px; }
+  li.mod::before, li.add::before { left:-3.6rem; }
+  .mod::before { background:var(--amber); }
+  .add::before { background:var(--green); }
+  .rm::after { content:''; position:absolute; left:-3.6rem; width:10px; height:3px; background:var(--red); border-radius:2px; }
+  li.rm::after { top:-7px; }
+  .gone { display:inline-block; width:8px; height:3px; background:var(--red); border-radius:2px; vertical-align:middle; margin:0 .15em; }
+  .add .text { background:rgba(92,255,168,.22); border-radius:2px; padding:0 .1em; }
+  pre .rm::after { left:-3.5rem; top:.6em; }
+  pre .rm { display:block; }
+  .new { background:rgba(92,255,168,.22); border-radius:2px; padding:0 .1em; }
+  .legend { color:var(--muted); font-size:.85rem; margin-bottom:2rem; border-bottom:1px solid var(--line); padding-bottom:1rem; }
+  .legend span { display:inline-block; margin-right:1.2rem; }
+  .sw { display:inline-block; width:12px; height:3px; vertical-align:middle; margin-right:.4em; border-radius:2px; }
+</style>
+<article>
+<div class="legend">
+  <span><i class="sw" style="background:var(--amber)"></i>changed paragraph or bullet</span>
+  <span><i class="sw" style="background:var(--green)"></i>new bullet</span>
+  <span><i class="sw" style="background:var(--red)"></i>something removed here</span>
+  <span><i class="new">lit</i> new words</span>
+  <span><i class="gone"></i> words removed here</span>
+  <span>· 8 unread changes</span>
+</div>
+
+<details><summary>frontmatter</summary>name: plan<br>description: '…'<br>disable-model-invocation: true</details>
+
+<h1>Plan</h1>
+
+<p class="mod">Turn the <span class="new">shape</span> into the contract for the code: which functions exist, <span class="new">their signatures</span> and how they call each other. Everything is markdown. No code, no branch.</p>
+
+<p class="mod">Read <code>../pipeline/rules.md</code> first. Its artifact, gate, <span class="new">test and</span> focus rules apply.</p>
+
+<h2>Input</h2>
+
+<p class="mod">Read <code>shape.md</code> of the feature<span class="new">, and the <code>rigor</code> line of its <code>ideate.md</code></span>.</p>
+
+<ul>
+<li>Feature given as an argument: use that folder.</li>
+<li>Nothing given: list the features of the current project across all plans worktrees and ask which.</li>
+<li>No <code>shape.md</code>: say so and stop.</li>
+<li class="add"><span class="text">Rigor other than <code>step-by-step</code>: the feature skips this stage. Say so and ask before going on.</span></li>
+</ul>
+
+<p>Do not reopen what the shape decides. If the shape turns out to be wrong, say so and reopen <code>/shape</code>.</p>
+
+<h2>Conversation</h2>
+
+<ul>
+<li class="mod">Read the codebase at file level: the files, functions, types and tests the shape touches.<span class="gone"></span></li>
+<li class="rm">List the functions to create or change, each with its signature and one line on what it does. Extend existing modules where the behavior belongs to them.</li>
+<li class="mod">Show the flow <span class="new">at function level</span>: which function calls which, from the entry point down<span class="new">, following the shape's flow</span>.</li>
+<li class="mod">Keep the running draft in <code>plan.md</code> from the first <span class="gone"></span>function on. Update it when a decision changes it and commit a fixup. The reply says in one line what changed.</li>
+<li>When the user says the stage is done, name <code>/build</code> as the next stage.</li>
+</ul>
+
+<h2>Draft</h2>
+
+<pre><code># &lt;title&gt;
+<span class="rm"></span>
+## Functions
+### `&lt;module&gt;/&lt;file&gt;`
+&lt;signature&gt;
+&lt;one line on what it does&gt;
+
+## Flow
+&lt;who calls whom&gt;
+</code></pre>
+</article>

@@ -142,10 +142,10 @@ Any one mechanism is enough. All must exist.
 - **CH-02** margin keeps a copy of every file as last read. Opening a file without a copy stores the current version, so a never-opened file has no unread changes. Changes made while the browser is closed show on the next open.
 - **CH-03** Mark read replaces the copy. A save in margin advances it, unless the copy holds unread changes. Several outside writes add up into one diff until marked read.
 - **CH-04** Copies are kept `unreadDays` after last written, even while the file is gone, as after a branch switch; a sweep at startup, daily and on settings changes removes older ones.
-- **CH-05** Bars: green beside a new block, amber beside a changed one, a red notch where blocks were removed. Table cells that changed are tinted; new rows in green. A code block or table counts as one block. Bars stay in the gutter at any list depth.
-- **CH-06** Changed or removed blocks separated by at most one unchanged block are one change. The header counts them (`3 unread changes`) and the count is a button to the first.
+- **CH-05** The grain is the unit a reader would call a change: a paragraph, a heading, a bullet's own text, a table row, a run of code lines, a rule. Lists and quotes are walked into; their items are units. Bars: green beside a new unit, amber beside a changed one, a red notch where units were removed, in the gutter at any indent. Inside a code block, changed lines are tinted with a bar at their left and a red notch where lines went; inside a table, changed cells are tinted, new rows in green, and a red line marks where a row went. A code block or table is one unit only when its text differs without any line or row of it differing.
+- **CH-06** Every changed, new or removed unit is a change of its own, as is every hunk and every row; nothing merges across units. The header counts them (`3 unread changes`) and the count is a button to the first.
 - **CH-07** Alt ↑ and Alt ↓ and the header arrows step through changes. The target is centered and pulses once reached. A change jumped to is current (`Change 2 of 3`) until it leaves the screen. From no current change, stepping goes from the middle of the view.
-- **CH-08** Beside each change, three buttons show it as it is now, as a diff, or as it was. In a diff, inserted words are highlighted and deleted words struck through; code blocks and tables show the old version above the new. A rewritten block is shown whole. The buttons sit left of the bar with room to cross the gutter and hide only after a delay.
+- **CH-08** A changed paragraph or bullet has its new words lit in place and a small red mark where words were removed, the removed words in its tooltip; a new one is lit whole. Old text is never shown inline. Beside each changed or removed unit two buttons show it as it is now or as it was, the old version drawn in its place; a code block or table with changes inside has one pair for the whole block. The buttons sit left of the bar with room to cross the gutter and hide only after a delay.
 - **CH-09** Every change opens shown as it is now; a pick of another view for one change stays while the file is open. There is no setting for this.
 - **CH-10** The document stays editable with changes shown; the marks follow edits.
 - **CH-11** A file in git shows a badge: `committed`, `uncommitted`, or `untracked` if never committed. `uncommitted` is tinted and clickable: it switches the baseline to the last commit and back. Files outside git show none.
@@ -204,11 +204,11 @@ The reference is `spec/look.css`, the stylesheet of the last build before the re
 
 ### Changes
 
-- **L-27** A changed block has a 3px rounded bar in the gutter 14px left of the text (plus 34px per list level), 2px inside its top and bottom, glowing in its colour: added green, modified amber. A removed block is drawn in place, struck through, 0.75 opacity, on a faint red wash with a red bar; collapsed to a 6px sliver with a notch when shown "as it is now". A rule too thin for a bar gets a 1px outline instead.
+- **L-27** A changed unit has a 3px rounded bar in the gutter 14px left of the text column, whatever the unit's indent, 2px inside its top and bottom, glowing in its colour: added green, modified amber. A removed unit is a 6px sliver with a notch when shown "as it is now", and drawn in place on a faint red wash with a red bar, not selectable, as it was. A rule too thin for a bar gets a 1px outline instead. A changed code line is tinted at 18% with a 3px bar 12px to its left inside the block; a removed run of lines is an 8px by 3px red notch there; a removed row is a 2px red line along the top of the row after it.
 - **L-28** The current change has a faint cyan wash extended 10px to each side and its bar widens to 5px cyan with a glow; a reached jump pulses from a 30% cyan wash over 1.2s.
-- **L-29** Word diffs: inserted text on a green 18% wash with a 1px green underline; deleted text struck through in red on a red 15% wash, not selectable. A block shown as it was sits on a faint red wash with a red bar and is not selectable; a note under it is muted italic.
+- **L-29** New words on a green 18% wash with a 1px green underline; an 8px by 3px glowing red mark where words were removed, not selectable. A unit shown as it was sits on a faint red wash with a red bar and is not selectable; a note under it is muted italic.
 - **L-30** Changed table cells are tinted amber at 14%, added cells green at 12%, over the row stripes.
-- **L-31** The three view buttons stack vertically 34px left of the bar, 20px by 18px each, 1px line border, panel bg, muted mono 12px; cyan border and text when hovered, cyan when active. They show for the current change and while pointing at a change, and fade out after 0.4s (J-04).
+- **L-31** The two view buttons stack vertically 34px left of the bar, 20px by 18px each, 1px line border, panel bg, muted mono 12px; cyan border and text when hovered, cyan when active. They show for the current change and while pointing at a change, and fade out after 0.4s (J-04).
 
 ### Finder
 
@@ -265,6 +265,6 @@ Answered 2026-10-15, folded into the demands above.
 2. Worktrees stay (W).
 3. The manual flag stays (CH-13).
 4. Phones get no rule of their own: editing is offered everywhere, with no demand on touch quality (D-01). Dropping the rule is less to build than keeping it.
-5. All three views of a change stay; a change opens as it is now, and the `changeView` setting goes (CH-09, C-01).
+5. All three views of a change stay; a change opens as it is now, and the `changeView` setting goes (CH-09, C-01). Superseded 2026-10-20: the diff view went when new words became lit in place; now and as it was remain (CH-08).
 6. No authentication on the LAN (P-11).
 7. No accent along the whole article while editing; the cursor block alone shows it (D-02, L-23).

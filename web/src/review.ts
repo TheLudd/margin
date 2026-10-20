@@ -1,10 +1,11 @@
 // Reviewing changes (CH-01 to CH-14): which baseline, when to recompute,
 // the header controls, stepping and mark read. The editor draws them.
 import type { Transaction } from '@milkdown/kit/prose/state'
+import { DecorationSet } from '@milkdown/kit/prose/view'
 import { countLabel, type Placed } from './changes'
 import type { EditorHandle } from './editor'
 import { setCommit, type HeaderRefs } from './header'
-import { apply, compare, draw, nextChange, onScreen, place, prevChange, toBlocks, touchedBlocks, type ChangeView, type Model } from './marks'
+import { apply, compare, draw, nextChange, onScreen, place, prevChange, toUnits, touchedUnits, type ChangeView, type Model } from './marks'
 import type { Doc, Meta } from './types'
 
 export type BaselineKind = 'read' | 'head'
@@ -29,7 +30,6 @@ export class Review {
   current = -1
   pulse = -1
   placed: Placed[] = []
-  private widgets = new Map<number, HTMLElement[]>()
   private timer: number | null = null
   private pulseTimer: number | null = null
   private loading = 0
@@ -60,7 +60,7 @@ export class Review {
       if (token !== this.loading || this.destroyed) return
       if (text !== null) {
         const baselineDoc = this.host.editor.parse(text)
-        model = compare(toBlocks(baselineDoc, this.host.editor.serialize), this.host.editor.view.state.doc, this.host.editor.serialize)
+        model = compare(toUnits(baselineDoc, this.host.editor.serialize), this.host.editor.view.state.doc, this.host.editor.serialize)
       }
     }
     this.model = model
@@ -118,18 +118,14 @@ export class Review {
     else this.recompute()
   }
 
-  /** The reader edited: blocks that were unchanged follow the edit, so the
+  /** The reader edited: units that were unchanged follow the edit, so the
       reader's own edits never show (CH-14); then the marks follow (CH-10). */
   onEdit(tr: Transaction): void {
     if (!this.model) return
-    const touched = touchedBlocks(tr)
-    const doc = this.host.editor.view.state.doc
-    for (const index of touched) {
-      const mark = this.model.diff.blocks[index]
-      if (mark && mark.mark === 'same' && mark.baseline !== undefined && index < doc.childCount) {
-        const block = toBlocks(doc.child(index), this.host.editor.serialize)
-        if (block.length === 1) this.model.baseline[mark.baseline] = block[0]
-      }
+    const units = toUnits(this.host.editor.view.state.doc, this.host.editor.serialize)
+    for (const index of touchedUnits(tr, units)) {
+      const mark = this.model.diff.units[index]
+      if (mark && mark.mark === 'same' && mark.baseline !== undefined) this.model.baseline[mark.baseline] = units[index]
     }
     this.scheduleRecompute()
   }
@@ -154,8 +150,7 @@ export class Review {
     if (this.destroyed) return
     const view = this.host.editor.view
     if (!this.model || this.model.changes.length === 0) {
-      this.widgets = new Map()
-      apply(view, draw(view, { model: { baseline: [], diff: { blocks: [], removed: [] }, changes: [] }, views: this.views, current: -1, pulse: -1, onView: () => {} }).decorations)
+      apply(view, DecorationSet.empty)
       this.placed = []
       this.updateHeader()
       return
@@ -166,13 +161,12 @@ export class Review {
       current: this.current,
       pulse: this.pulse,
       onView: (change, v) => {
-        this.views.set(change.key, v)
+        this.views.set(change.viewKey, v)
         this.redraw()
       },
     })
-    this.widgets = drawn.widgets
-    apply(view, drawn.decorations)
-    this.placed = place(view, this.model, this.widgets, this.host.scroller)
+    apply(view, drawn)
+    this.placed = place(view, this.model, this.host.scroller)
     this.updateHeader()
   }
 
@@ -195,14 +189,14 @@ export class Review {
 
   next(): void {
     if (!this.model) return
-    this.placed = place(this.host.editor.view, this.model, this.widgets, this.host.scroller)
+    this.placed = place(this.host.editor.view, this.model, this.host.scroller)
     const [top, bottom] = this.viewport()
     this.jumpTo(nextChange(this.placed, this.current, top, bottom))
   }
 
   prev(): void {
     if (!this.model) return
-    this.placed = place(this.host.editor.view, this.model, this.widgets, this.host.scroller)
+    this.placed = place(this.host.editor.view, this.model, this.host.scroller)
     const [top, bottom] = this.viewport()
     this.jumpTo(prevChange(this.placed, this.current, top, bottom))
   }
@@ -210,7 +204,7 @@ export class Review {
   /** Centers a change, makes it current and pulses it once (CH-07). */
   jumpTo(i: number): void {
     if (!this.model || i < 0 || i >= this.model.changes.length) return
-    this.placed = place(this.host.editor.view, this.model, this.widgets, this.host.scroller)
+    this.placed = place(this.host.editor.view, this.model, this.host.scroller)
     const p = this.placed[i]
     const s = this.host.scroller
     const target = p.top - (s.clientHeight - (p.bottom - p.top)) / 2
