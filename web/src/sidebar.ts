@@ -90,6 +90,17 @@ function rememberFold(details: HTMLDetailsElement, key: string, folds: FoldStore
   })
 }
 
+/**
+ * The file above or below `current` in Recent (S-12): null at either end,
+ * or when the current file is not in Recent. Older is never stepped.
+ */
+export function neighbourInRecent(lists: Lists, current: string | null, step: -1 | 1): string | null {
+  if (current === null) return null
+  const i = lists.recent.findIndex((e) => e.path === current)
+  if (i < 0) return null
+  return lists.recent[i + step]?.path ?? null
+}
+
 export interface SidebarView {
   lists: Lists
   current: string | null

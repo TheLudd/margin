@@ -48,10 +48,11 @@ test.describe('keys', () => {
 
   test('K: in the finder ↑ ↓ move, Enter opens, Tab toggles older files', async ({ page, margin }) => {
     margin.write('a.md', '# A\n')
-    margin.write('b.md', '# B\n')
     margin.write('old.md', '# Old\n')
     await open(page, margin, 'a.md')
+    // Recent is ordered by last edit: b.md, written a second later, sits above a.md.
     await page.waitForTimeout(1100)
+    margin.write('b.md', '# B\n')
     await open(page, margin, 'b.md')
     await page.keyboard.press('Control+k')
     const finder = page.locator('#finder')
@@ -69,20 +70,43 @@ test.describe('keys', () => {
     await expect(page).toHaveURL(margin.url + '/code/a.md')
   })
 
-  test('K: Alt ↑ and Alt ↓ step through changes in a document with changes', async ({ page, margin }) => {
+  test('K: N and P step through changes in a document with changes', async ({ page, margin }) => {
     const paras = (over: Record<number, string>) => '# A\n\n' + Array.from({ length: 30 }, (_, i) => over[i + 1] ?? `Paragraph ${i + 1} with words.`).join('\n\n') + '\n'
     margin.write('a.md', paras({}))
     await open(page, margin, 'a.md')
     margin.write('a.md', paras({ 10: 'Paragraph 10 with other words.', 25: 'Paragraph 25 with other words.' }))
     await expect(page.locator('.doc-header .changes')).toBeVisible()
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.ProseMirror .change-current')).toHaveCount(1)
     const first = await page.locator('.doc-header .changes .count').textContent()
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 2 of 2')
-    await page.keyboard.press('Alt+ArrowUp')
+    await page.keyboard.press('p')
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 1 of 2')
     expect(first).toMatch(/Change [12] of 2/)
+  })
+
+  test('K, S-12: Alt ↑ and Alt ↓ open the file above or below in Recent, and stop at the ends', async ({ page, margin }) => {
+    margin.write('a.md', '# A\n')
+    margin.write('old.md', '# Old\n')
+    await open(page, margin, 'a.md')
+    // Recent is ordered by last edit: b.md, written a second later, sits above a.md.
+    await page.waitForTimeout(1100)
+    margin.write('b.md', '# B\n')
+    await open(page, margin, 'b.md')
+    await expect(page.locator('#sidebar details[data-section=recent] a').nth(0)).toHaveAttribute('href', '/code/b.md')
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(page).toHaveURL(margin.url + '/code/a.md')
+    await expect(page.locator('.ProseMirror > h1')).toHaveText('A')
+    await page.keyboard.press('Alt+ArrowDown')
+    await page.waitForTimeout(300)
+    await expect(page).toHaveURL(margin.url + '/code/a.md')
+    await page.keyboard.press('Alt+ArrowUp')
+    await expect(page).toHaveURL(margin.url + '/code/b.md')
+    await page.keyboard.press('Alt+ArrowUp')
+    await page.waitForTimeout(300)
+    await expect(page).toHaveURL(margin.url + '/code/b.md')
+    await expect(page.locator('#sidebar details[data-section=recent] a[href="/code/old.md"]')).toHaveCount(0)
   })
 
   test('K: Ctrl click on a link to a .md file opens it in margin', async ({ page, margin }) => {

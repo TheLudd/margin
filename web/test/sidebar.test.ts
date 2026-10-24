@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSidebar, renderSidebar, type FoldStore } from '../src/sidebar'
+import { buildSidebar, neighbourInRecent, renderSidebar, type FoldStore } from '../src/sidebar'
 import type { Lists } from '../src/types'
 
 function memoryFolds(): FoldStore & { data: Record<string, boolean> } {
@@ -87,6 +87,16 @@ describe('sidebar', () => {
     expect(links[1].querySelector('time')?.classList.contains('modified')).toBe(true)
     expect(links[2].querySelector('.copies')?.textContent).toBe('×2')
     expect(links[2].querySelector('.copies')?.classList.contains('changed')).toBe(true)
+  })
+
+  it('S-12: the neighbour in Recent is the entry above or below, null at the ends, and Older is never stepped', () => {
+    const l = lists()
+    expect(neighbourInRecent(l, '/code/a.md', 1)).toBe('/code/foo/b.md')
+    expect(neighbourInRecent(l, '/code/foo/b.md', -1)).toBe('/code/a.md')
+    expect(neighbourInRecent(l, '/code/a.md', -1)).toBeNull()
+    expect(neighbourInRecent(l, '/code/foo/main/c.md', 1)).toBeNull()
+    expect(neighbourInRecent(l, '/code/foo/main/d.md', 1)).toBeNull()
+    expect(neighbourInRecent(l, null, 1)).toBeNull()
   })
 
   it('S-07: unread entries carry the unread class', () => {

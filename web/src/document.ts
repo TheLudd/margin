@@ -121,9 +121,10 @@ function onKey(ev: KeyboardEvent): void {
   if (!open) return
   const finder = document.getElementById('finder') as HTMLDialogElement | null
   if (finder?.open) return
-  if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+  if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && (ev.key === 'n' || ev.key === 'p' || ev.key === 'N' || ev.key === 'P')) {
+    if (isTyping(ev.target) || open.editor.editing) return
     ev.preventDefault()
-    if (ev.key === 'ArrowUp') open.review.prev()
+    if (ev.key === 'p' || ev.key === 'P') open.review.prev()
     else open.review.next()
     return
   }

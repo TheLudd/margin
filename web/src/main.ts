@@ -11,7 +11,7 @@ import { renderHome, renderMissing } from './pages'
 import { currentRoute, navigate, onRoute, plainClick, startRouter, type Route } from './router'
 import { renderSettings } from './settings'
 import { buildShell, currentDrawer, el, setDrawer, setSidebarFolded, sidebarFolded } from './shell'
-import { buildSidebar, localFolds, renderSidebar } from './sidebar'
+import { buildSidebar, localFolds, neighbourInRecent, renderSidebar } from './sidebar'
 import { Stream } from './stream'
 import type { Config, Lists, StreamEvent } from './types'
 
@@ -242,6 +242,15 @@ document.addEventListener('keydown', (ev) => {
     ev.preventDefault()
     openFinder()
   }
+})
+
+// Alt ↑ and Alt ↓ step through Recent (S-12); the finder keeps the keys.
+document.addEventListener('keydown', (ev) => {
+  if (!ev.altKey || ev.ctrlKey || ev.metaKey || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return
+  if (finder.dialog.open || !lists) return
+  const next = neighbourInRecent(lists, currentPath(), ev.key === 'ArrowUp' ? -1 : 1)
+  ev.preventDefault()
+  if (next) navigate(next)
 })
 
 sidebar.closeButton.addEventListener('click', () => setSidebarFolded(true))

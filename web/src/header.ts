@@ -29,8 +29,8 @@ export function buildHeader(): HeaderRefs {
   const path = el('div', { class: 'path' })
   const worktree = el('select', { class: 'worktree', 'aria-label': 'Copies of this file', hidden: '' })
   const count = el('button', { class: 'count', type: 'button', title: 'Go to the first change' })
-  const prev = el('button', { class: 'prev', type: 'button', title: 'Previous change (Alt ↑)', 'aria-label': 'Previous change', text: '↑' })
-  const next = el('button', { class: 'next', type: 'button', title: 'Next change (Alt ↓)', 'aria-label': 'Next change', text: '↓' })
+  const prev = el('button', { class: 'prev', type: 'button', title: 'Previous change (P)', 'aria-label': 'Previous change', text: '↑' })
+  const next = el('button', { class: 'next', type: 'button', title: 'Next change (N)', 'aria-label': 'Next change', text: '↓' })
   const markRead = el('button', { class: 'mark-read', type: 'button', text: 'mark read' })
   const changes = el('div', { class: 'changes', hidden: '' }, count, prev, next, markRead)
   const badges: Badges = {

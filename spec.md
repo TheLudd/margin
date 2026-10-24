@@ -103,6 +103,7 @@ Decided 2026-10-15. Not up for reopening during the rewrite.
 - **S-09** Ctrl K or Ctrl P opens the finder. An empty query lists recent activity. A query searches active files only; Tab (or the line at the foot, which counts the older matches) adds an Older section. Each section shows its best 10 and says `n of m` when cut. Enter opens, arrows move, click outside closes.
 - **S-10** Matching: every query word must match within one path segment, as a substring or as an abbreviation of its words (`gcp` for `guarded-commands-plan`). Words shorter than three letters only match at a word start. Matches in the file name rank above matches in folders.
 - **S-11** Sidebar links are real links: middle click and open-in-new-tab work; a plain click opens in place.
+- **S-12** Alt ↑ and Alt ↓ open the file above or below the open one in Recent. Older is not stepped: at either end of Recent, or from a file not in it, nothing happens. The finder, when open, keeps the keys.
 
 ## 6. Document (D)
 
@@ -144,7 +145,7 @@ Any one mechanism is enough. All must exist.
 - **CH-04** Copies are kept `unreadDays` after last written, even while the file is gone, as after a branch switch; a sweep at startup, daily and on settings changes removes older ones.
 - **CH-05** The grain is the unit a reader would call a change: a paragraph, a heading, a bullet's own text, a table row, a run of code lines, a rule. Lists and quotes are walked into; their items are units. Bars: green beside a new unit, amber beside a changed one, a red notch where units were removed, in the gutter at any indent. Inside a code block, changed lines are tinted with a bar at their left and a red notch where lines went; inside a table, changed cells are tinted, new rows in green, and a red line marks where a row went. A code block or table is one unit only when its text differs without any line or row of it differing.
 - **CH-06** Every changed, new or removed unit is a change of its own, as is every hunk and every row; nothing merges across units. The header counts them (`3 unread changes`) and the count is a button to the first.
-- **CH-07** Alt ↑ and Alt ↓ and the header arrows step through changes. The target is centered and pulses once reached. A change jumped to is current (`Change 2 of 3`) until it leaves the screen. From no current change, stepping goes from the middle of the view.
+- **CH-07** N and P and the header arrows step through changes. The target is centered and pulses once reached. A change jumped to is current (`Change 2 of 3`) until it leaves the screen. From no current change, stepping goes from the middle of the view.
 - **CH-08** A changed paragraph or bullet has its new words lit in place and a small red mark where words were removed, the removed words in its tooltip; a new one is lit whole. Old text is never shown inline. Beside each changed or removed unit two buttons show it as it is now or as it was, the old version drawn in its place; a code block or table with changes inside has one pair for the whole block. The buttons sit left of the bar with room to cross the gutter and hide only after a delay.
 - **CH-09** Every change opens shown as it is now; a pick of another view for one change stays while the file is open. There is no setting for this.
 - **CH-10** The document stays editable with changes shown; the marks follow edits.
@@ -240,7 +241,8 @@ A general rule, then its instances: no state change moves any element that didn'
 | Esc | editing | stop editing (closes a menu first if one is open); closes a drawer |
 | Ctrl K, Ctrl P | anywhere | open the finder |
 | ↑ ↓, Enter, Tab | finder | move, open, toggle older files |
-| Alt ↑, Alt ↓ | document with changes | previous and next change |
+| N, P | document with changes | next and previous change |
+| Alt ↑, Alt ↓ | document | next and previous file in Recent |
 | Ctrl click | link to a `.md` | open in margin |
 | middle click | sidebar link | open in a new tab |
 

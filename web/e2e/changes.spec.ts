@@ -97,9 +97,9 @@ test.describe('changes', () => {
     // Stepping lands on lines inside the block.
     await page.locator('.doc-header .changes .count').click()
     await expect(page.locator('.ProseMirror .change-line.change-current')).toHaveText('B')
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.ProseMirror .change-line.change-current')).toHaveText('f')
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.ProseMirror .change-gone-lines.change-current')).toHaveCount(1)
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 3 of 3')
   })
@@ -119,7 +119,7 @@ test.describe('changes', () => {
     await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
     await page.locator('.doc-header .changes .count').click()
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 1 of 3')
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.ProseMirror tr.change-current')).toContainText('22')
     await page.locator('.ProseMirror .table-block').hover()
     const controls = page.locator('.ProseMirror .change-controls')
@@ -189,7 +189,7 @@ test.describe('changes', () => {
     await expect(page.locator('.doc-header .changes')).toBeHidden()
   })
 
-  test('CH-06, CH-07, K: the count is a button to the first change; Alt ↑ ↓ and the arrows step through, centering and pulsing the target', async ({ page, margin }) => {
+  test('CH-06, CH-07, K: the count is a button to the first change; N, P and the arrows step through, centering and pulsing the target', async ({ page, margin }) => {
     const before = paras(40)
     const after = paras(40, { 5: 'Paragraph 5 changed with other words.', 20: 'Paragraph 20 changed with other words.', 35: 'Paragraph 35 changed with other words.' })
     await openThenChange(page, margin, 'a.md', before, after)
@@ -199,7 +199,7 @@ test.describe('changes', () => {
     await expect(current).toHaveText('Paragraph 5 changed with other words.')
     await expect(page.locator('.ProseMirror .change-pulse')).toHaveCount(1)
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 1 of 3')
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(current).toHaveText('Paragraph 20 changed with other words.')
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 2 of 3')
     const box = (await current.boundingBox())!
@@ -209,7 +209,7 @@ test.describe('changes', () => {
     await page.locator('.doc-header .changes .next').click()
     await expect(current).toHaveText('Paragraph 35 changed with other words.')
     await expect(page.locator('.doc-header .changes .next')).toBeDisabled()
-    await page.keyboard.press('Alt+ArrowUp')
+    await page.keyboard.press('p')
     await expect(current).toHaveText('Paragraph 20 changed with other words.')
     await page.locator('.doc-header .changes .prev').click()
     await expect(current).toHaveText('Paragraph 5 changed with other words.')
@@ -221,12 +221,12 @@ test.describe('changes', () => {
     const after = paras(40, { 5: 'Paragraph 5 changed with other words.', 20: 'Paragraph 20 changed with other words.', 35: 'Paragraph 35 changed with other words.' })
     await openThenChange(page, margin, 'a.md', before, after)
     // From the top, paragraph 5 sits above the middle of the view: the next change from the middle is the second.
-    await page.keyboard.press('Alt+ArrowDown')
+    await page.keyboard.press('n')
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 2 of 3')
     await page.locator('#main').evaluate((m) => m.scrollTo({ top: m.scrollHeight }))
     await expect(page.locator('.doc-header .changes .count')).toHaveText('3 unread changes')
     await expect(page.locator('.ProseMirror .change-current')).toHaveCount(0)
-    await page.keyboard.press('Alt+ArrowUp')
+    await page.keyboard.press('p')
     await expect(page.locator('.ProseMirror .change-current')).toHaveText('Paragraph 35 changed with other words.')
     await expect(page.locator('.doc-header .changes .count')).toHaveText('Change 3 of 3')
   })
