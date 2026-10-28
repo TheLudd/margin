@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@milkdown/kit": "7.22.3",
+    "lowlight": "3.3.0",
     "mermaid": "12.2.0"
   }
 }

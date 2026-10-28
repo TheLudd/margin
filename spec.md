@@ -124,6 +124,7 @@ Decided 2026-10-15. Not up for reopening during the rewrite.
 - **D-15** A deleted or moved file shows a banner and edits are not saved.
 - **D-16** Images without a title are rendered, not dropped. No LaTeX: `$` in prose is prose. No image resize feature that writes into the alt text.
 - **D-17** Switching files while an edit is pending saves it first.
+- **D-18** Code blocks tagged with a known language are syntax highlighted in the theme's colours, while reading and as you type. Untagged blocks stay plain.
 
 ## 7. Never stale (N)
 

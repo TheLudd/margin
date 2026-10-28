@@ -162,6 +162,22 @@ test.describe('document', () => {
     expect(margin.read('a.md')).toBe('# Code\n\n```js\nconst x = 1 + 2\n```\n')
   })
 
+  test('D-18: code blocks in a known language are highlighted in the theme, also as you type; untagged ones stay plain', async ({ page, margin }) => {
+    margin.write('a.md', '# Code\n\n```xml\n<a href="x"/>\n```\n\n```\n<a href="x"/>\n```\n')
+    await open(page, margin, 'a.md')
+    const [xml, plain] = [page.locator('.code-block').nth(0), page.locator('.code-block').nth(1)]
+    await expect(xml.locator('.hljs-name')).toHaveCSS('color', 'rgb(255, 43, 214)')
+    await expect(xml.locator('.hljs-attr')).toHaveCSS('color', 'rgb(0, 229, 255)')
+    await expect(xml.locator('.hljs-string')).toHaveCSS('color', 'rgb(92, 255, 168)')
+    await expect(plain.locator('[class*="hljs-"]')).toHaveCount(0)
+    await xml.locator('pre code').click()
+    await page.keyboard.press('e')
+    await xml.locator('pre code').click()
+    await page.keyboard.press('End')
+    await page.keyboard.type('<!-- note -->')
+    await expect(xml.locator('.hljs-comment')).toHaveText('<!-- note -->')
+  })
+
   test('D-10: the contents panel follows h1–h4, highlights the heading in view, scrolls on click and puts the anchor in the URL', async ({ page, margin }) => {
     let body = '# Top\n\n'
     for (let i = 1; i <= 6; i++) body += `## Section ${i}\n\n` + 'Lorem ipsum dolor sit amet.\n\n'.repeat(12) + `### Sub ${i}\n\n#### Deep ${i}\n\n##### Five ${i}\n\ntext\n\n`

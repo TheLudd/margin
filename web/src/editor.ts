@@ -11,6 +11,7 @@ import type { Node as PMNode, Schema } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView, type NodeView, type ViewMutationRecord } from '@milkdown/kit/prose/view'
 import { changesPlugin } from './marks'
+import { highlightPlugin } from './highlight'
 import { renderMermaid } from './mermaid'
 import { normalizeLabel, type BlockInfo } from './preserve'
 
@@ -82,6 +83,7 @@ const cursorBlock = $prose(
 let currentView: EditorView | null = null
 
 const changesProse = $prose(() => changesPlugin())
+const highlightProse = $prose(() => highlightPlugin())
 
 /* Code blocks (D-08, D-09): a pre the editor types into; mermaid renders
    its diagram and shows the source with a live preview on a click. */
@@ -306,6 +308,7 @@ export async function createEditor(root: HTMLElement, markdown: string, events: 
     .use(cursor)
     .use(cursorBlock)
     .use(changesProse)
+    .use(highlightProse)
     .use(views)
   await editor.create()
   const view = editor.ctx.get(editorViewCtx)

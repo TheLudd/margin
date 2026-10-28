@@ -464,6 +464,48 @@ article {
   font: inherit;
 }
 
+/* Syntax highlighting (D-18): highlighter classes onto the theme's tokens */
+.editor-host .code-block :is(.hljs-tag, .hljs-punctuation, .hljs-operator) {
+  color: var(--cp-muted);
+}
+
+.editor-host .code-block :is(.hljs-keyword, .hljs-name, .hljs-selector-tag, .hljs-built_in) {
+  color: var(--cp-magenta);
+}
+
+.editor-host .code-block :is(.hljs-attr, .hljs-attribute, .hljs-property, .hljs-selector-class, .hljs-selector-id) {
+  color: var(--cp-cyan);
+}
+
+.editor-host .code-block :is(.hljs-string, .hljs-addition) {
+  color: var(--cp-code);
+}
+
+.editor-host .code-block :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet) {
+  color: var(--cp-orange);
+}
+
+.editor-host .code-block :is(.hljs-title, .hljs-section) {
+  color: var(--cp-h3);
+}
+
+.editor-host .code-block :is(.hljs-type, .hljs-title.class_, .hljs-params) {
+  color: var(--cp-violet);
+}
+
+.editor-host .code-block :is(.hljs-variable, .hljs-template-variable, .hljs-meta, .hljs-doctag) {
+  color: var(--cp-yellow);
+}
+
+.editor-host .code-block :is(.hljs-regexp, .hljs-deletion) {
+  color: var(--cp-red);
+}
+
+.editor-host .code-block .hljs-comment {
+  color: var(--cp-muted);
+  font-style: italic;
+}
+
 .editor-host .code-block .preview {
   display: none;
   padding: 12px 16px;
